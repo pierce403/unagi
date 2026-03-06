@@ -1,0 +1,10 @@
+/.gradle/
+/.kotlin/
+/.idea/
+/.vscode/
+
+**/build/
+*.iml
+.DS_Store
+local.properties
+thingalert_ui.xml

@@ -1,0 +1,20 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+  <style name="Theme.ThingAlert" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+    <item name="colorPrimary">@color/thingalert_primary</item>
+    <item name="colorPrimaryVariant">@color/thingalert_primary_variant</item>
+    <item name="colorSecondary">@color/thingalert_secondary</item>
+    <item name="colorSecondaryVariant">@color/thingalert_secondary_variant</item>
+    <item name="colorSurface">@color/thingalert_surface</item>
+    <item name="colorSurfaceVariant">@color/thingalert_surface_variant</item>
+    <item name="android:colorBackground">@color/thingalert_background</item>
+    <item name="colorOnPrimary">@color/thingalert_on_primary</item>
+    <item name="colorOnSecondary">@color/thingalert_on_secondary</item>
+    <item name="colorOnBackground">@color/thingalert_on_background</item>
+    <item name="colorOnSurface">@color/thingalert_on_surface</item>
+    <item name="android:statusBarColor" tools:targetApi="l">@color/thingalert_primary_variant</item>
+    <item name="android:textColorPrimary">@color/thingalert_on_surface</item>
+    <item name="android:textColorSecondary">@color/thingalert_on_surface</item>
+    <item name="textInputStyle">@style/ThingAlertTextInputStyle</item>
+    <item name="spinnerStyle">@style/ThingAlertSpinnerStyle</item>
+  </style>
+</resources>

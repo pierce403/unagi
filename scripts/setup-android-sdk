@@ -1,0 +1,180 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# unagi Android SDK bootstrap (no Android Studio).
+# This script is intentionally conservative: it guides and verifies rather than assuming.
+
+OS="$(uname -s)"
+
+# Defaults (can be overridden by env vars)
+ANDROID_SDK_ROOT_DEFAULT="$HOME/Android/Sdk"
+ANDROID_SDK_ROOT="${ANDROID_SDK_ROOT:-$ANDROID_SDK_ROOT_DEFAULT}"
+ANDROID_PLATFORM="${ANDROID_PLATFORM:-35}"
+BUILD_TOOLS_VERSION="${BUILD_TOOLS_VERSION:-35.0.0}"
+
+TOOLS_ZIP_URL="${ANDROID_SDK_TOOLS_URL:-}"
+
+if [[ -z "$TOOLS_ZIP_URL" ]]; then
+  case "$OS" in
+    Linux*)
+      TOOLS_ZIP_URL="https://dl.google.com/android/repository/commandlinetools-linux-13114758_latest.zip"
+      ;;
+    Darwin*)
+      TOOLS_ZIP_URL="https://dl.google.com/android/repository/commandlinetools-mac-13114758_latest.zip"
+      ;;
+    *)
+      TOOLS_ZIP_URL=""
+      ;;
+  esac
+fi
+
+log() { printf "[unagi] %s\n" "$*"; }
+err() { printf "[unagi] ERROR: %s\n" "$*" >&2; }
+
+require_cmd() {
+  if ! command -v "$1" >/dev/null 2>&1; then
+    err "Missing required command: $1"
+    return 1
+  fi
+}
+
+check_java() {
+  if ! command -v java >/dev/null 2>&1; then
+    err "Java not found. Install JDK 17."
+    return 1
+  fi
+
+  local version
+  version="$(java -version 2>&1 | awk -F '"' '/version/ {print $2}')"
+  if [[ -z "$version" ]]; then
+    err "Unable to detect Java version."
+    return 1
+  fi
+
+  # Accept 17.x
+  if [[ "$version" != 17* ]]; then
+    err "Java 17 required. Detected: $version"
+    return 1
+  fi
+
+  log "Java OK: $version"
+}
+
+prepare_sdk_dir() {
+  log "Using ANDROID_SDK_ROOT: $ANDROID_SDK_ROOT"
+  mkdir -p "$ANDROID_SDK_ROOT"
+  mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools"
+}
+
+install_cmdline_tools() {
+  if [[ -z "$TOOLS_ZIP_URL" ]]; then
+    err "Android SDK Command-line Tools URL not set for OS: $OS"
+    err "Set ANDROID_SDK_TOOLS_URL to the official download URL (see Android Developers docs)."
+    return 1
+  fi
+
+  require_cmd curl || require_cmd wget
+  require_cmd unzip
+
+  local tmp_dir
+  tmp_dir="$(mktemp -d)"
+
+  log "Downloading command-line tools..."
+  if command -v curl >/dev/null 2>&1; then
+    curl -fL "$TOOLS_ZIP_URL" -o "$tmp_dir/cmdline-tools.zip"
+  else
+    wget -O "$tmp_dir/cmdline-tools.zip" "$TOOLS_ZIP_URL"
+  fi
+
+  log "Extracting command-line tools..."
+  unzip -q "$tmp_dir/cmdline-tools.zip" -d "$tmp_dir"
+
+  # The zip contains a top-level cmdline-tools/ directory.
+  rm -rf "$ANDROID_SDK_ROOT/cmdline-tools/latest"
+  mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools/latest"
+  mv "$tmp_dir/cmdline-tools"/* "$ANDROID_SDK_ROOT/cmdline-tools/latest/"
+
+  rm -rf "$tmp_dir"
+}
+
+sdkmanager_path() {
+  printf "%s\n" "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+}
+
+accept_licenses() {
+  local sdkmanager
+  sdkmanager="$(sdkmanager_path)"
+
+  if [[ ! -x "$sdkmanager" ]]; then
+    err "sdkmanager not found at $sdkmanager"
+    return 1
+  fi
+
+  yes | "$sdkmanager" --licenses >/dev/null
+}
+
+install_packages() {
+  local sdkmanager
+  sdkmanager="$(sdkmanager_path)"
+
+  "$sdkmanager" --install \
+    "platform-tools" \
+    "build-tools;$BUILD_TOOLS_VERSION" \
+    "platforms;android-$ANDROID_PLATFORM"
+}
+
+print_env_instructions() {
+  cat <<EOT
+
+Environment setup:
+
+  export ANDROID_SDK_ROOT="$ANDROID_SDK_ROOT"
+  export ANDROID_HOME="$ANDROID_SDK_ROOT"
+  export PATH="\$ANDROID_SDK_ROOT/platform-tools:\$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:\$PATH"
+
+EOT
+}
+
+doctor() {
+  log "Doctor summary"
+
+  if command -v java >/dev/null 2>&1; then
+    java -version 2>&1 | head -n 1
+  else
+    err "java not found"
+  fi
+
+  local sdkmanager
+  sdkmanager="$(sdkmanager_path)"
+  if [[ -x "$sdkmanager" ]]; then
+    "$sdkmanager" --version || true
+  else
+    err "sdkmanager not found"
+  fi
+
+  if command -v adb >/dev/null 2>&1; then
+    adb version | head -n 1
+  else
+    err "adb not found (install platform-tools)"
+  fi
+
+  if [[ -x "$sdkmanager" ]]; then
+    "$sdkmanager" --list_installed | sed -n '1,80p'
+  fi
+}
+
+main() {
+  log "Setting up Android SDK command-line tools"
+
+  check_java
+  prepare_sdk_dir
+  install_cmdline_tools
+  install_packages
+  accept_licenses
+  print_env_instructions
+  doctor
+
+  log "Done"
+}
+
+main "$@"

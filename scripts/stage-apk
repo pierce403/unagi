@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SOURCE_APK="$ROOT_DIR/app/build/outputs/apk/debug/app-debug.apk"
+TARGET_DIR="$ROOT_DIR/downloads"
+TARGET_APK="$TARGET_DIR/unagi-debug.apk"
+
+if [[ ! -f "$SOURCE_APK" ]]; then
+  printf "[unagi] ERROR: missing APK at %s\n" "$SOURCE_APK" >&2
+  printf "[unagi] Run ./gradlew assembleDebug first.\n" >&2
+  exit 1
+fi
+
+mkdir -p "$TARGET_DIR"
+install -m 0644 "$SOURCE_APK" "$TARGET_APK"
+printf "[unagi] Staged APK at %s\n" "$TARGET_APK"

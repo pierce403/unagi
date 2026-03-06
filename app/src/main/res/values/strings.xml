@@ -1,0 +1,23 @@
+<resources>
+  <string name="app_name">unagi</string>
+  <string name="scan_start">Start scan</string>
+  <string name="scan_stop">Stop scan</string>
+  <string name="scan_active">Scanning is active</string>
+  <string name="scan_inactive">Scanning is stopped</string>
+  <string name="filter_hint">Filter by name</string>
+  <string name="sort_label">Sort</string>
+  <string name="unknown_only">Unknown only</string>
+  <string name="no_devices">No devices yet. Start a scan.</string>
+  <string name="diagnostics">Diagnostics</string>
+  <string name="device_details">Device details</string>
+  <string name="device_key">Device key</string>
+  <string name="first_seen">First seen</string>
+  <string name="last_seen">Last seen</string>
+  <string name="sightings">Sightings</string>
+  <string name="rssi_range">RSSI range</string>
+  <string name="rssi_avg">RSSI average</string>
+  <string name="permissions_required">Permissions required to scan nearby devices.</string>
+  <string name="enable_bluetooth">Bluetooth is off. Enable to scan.</string>
+  <string name="bluetooth_unsupported">Bluetooth unsupported</string>
+  <string name="bluetooth_unsupported_detail">This device does not support Bluetooth.</string>
+</resources>

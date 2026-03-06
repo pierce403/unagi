@@ -1,0 +1,655 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#143c34">
+  <meta
+    name="description"
+    content="unagi is a local-first Android Bluetooth scanner: scan nearby devices, inspect the list, tap into history, and keep your observations on-device.">
+  <title>unagi.ninja</title>
+  <style>
+    :root {
+      --paper: #f5ecdb;
+      --paper-strong: #fff8ec;
+      --ink: #14211d;
+      --ink-soft: #38524b;
+      --sea: #143c34;
+      --sea-bright: #1f6f5d;
+      --foam: #d7f0e1;
+      --ember: #d96b37;
+      --gold: #e3b55f;
+      --line: rgba(20, 33, 29, 0.12);
+      --shadow: 0 28px 80px rgba(20, 33, 29, 0.18);
+      --radius-xl: 32px;
+      --radius-lg: 22px;
+      --radius-md: 16px;
+      --content-width: 1180px;
+      --title-font: "Avenir Next Condensed", "Arial Narrow", "Franklin Gothic Medium", sans-serif;
+      --body-font: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", "URW Palladio L", serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      font-family: var(--body-font);
+      background:
+        radial-gradient(circle at top left, rgba(227, 181, 95, 0.24), transparent 28%),
+        radial-gradient(circle at top right, rgba(31, 111, 93, 0.18), transparent 32%),
+        linear-gradient(180deg, #fbf6eb 0%, var(--paper) 45%, #efe5d2 100%);
+    }
+
+    body::before,
+    body::after {
+      content: "";
+      position: fixed;
+      inset: auto;
+      width: 28rem;
+      height: 28rem;
+      border-radius: 50%;
+      pointer-events: none;
+      filter: blur(28px);
+      opacity: 0.38;
+      z-index: -1;
+    }
+
+    body::before {
+      top: -6rem;
+      right: -9rem;
+      background: rgba(31, 111, 93, 0.18);
+    }
+
+    body::after {
+      bottom: -10rem;
+      left: -10rem;
+      background: rgba(217, 107, 55, 0.12);
+    }
+
+    a {
+      color: inherit;
+    }
+
+    img {
+      max-width: 100%;
+      display: block;
+    }
+
+    .shell {
+      width: min(calc(100% - 2rem), var(--content-width));
+      margin: 0 auto;
+    }
+
+    .fade-up {
+      opacity: 0;
+      transform: translateY(22px);
+      animation: fadeUp 0.7s ease forwards;
+    }
+
+    .delay-1 { animation-delay: 0.08s; }
+    .delay-2 { animation-delay: 0.16s; }
+    .delay-3 { animation-delay: 0.24s; }
+    .delay-4 { animation-delay: 0.32s; }
+
+    .hero {
+      padding: 1.4rem 0 4rem;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 1rem 0 1.4rem;
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.85rem;
+      font-family: var(--title-font);
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      font-size: 0.86rem;
+    }
+
+    .brand-mark {
+      display: inline-grid;
+      place-items: center;
+      width: 2.6rem;
+      height: 2.6rem;
+      border-radius: 999px;
+      background: linear-gradient(145deg, var(--sea-bright), var(--sea));
+      color: var(--paper-strong);
+      box-shadow: 0 18px 32px rgba(20, 60, 52, 0.24);
+      font-weight: 700;
+    }
+
+    .toplinks {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+
+    .chip-link {
+      padding: 0.68rem 1rem;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(255, 248, 236, 0.66);
+      text-decoration: none;
+      font-size: 0.95rem;
+    }
+
+    .hero-panel {
+      position: relative;
+      overflow: hidden;
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
+      gap: 2rem;
+      padding: 2rem;
+      border: 1px solid rgba(20, 33, 29, 0.08);
+      border-radius: var(--radius-xl);
+      background:
+        linear-gradient(135deg, rgba(255, 248, 236, 0.95), rgba(215, 240, 225, 0.72)),
+        linear-gradient(180deg, rgba(31, 111, 93, 0.08), transparent);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+    }
+
+    .hero-panel::after {
+      content: "";
+      position: absolute;
+      inset: auto -4rem -5rem auto;
+      width: 18rem;
+      height: 18rem;
+      border-radius: 46% 54% 55% 45%;
+      background: radial-gradient(circle at 40% 35%, rgba(227, 181, 95, 0.55), rgba(217, 107, 55, 0.15));
+      transform: rotate(18deg);
+    }
+
+    .eyebrow {
+      display: inline-block;
+      margin-bottom: 1rem;
+      padding: 0.45rem 0.75rem;
+      border-radius: 999px;
+      background: rgba(20, 60, 52, 0.1);
+      font-family: var(--title-font);
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--sea);
+    }
+
+    h1,
+    h2,
+    h3 {
+      margin: 0;
+      font-family: var(--title-font);
+      line-height: 0.95;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    h1 {
+      max-width: 12ch;
+      font-size: clamp(3.3rem, 8vw, 6.5rem);
+    }
+
+    h2 {
+      font-size: clamp(2.2rem, 5vw, 3.6rem);
+    }
+
+    .lede {
+      max-width: 56ch;
+      margin: 1.2rem 0 0;
+      font-size: clamp(1.08rem, 2vw, 1.24rem);
+      line-height: 1.7;
+      color: var(--ink-soft);
+    }
+
+    .cta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-top: 1.6rem;
+    }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.6rem;
+      min-height: 3.35rem;
+      padding: 0.85rem 1.35rem;
+      border-radius: 999px;
+      text-decoration: none;
+      font-size: 1rem;
+      font-weight: 700;
+      transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+    }
+
+    .button:hover,
+    .button:focus-visible {
+      transform: translateY(-2px);
+    }
+
+    .button-primary {
+      color: var(--paper-strong);
+      background: linear-gradient(135deg, var(--sea-bright), var(--sea));
+      box-shadow: 0 16px 28px rgba(20, 60, 52, 0.26);
+    }
+
+    .button-secondary {
+      border: 1px solid rgba(20, 33, 29, 0.14);
+      background: rgba(255, 248, 236, 0.78);
+    }
+
+    .hero-meta {
+      display: grid;
+      gap: 1rem;
+      align-content: start;
+      position: relative;
+      z-index: 1;
+    }
+
+    .stat-card,
+    .quote-card,
+    .install-card,
+    .detail-card,
+    .footer-card {
+      padding: 1.15rem 1.2rem;
+      border: 1px solid rgba(20, 33, 29, 0.1);
+      border-radius: var(--radius-lg);
+      background: rgba(255, 248, 236, 0.72);
+      box-shadow: 0 12px 26px rgba(20, 33, 29, 0.08);
+    }
+
+    .stat-label {
+      font-family: var(--title-font);
+      font-size: 0.84rem;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: var(--sea);
+    }
+
+    .stat-value {
+      margin-top: 0.35rem;
+      font-size: 1.05rem;
+      line-height: 1.55;
+    }
+
+    main section {
+      padding: 0 0 4rem;
+    }
+
+    .section-head {
+      max-width: 52rem;
+      margin-bottom: 1.6rem;
+    }
+
+    .section-copy {
+      margin: 0.75rem 0 0;
+      color: var(--ink-soft);
+      font-size: 1.06rem;
+      line-height: 1.72;
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+      gap: 1.4rem;
+      align-items: start;
+    }
+
+    .phone-frame {
+      position: relative;
+      padding: 1rem;
+      border-radius: calc(var(--radius-xl) + 8px);
+      background:
+        linear-gradient(160deg, rgba(20, 60, 52, 0.96), rgba(31, 111, 93, 0.84));
+      box-shadow: 0 28px 64px rgba(20, 60, 52, 0.26);
+    }
+
+    .phone-frame::before {
+      content: "";
+      position: absolute;
+      top: 0.65rem;
+      left: 50%;
+      width: 28%;
+      height: 0.42rem;
+      border-radius: 999px;
+      background: rgba(255, 248, 236, 0.32);
+      transform: translateX(-50%);
+    }
+
+    .phone-frame img {
+      border-radius: 24px;
+      border: 1px solid rgba(255, 248, 236, 0.18);
+    }
+
+    .detail-stack {
+      display: grid;
+      gap: 1rem;
+    }
+
+    .detail-card h3,
+    .install-card h3 {
+      font-size: 1.35rem;
+      margin-bottom: 0.7rem;
+    }
+
+    .detail-card p,
+    .detail-card li,
+    .install-card li,
+    .install-card p {
+      margin: 0;
+      font-size: 1rem;
+      line-height: 1.7;
+      color: var(--ink-soft);
+    }
+
+    .feature-list,
+    .install-list {
+      margin: 0;
+      padding-left: 1.2rem;
+      display: grid;
+      gap: 0.7rem;
+    }
+
+    .quotes {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1rem;
+    }
+
+    .quote-card {
+      background:
+        linear-gradient(180deg, rgba(20, 60, 52, 0.06), rgba(255, 248, 236, 0.72));
+    }
+
+    .quote-card blockquote {
+      margin: 0;
+      font-family: var(--title-font);
+      font-size: clamp(1.5rem, 4vw, 2.2rem);
+      line-height: 0.95;
+      text-transform: uppercase;
+      color: var(--sea);
+    }
+
+    .quote-card p {
+      margin: 0.75rem 0 0;
+      color: var(--ink-soft);
+      line-height: 1.65;
+    }
+
+    .install-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1rem;
+    }
+
+    code {
+      padding: 0.14rem 0.36rem;
+      border-radius: 6px;
+      background: rgba(20, 60, 52, 0.08);
+      font-family: "SFMono-Regular", "Cascadia Code", "Liberation Mono", monospace;
+      font-size: 0.94em;
+    }
+
+    .footer-card {
+      margin-bottom: 3rem;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    .footer-copy {
+      max-width: 46rem;
+      color: var(--ink-soft);
+      line-height: 1.7;
+    }
+
+    @keyframes fadeUp {
+      from {
+        opacity: 0;
+        transform: translateY(22px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @media (max-width: 920px) {
+      .hero-panel,
+      .detail-grid,
+      .install-grid,
+      .quotes {
+        grid-template-columns: 1fr;
+      }
+
+      h1 {
+        max-width: none;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .shell {
+        width: min(calc(100% - 1.25rem), var(--content-width));
+      }
+
+      .hero {
+        padding-bottom: 3rem;
+      }
+
+      .hero-panel {
+        padding: 1.3rem;
+      }
+
+      .topbar,
+      .footer-card {
+        align-items: flex-start;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html {
+        scroll-behavior: auto;
+      }
+
+      .fade-up {
+        opacity: 1;
+        transform: none;
+        animation: none;
+      }
+
+      .button {
+        transition: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div class="shell">
+      <div class="topbar fade-up">
+        <div class="brand">
+          <span class="brand-mark">u</span>
+          <span>unagi.ninja</span>
+        </div>
+        <nav class="toplinks" aria-label="Primary">
+          <a class="chip-link" href="#download">Download APK</a>
+          <a class="chip-link" href="#awareness">How it works</a>
+          <a class="chip-link" href="https://github.com/pierce403/unagi">GitHub</a>
+        </nav>
+      </div>
+
+      <div class="hero-panel">
+        <div class="fade-up delay-1">
+          <div class="eyebrow">Android Bluetooth Awareness</div>
+          <h1>Scan. List. Tap. History.</h1>
+          <p class="lede">
+            unagi is a local-first Android app for spotting nearby Bluetooth devices, keeping a durable on-device history,
+            and making scan state obvious when Bluetooth is off or permissions are denied. No cloud. No remote logging by default.
+          </p>
+          <div class="cta-row">
+            <a class="button button-primary" id="download" href="downloads/unagi-debug.apk" download>
+              Download APK
+            </a>
+            <a class="button button-secondary" href="https://github.com/pierce403/unagi">
+              View source
+            </a>
+          </div>
+        </div>
+
+        <div class="hero-meta">
+          <div class="stat-card fade-up delay-2">
+            <div class="stat-label">Why the name</div>
+            <div class="stat-value">A nod to the Friends episode about "total awareness" rather than a sushi menu misunderstanding.</div>
+          </div>
+          <div class="stat-card fade-up delay-3">
+            <div class="stat-label">MVP focus</div>
+            <div class="stat-value">Foreground scanning, tap-through details, and persisted history after relaunch on a physical Android device.</div>
+          </div>
+          <div class="stat-card fade-up delay-4">
+            <div class="stat-label">Build stance</div>
+            <div class="stat-value">CLI-only workflow with JDK 17, Android SDK command-line tools, pinned AGP/Gradle versions, and a staged APK for direct download.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section id="awareness">
+      <div class="shell">
+        <div class="section-head fade-up">
+          <h2>Total Awareness, Not Total Noise</h2>
+          <p class="section-copy">
+            Observed device identifiers are treated as observations, not ground truth identity. Addresses can rotate. Names can drift.
+            unagi keeps the MVP intentionally pragmatic: short scans, clear permission states, local history, and no background battery drain.
+          </p>
+        </div>
+
+        <div class="detail-grid">
+          <div class="phone-frame fade-up delay-1">
+            <img
+              src="emulator_screenshot.png"
+              alt="Screenshot of the unagi Android app showing scan controls and a nearby device list.">
+          </div>
+
+          <div class="detail-stack">
+            <article class="detail-card fade-up delay-2">
+              <h3>What the app does</h3>
+              <ul class="feature-list">
+                <li>Scans nearby Bluetooth Classic and BLE devices in the foreground.</li>
+                <li>Shows a sortable list of current observations with names, signal strength, and metadata.</li>
+                <li>Lets you tap a device to inspect its local sighting timeline after relaunch.</li>
+              </ul>
+            </article>
+
+            <article class="detail-card fade-up delay-3">
+              <h3>What the app avoids</h3>
+              <ul class="feature-list">
+                <li>No cloud backend and no remote logging by default.</li>
+                <li>No constant background scanning in the MVP.</li>
+                <li>No crashing when Bluetooth is disabled or runtime permissions are denied.</li>
+              </ul>
+            </article>
+
+            <article class="detail-card fade-up delay-4">
+              <h3>Publishable artifact</h3>
+              <p>
+                The website links to a stable filename, <code>downloads/unagi-debug.apk</code>, which is copied from Gradle's debug output after each build.
+              </p>
+            </article>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="quotes-title">
+      <div class="shell">
+        <div class="section-head fade-up">
+          <h2 id="quotes-title">Tiny Friends Nods</h2>
+          <p class="section-copy">
+            The app name is doing the same joke the show did: awareness, panic, and a little confusion about whether anyone is actually talking about eel.
+          </p>
+        </div>
+
+        <div class="quotes">
+          <article class="quote-card fade-up delay-1">
+            <blockquote>"Unagi."</blockquote>
+            <p>The quiet, overconfident version of situational awareness.</p>
+          </article>
+          <article class="quote-card fade-up delay-2">
+            <blockquote>"Ah, salmon skin roll."</blockquote>
+            <p>Because somebody always misunderstands the brief.</p>
+          </article>
+          <article class="quote-card fade-up delay-3">
+            <blockquote>"Danger!"</blockquote>
+            <p>Useful when Bluetooth goes sideways, permissions disappear, or a scan stops being fun.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="install-title">
+      <div class="shell">
+        <div class="section-head fade-up">
+          <h2 id="install-title">Build and Install</h2>
+          <p class="section-copy">
+            unagi is built without Android Studio. The expected path is JDK 17, Android SDK command-line tools, Gradle wrapper, and a staged debug APK for the site.
+          </p>
+        </div>
+
+        <div class="install-grid">
+          <article class="install-card fade-up delay-1">
+            <h3>CLI setup</h3>
+            <ul class="install-list">
+              <li>Install JDK 17.</li>
+              <li>Run <code>scripts/setup-android-sdk</code>.</li>
+              <li>Verify <code>adb devices</code> sees your phone.</li>
+            </ul>
+          </article>
+
+          <article class="install-card fade-up delay-2">
+            <h3>Build steps</h3>
+            <ul class="install-list">
+              <li><code>./gradlew assembleDebug</code></li>
+              <li><code>scripts/stage-apk</code></li>
+              <li>Install the staged file from <code>downloads/unagi-debug.apk</code>.</li>
+            </ul>
+          </article>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="shell">
+      <div class="footer-card fade-up">
+        <div class="footer-copy">
+          unagi is built for a simple MVP loop: scan nearby devices, inspect the list, tap into history, and relaunch with local data intact.
+          The site is ready to live at <code>unagi.ninja</code>, and the current download link targets the staged Android debug build.
+        </div>
+        <div class="toplinks">
+          <a class="chip-link" href="downloads/unagi-debug.apk" download>APK</a>
+          <a class="chip-link" href="README.md">README</a>
+          <a class="chip-link" href="PRIVACY.md">Privacy</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

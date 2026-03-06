@@ -1,0 +1,14 @@
+<resources>
+  <style name="ThingAlertTextInputStyle" parent="Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+    <item name="boxBackgroundColor">@color/thingalert_surface</item>
+    <item name="boxStrokeColor">@color/thingalert_secondary</item>
+    <item name="boxStrokeWidth">1dp</item>
+    <item name="boxStrokeWidthFocused">2dp</item>
+    <item name="hintTextColor">@color/thingalert_on_surface</item>
+  </style>
+
+  <style name="ThingAlertSpinnerStyle" parent="Widget.AppCompat.Spinner.Underlined">
+    <item name="android:backgroundTint">@color/thingalert_secondary</item>
+    <item name="android:popupBackground">@color/thingalert_surface</item>
+  </style>
+</resources>

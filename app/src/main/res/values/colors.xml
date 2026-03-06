@@ -1,0 +1,13 @@
+<resources>
+  <color name="thingalert_primary">#1B5E20</color>
+  <color name="thingalert_primary_variant">#104018</color>
+  <color name="thingalert_secondary">#006064</color>
+  <color name="thingalert_secondary_variant">#00474A</color>
+  <color name="thingalert_background">#FAFAFA</color>
+  <color name="thingalert_surface">#FFFFFF</color>
+  <color name="thingalert_surface_variant">#F1F1F1</color>
+  <color name="thingalert_on_primary">#FFFFFF</color>
+  <color name="thingalert_on_secondary">#FFFFFF</color>
+  <color name="thingalert_on_background">#1A1A1A</color>
+  <color name="thingalert_on_surface">#1A1A1A</color>
+</resources>
