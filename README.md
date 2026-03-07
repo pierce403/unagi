@@ -54,7 +54,7 @@ Foundation for later "alert me when X is nearby."
 
 ## Permissions notes (MVP)
 
-- Bluetooth scanning permission model differs by Android version; plan explicitly for Android 12+ BLUETOOTH_SCAN
+- Bluetooth scanning permission model differs by Android version; unagi now requests WiGLE-style scan permissions: `BLUETOOTH_SCAN`, `BLUETOOTH_CONNECT`, `ACCESS_FINE_LOCATION`, and `ACCESS_COARSE_LOCATION`
 - Using `neverForLocation` can filter some BLE beacons; unagi currently does not set this flag to avoid filtering
 - On Android 11 and below, BLE results can still depend on location services being enabled in addition to permission grant
 - GrapheneOS note: the APK manifest does not request sensor-class permissions; Nearby devices is the permission to grant on Android 12+
@@ -63,6 +63,7 @@ Foundation for later "alert me when X is nearby."
 
 - If a scan fails to start, open Diagnostics to inspect BLE/classic startup results, the last BLE error code, and permission/Bluetooth snapshots
 - Use `Copy scan debug report` in Diagnostics to capture app version, device/build info, persisted device inventory, and recent scan events for bug reports
+- `unagi` now requests the same scan-relevant Bluetooth/location permissions that WiGLE does; if scans still return zero callbacks, the remaining gap is more likely ROM/profile behavior than a missing manifest permission
 - If a scan runs but returns zero devices, try Compatibility mode from Diagnostics and compare the callback counters before retrying
 - Compatibility mode uses balanced BLE scanning, skips classic discovery, and keeps the session alive longer for conservative testing
 - “Bluetooth LE scanner unavailable” usually means Bluetooth is off, restricted, or unavailable in the current profile

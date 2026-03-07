@@ -17,10 +17,15 @@ object PermissionsHelper {
     return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
       listOf(
         Manifest.permission.BLUETOOTH_SCAN,
-        Manifest.permission.BLUETOOTH_CONNECT
+        Manifest.permission.BLUETOOTH_CONNECT,
+        Manifest.permission.ACCESS_FINE_LOCATION,
+        Manifest.permission.ACCESS_COARSE_LOCATION
       )
     } else {
-      listOf(Manifest.permission.ACCESS_FINE_LOCATION)
+      listOf(
+        Manifest.permission.ACCESS_FINE_LOCATION,
+        Manifest.permission.ACCESS_COARSE_LOCATION
+      )
     }
   }
 
@@ -62,7 +67,8 @@ object PermissionsHelper {
         when (permission) {
           Manifest.permission.BLUETOOTH_SCAN,
           Manifest.permission.BLUETOOTH_CONNECT -> "Nearby devices"
-          Manifest.permission.ACCESS_FINE_LOCATION -> "Location"
+          Manifest.permission.ACCESS_FINE_LOCATION,
+          Manifest.permission.ACCESS_COARSE_LOCATION -> "Location"
           else -> null
         }
       }
