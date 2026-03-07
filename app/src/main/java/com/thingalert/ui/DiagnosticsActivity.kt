@@ -10,12 +10,14 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.thingalert.databinding.ActivityDiagnosticsBinding
 import com.thingalert.scan.ScanDiagnosticsSnapshot
 import com.thingalert.scan.ScanDiagnosticsStore
+import com.thingalert.scan.ScanModePreferences
+import com.thingalert.scan.ScanModePreset
 import com.thingalert.scan.ScanStateDecider
 import com.thingalert.util.DebugLog
 import com.thingalert.util.Formatters
 import com.thingalert.util.PermissionsHelper
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.launch
 
 class DiagnosticsActivity : AppCompatActivity() {
   private lateinit var binding: ActivityDiagnosticsBinding
@@ -27,6 +29,14 @@ class DiagnosticsActivity : AppCompatActivity() {
 
     setSupportActionBar(binding.toolbar)
     supportActionBar?.setDisplayHomeAsUpEnabled(true)
+
+    binding.compatibilityModeSwitch.isChecked = ScanModePreferences.get(this) == ScanModePreset.COMPATIBILITY
+    binding.compatibilityModeSwitch.setOnCheckedChangeListener { _, isChecked ->
+      val mode = if (isChecked) ScanModePreset.COMPATIBILITY else ScanModePreset.NORMAL
+      ScanModePreferences.set(this, mode)
+      ScanDiagnosticsStore.update { it.copy(scanMode = mode) }
+      DebugLog.log("Scan mode set to ${mode.label}")
+    }
 
     lifecycleScope.launch {
       repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -83,6 +93,10 @@ class DiagnosticsActivity : AppCompatActivity() {
     builder.appendLine("GrapheneOS note: unagi does not request sensor-class permissions in its APK manifest.")
     builder.appendLine()
     builder.appendLine("Latest scan session:")
+    builder.appendLine("Scan mode: ${scanDiagnostics.scanMode.label}")
+    builder.appendLine("BLE scan mode: ${bleModeLabel(scanDiagnostics.scanMode)}")
+    builder.appendLine("Classic discovery enabled: ${scanDiagnostics.scanMode.startsClassicDiscovery}")
+    builder.appendLine("Timeout ms: ${scanDiagnostics.scanMode.timeoutMs}")
     builder.appendLine(
       "Start time: ${scanDiagnostics.startTimeMs?.let(Formatters::formatTimestamp) ?: "none"}"
     )
@@ -128,5 +142,14 @@ class DiagnosticsActivity : AppCompatActivity() {
     }
 
     return builder.toString()
+  }
+
+  private fun bleModeLabel(scanMode: ScanModePreset): String {
+    return when (scanMode.bleScanMode) {
+      android.bluetooth.le.ScanSettings.SCAN_MODE_LOW_LATENCY -> "LOW_LATENCY"
+      android.bluetooth.le.ScanSettings.SCAN_MODE_BALANCED -> "BALANCED"
+      android.bluetooth.le.ScanSettings.SCAN_MODE_LOW_POWER -> "LOW_POWER"
+      else -> scanMode.bleScanMode.toString()
+    }
   }
 }

@@ -34,6 +34,7 @@ data class ScanPreflightResult(
 )
 
 data class ScanDiagnosticsSnapshot(
+  val scanMode: ScanModePreset = ScanModePreset.NORMAL,
   val startTimeMs: Long? = null,
   val bleStartup: ScanStartupResult? = null,
   val classicStartup: ScanStartupResult? = null,
@@ -95,6 +96,8 @@ object ScanStateDecider {
       val reason = when {
         result.reason == BLE_SCANNER_UNAVAILABLE ->
           "$BLE_SCANNER_UNAVAILABLE. $BLE_SCANNER_UNAVAILABLE_DETAIL."
+        result.reason == "Skipped in compatibility mode" ->
+          "${result.path.label} path skipped in compatibility mode."
         result.reason.isNullOrBlank() ->
           "${result.path.label} startup failed."
         else ->

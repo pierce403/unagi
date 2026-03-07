@@ -53,9 +53,9 @@
 - [x] Honor `BluetoothAdapter.startDiscovery()` boolean result
 - [x] Track scan session outcome: startup failure vs zero results vs results
 - [x] Add per-path callback counters and startup diagnostics
-- [ ] Add compatibility scan mode and expose it in diagnostics
+- [x] Add compatibility scan mode and expose it in diagnostics
 - [x] Add focused unit tests for scan state transitions and timeout outcomes
-- [ ] Add troubleshooting docs for scan startup failures and zero-result sessions
+- [x] Add troubleshooting docs for scan startup failures and zero-result sessions
 
 ## Testing
 

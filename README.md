@@ -58,6 +58,14 @@ Foundation for later "alert me when X is nearby."
 - On Android 11 and below, BLE results can still depend on location services being enabled in addition to permission grant
 - GrapheneOS note: the APK manifest does not request sensor-class permissions; Nearby devices is the permission to grant on Android 12+
 
+## Troubleshooting scans
+
+- If a scan fails to start, open Diagnostics to inspect BLE/classic startup results, the last BLE error code, and permission/Bluetooth snapshots
+- If a scan runs but returns zero devices, try Compatibility mode from Diagnostics and compare the callback counters before retrying
+- Compatibility mode uses balanced BLE scanning, skips classic discovery, and keeps the session alive longer for conservative testing
+- “Bluetooth LE scanner unavailable” usually means Bluetooth is off, restricted, or unavailable in the current profile
+- On Android 11 and below, confirm both Location permission and location services before treating a zero-result scan as a platform bug
+
 ## Privacy stance
 
 - Store sightings locally

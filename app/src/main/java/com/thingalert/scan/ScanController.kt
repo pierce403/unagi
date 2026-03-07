@@ -124,9 +124,11 @@ class ScanController(
     stopBleScan()
     stopClassicDiscovery()
 
+    val scanMode = ScanModePreferences.get(context)
     val preflight = preflight()
     ScanDiagnosticsStore.reset(
       ScanDiagnosticsSnapshot(
+        scanMode = scanMode,
         missingPermissions = preflight.missingPermissions,
         bluetoothEnabled = preflight.bluetoothEnabled,
         locationServicesEnabled = preflight.locationServicesEnabled,
@@ -142,11 +144,11 @@ class ScanController(
 
     DebugLog.log("Starting scan")
     ScanDiagnosticsStore.update {
-      it.copy(startTimeMs = System.currentTimeMillis())
+      it.copy(startTimeMs = System.currentTimeMillis(), scanMode = scanMode)
     }
 
-    val bleResult = startBleScan()
-    val classicResult = startClassicDiscovery()
+    val bleResult = startBleScan(scanMode)
+    val classicResult = startClassicDiscovery(scanMode)
     ScanDiagnosticsStore.update {
       it.copy(
         bleStartup = bleResult,
@@ -170,7 +172,7 @@ class ScanController(
     }
 
     timeoutJob = scope.launch {
-      delay(SCAN_TIMEOUT_MS)
+      delay(scanMode.timeoutMs)
       finishTimedOutScan()
     }
   }
@@ -211,7 +213,7 @@ class ScanController(
     DebugLog.log("Stopping scan")
   }
 
-  private fun startBleScan(): ScanStartupResult {
+  private fun startBleScan(scanMode: ScanModePreset): ScanStartupResult {
     val scanner = currentLeScanner()
     if (scanner == null) {
       DebugLog.log("BluetoothLeScanner unavailable", level = android.util.Log.WARN)
@@ -224,11 +226,11 @@ class ScanController(
     }
     try {
       val settings = ScanSettings.Builder()
-        .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
+        .setScanMode(scanMode.bleScanMode)
         .build()
       scanner.startScan(null, settings, scanCallback)
       blePathActive = true
-      DebugLog.log("BLE scan started")
+      DebugLog.log("BLE scan started mode=${scanMode.label}")
       return ScanStartupResult(path = ScanPath.BLE, started = true)
     } catch (sec: SecurityException) {
       blePathActive = false
@@ -260,7 +262,17 @@ class ScanController(
     }
   }
 
-  private fun startClassicDiscovery(): ScanStartupResult {
+  private fun startClassicDiscovery(scanMode: ScanModePreset): ScanStartupResult {
+    if (!scanMode.startsClassicDiscovery) {
+      classicPathActive = false
+      DebugLog.log("Classic discovery skipped in compatibility mode", level = android.util.Log.INFO)
+      return ScanStartupResult(
+        path = ScanPath.CLASSIC,
+        started = false,
+        reason = "Skipped in compatibility mode"
+      )
+    }
+
     val adapter = bluetoothAdapter
       ?: return ScanStartupResult(
         path = ScanPath.CLASSIC,
@@ -594,6 +606,5 @@ class ScanController(
   }
 
   companion object {
-    private const val SCAN_TIMEOUT_MS = 20000L
   }
 }
