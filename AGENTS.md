@@ -46,6 +46,7 @@ Build the MVP: scan -> list -> tap -> history.
 ## Agent memory checklist
 
 - Build/test: `./gradlew assembleDebug`, `./gradlew installDebug`, and `scripts/stage-apk`
+- Local validation needs `ANDROID_HOME` / `ANDROID_SDK_ROOT`; on this workstation the SDK is at `~/Android/Sdk`
 - Deployment: GitHub Pages publishes from `main` at repo root to `https://unagi.ninja`
 - Site artifacts: keep `index.html`, `downloads/unagi-debug.apk`, and `CNAME` aligned when shipping landing-page changes
 - Reflection: before handoff, record any new command, pitfall, deploy detail, or collaborator preference discovered during the task

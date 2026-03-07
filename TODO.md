@@ -47,14 +47,14 @@
 
 ## Scan robustness
 
-- [ ] Fix false `Scanning` state and only enter active scan after a path starts successfully
-- [ ] Return structured startup results for BLE and classic scan paths
-- [ ] Treat `BluetoothLeScanner == null` as a surfaced startup failure
-- [ ] Honor `BluetoothAdapter.startDiscovery()` boolean result
-- [ ] Track scan session outcome: startup failure vs zero results vs results
-- [ ] Add per-path callback counters and startup diagnostics
+- [x] Fix false `Scanning` state and only enter active scan after a path starts successfully
+- [x] Return structured startup results for BLE and classic scan paths
+- [x] Treat `BluetoothLeScanner == null` as a surfaced startup failure
+- [x] Honor `BluetoothAdapter.startDiscovery()` boolean result
+- [x] Track scan session outcome: startup failure vs zero results vs results
+- [x] Add per-path callback counters and startup diagnostics
 - [ ] Add compatibility scan mode and expose it in diagnostics
-- [ ] Add focused unit tests for scan state transitions and timeout outcomes
+- [x] Add focused unit tests for scan state transitions and timeout outcomes
 - [ ] Add troubleshooting docs for scan startup failures and zero-result sessions
 
 ## Testing

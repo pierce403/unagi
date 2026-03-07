@@ -4,6 +4,9 @@
   <string name="scan_stop">Stop scan</string>
   <string name="scan_active">Scanning is active</string>
   <string name="scan_inactive">Scanning is stopped</string>
+  <string name="scan_complete">Scan complete</string>
+  <string name="scan_complete_no_devices">Scan ran but found no devices.</string>
+  <string name="scan_complete_with_devices">%1$d devices found in the last scan.</string>
   <string name="filter_hint">Filter by name</string>
   <string name="sort_label">Sort</string>
   <string name="unknown_only">Unknown only</string>

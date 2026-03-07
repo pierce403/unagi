@@ -202,6 +202,20 @@ class MainActivity : AppCompatActivity() {
         binding.stopScanButton.isEnabled = true
         binding.permissionHint.isVisible = false
       }
+      is ScanState.Complete -> {
+        binding.scanStatus.text = getString(R.string.scan_complete)
+        binding.permissionHint.isVisible = true
+        binding.permissionHint.text = if (state.deviceCount == 0) {
+          getString(R.string.scan_complete_no_devices)
+        } else {
+          getString(R.string.scan_complete_with_devices, state.deviceCount)
+        }
+        binding.startScanButton.isEnabled = true
+        binding.stopScanButton.isEnabled = false
+        recoveryAction = RecoveryAction.RETRY_SCAN
+        binding.permissionActionButton.text = getString(R.string.retry_scan)
+        binding.permissionActionButton.isVisible = true
+      }
       is ScanState.Idle -> {
         binding.scanStatus.text = getString(R.string.scan_inactive)
         binding.startScanButton.isEnabled = true

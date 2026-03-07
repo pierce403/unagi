@@ -8,9 +8,14 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.thingalert.databinding.ActivityDiagnosticsBinding
+import com.thingalert.scan.ScanDiagnosticsSnapshot
+import com.thingalert.scan.ScanDiagnosticsStore
+import com.thingalert.scan.ScanStateDecider
 import com.thingalert.util.DebugLog
+import com.thingalert.util.Formatters
 import com.thingalert.util.PermissionsHelper
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.combine
 
 class DiagnosticsActivity : AppCompatActivity() {
   private lateinit var binding: ActivityDiagnosticsBinding
@@ -25,8 +30,10 @@ class DiagnosticsActivity : AppCompatActivity() {
 
     lifecycleScope.launch {
       repeatOnLifecycle(Lifecycle.State.STARTED) {
-        DebugLog.entries.collect { entries ->
-          binding.diagnosticsText.text = buildDiagnostics(entries)
+        combine(DebugLog.entries, ScanDiagnosticsStore.snapshot) { entries, snapshot ->
+          buildDiagnostics(entries, snapshot)
+        }.collect { text ->
+          binding.diagnosticsText.text = text
         }
       }
     }
@@ -34,7 +41,7 @@ class DiagnosticsActivity : AppCompatActivity() {
 
   override fun onResume() {
     super.onResume()
-    binding.diagnosticsText.text = buildDiagnostics(DebugLog.entries.value)
+    binding.diagnosticsText.text = buildDiagnostics(DebugLog.entries.value, ScanDiagnosticsStore.snapshot.value)
     DebugLog.log("Diagnostics opened")
   }
 
@@ -43,7 +50,7 @@ class DiagnosticsActivity : AppCompatActivity() {
     return true
   }
 
-  private fun buildDiagnostics(entries: List<String>): String {
+  private fun buildDiagnostics(entries: List<String>, scanDiagnostics: ScanDiagnosticsSnapshot): String {
     val builder = StringBuilder()
     builder.appendLine("unagi diagnostics")
     builder.appendLine()
@@ -74,6 +81,41 @@ class DiagnosticsActivity : AppCompatActivity() {
     }
 
     builder.appendLine("GrapheneOS note: unagi does not request sensor-class permissions in its APK manifest.")
+    builder.appendLine()
+    builder.appendLine("Latest scan session:")
+    builder.appendLine(
+      "Start time: ${scanDiagnostics.startTimeMs?.let(Formatters::formatTimestamp) ?: "none"}"
+    )
+    builder.appendLine(
+      "Elapsed ms: ${scanDiagnostics.startTimeMs?.let { System.currentTimeMillis() - it } ?: 0L}"
+    )
+    builder.appendLine("Outcome: ${scanDiagnostics.outcome?.label ?: "none"}")
+    builder.appendLine("Timeout reached: ${scanDiagnostics.timeoutReached}")
+    builder.appendLine("BLE startup attempted: ${scanDiagnostics.bleStartup != null}")
+    builder.appendLine("BLE startup succeeded: ${scanDiagnostics.bleStartup?.started == true}")
+    builder.appendLine("BLE startup detail: ${scanDiagnostics.bleStartup?.reason ?: "none"}")
+    builder.appendLine("Classic startup attempted: ${scanDiagnostics.classicStartup != null}")
+    builder.appendLine("Classic startup succeeded: ${scanDiagnostics.classicStartup?.started == true}")
+    builder.appendLine("Classic startup detail: ${scanDiagnostics.classicStartup?.reason ?: "none"}")
+    builder.appendLine("BLE scanner unavailable: ${scanDiagnostics.bleScannerUnavailable}")
+    builder.appendLine(
+      "Last BLE error: ${
+        scanDiagnostics.lastBleErrorCode?.let {
+          "$it (${ScanStateDecider.describeBleFailureCode(it)})"
+        } ?: "none"
+      }"
+    )
+    builder.appendLine("BLE callbacks: ${scanDiagnostics.bleCallbackCount}")
+    builder.appendLine("Classic callbacks: ${scanDiagnostics.classicCallbackCount}")
+    builder.appendLine("Raw callbacks: ${scanDiagnostics.rawCallbackCount}")
+    builder.appendLine("Unique devices: ${scanDiagnostics.uniqueDeviceCount}")
+    builder.appendLine(
+      "Permission snapshot: ${
+        if (scanDiagnostics.missingPermissions.isEmpty()) "none" else scanDiagnostics.missingPermissions.joinToString()
+      }"
+    )
+    builder.appendLine("Bluetooth enabled snapshot: ${scanDiagnostics.bluetoothEnabled ?: "unknown"}")
+    builder.appendLine("Location services snapshot: ${scanDiagnostics.locationServicesEnabled ?: "unknown"}")
 
     builder.appendLine()
     builder.appendLine("Recent events:")

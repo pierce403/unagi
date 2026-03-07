@@ -3,6 +3,7 @@ package com.thingalert.scan
 sealed class ScanState {
   data object Idle : ScanState()
   data object Scanning : ScanState()
+  data class Complete(val deviceCount: Int) : ScanState()
   data object BluetoothOff : ScanState()
   data object LocationServicesOff : ScanState()
   data object Unsupported : ScanState()
