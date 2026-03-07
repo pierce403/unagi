@@ -68,6 +68,9 @@ Foundation for later "alert me when X is nearby."
 - `unagi` now requests the same scan-relevant Bluetooth/location permissions that WiGLE does; if scans still return zero callbacks, the remaining gap is more likely ROM/profile behavior than a missing manifest permission
 - `unagi` now prefers BLE advertised local names over generic Bluetooth device names, so BLE peripherals should surface the short broadcast name they actually expose
 - Vendor labels come from a bundled offline IEEE prefix database; locally administered/randomized BLE addresses are called out explicitly instead of being mis-labeled with a guessed vendor
+- The main search field now matches normalized MAC and OUI fragments, so `001122` and `00:11:22` both work as live filters
+- The Alerts screen lets you match devices by OUI, full MAC, or Bluetooth name, choose an emoji and sound preset, and receive a detail notification when a rule fires
+- On Android 13+, grant notification permission from the Alerts screen if you want system notifications in addition to the audible alert
 - If a scan runs but returns zero devices, try Compatibility mode from Diagnostics and compare the callback counters before retrying
 - Compatibility mode uses balanced BLE scanning, skips classic discovery, and keeps the session alive longer for conservative testing
 - “Bluetooth LE scanner unavailable” usually means Bluetooth is off, restricted, or unavailable in the current profile

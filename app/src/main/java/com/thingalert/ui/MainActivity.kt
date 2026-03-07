@@ -165,6 +165,10 @@ class MainActivity : AppCompatActivity() {
 
   override fun onOptionsItemSelected(item: android.view.MenuItem): Boolean {
     return when (item.itemId) {
+      R.id.menu_alerts -> {
+        startActivity(Intent(this, AlertsActivity::class.java))
+        true
+      }
       R.id.menu_diagnostics -> {
         startActivity(Intent(this, DiagnosticsActivity::class.java))
         true

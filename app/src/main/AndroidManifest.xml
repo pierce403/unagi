@@ -14,6 +14,9 @@
         tools:targetApi="s" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission
+        android:name="android.permission.POST_NOTIFICATIONS"
+        tools:targetApi="tiramisu" />
 
     <application
         android:name=".ThingAlertApp"
@@ -22,6 +25,9 @@
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/Theme.ThingAlert">
+        <activity
+            android:name=".ui.AlertsActivity"
+            android:exported="false" />
         <activity
             android:name=".ui.DiagnosticsActivity"
             android:exported="false" />

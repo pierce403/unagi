@@ -13,7 +13,12 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.Build
 import android.util.SparseArray
+import com.thingalert.alerts.AlertObservation
+import com.thingalert.alerts.DeviceAlertMatcher
+import com.thingalert.alerts.DeviceAlertNotifier
 import com.thingalert.data.DeviceObservation
+import com.thingalert.data.AlertRuleEntity
+import com.thingalert.data.AlertRuleRepository
 import com.thingalert.data.DeviceRepository
 import com.thingalert.util.DebugLog
 import com.thingalert.util.ObservedIdentityResolver
@@ -32,7 +37,9 @@ import org.json.JSONObject
 class ScanController(
   private val context: Context,
   private val scope: CoroutineScope,
-  private val repository: DeviceRepository
+  private val repository: DeviceRepository,
+  private val alertRuleRepository: AlertRuleRepository,
+  private val deviceAlertNotifier: DeviceAlertNotifier
 ) {
   private val bluetoothManager = context.getSystemService(BluetoothManager::class.java)
   private val bluetoothAdapter: BluetoothAdapter? = bluetoothManager?.adapter
@@ -46,6 +53,16 @@ class ScanController(
   private var receiverRegistered = false
   private var blePathActive = false
   private var classicPathActive = false
+  private var enabledAlertRules: List<AlertRuleEntity> = emptyList()
+  private val firedAlertKeys = mutableSetOf<String>()
+
+  init {
+    scope.launch {
+      alertRuleRepository.observeEnabledRules().collect { rules ->
+        enabledAlertRules = rules
+      }
+    }
+  }
 
   private val scanCallback = object : ScanCallback() {
     override fun onScanResult(callbackType: Int, result: ScanResult) {
@@ -126,6 +143,7 @@ class ScanController(
     timeoutJob = null
     stopBleScan()
     stopClassicDiscovery()
+    firedAlertKeys.clear()
 
     val scanMode = ScanModePreferences.get(context)
     val preflight = preflight()
@@ -207,6 +225,7 @@ class ScanController(
     timeoutJob = null
     stopBleScan()
     stopClassicDiscovery()
+    firedAlertKeys.clear()
     if (_scanState.value is ScanState.Scanning) {
       ScanDiagnosticsStore.update {
         it.copy(outcome = ScanSessionOutcome.INTERRUPTED, timeoutReached = false)
@@ -508,6 +527,51 @@ class ScanController(
 
     scope.launch {
       repository.recordObservation(observation)
+      emitAlertNotifications(
+        key = key,
+        input = input
+      )
+    }
+  }
+
+  private fun emitAlertNotifications(
+    key: String,
+    input: ObservationInput
+  ) {
+    val matches = DeviceAlertMatcher.findMatches(
+      rules = enabledAlertRules,
+      observation = AlertObservation(
+        deviceKey = key,
+        displayName = input.name,
+        advertisedName = input.advertisedName,
+        systemName = input.systemName,
+        address = input.address,
+        vendorName = input.vendorName,
+        source = input.source
+      )
+    )
+
+    matches.forEach { match ->
+      val dedupeKey = buildString {
+        append(match.rule.id)
+        append(':')
+        append(input.address ?: key)
+      }
+      if (!firedAlertKeys.add(dedupeKey)) {
+        return@forEach
+      }
+      deviceAlertNotifier.notifyMatch(
+        match = match,
+        observation = AlertObservation(
+          deviceKey = key,
+          displayName = input.name,
+          advertisedName = input.advertisedName,
+          systemName = input.systemName,
+          address = input.address,
+          vendorName = input.vendorName,
+          source = input.source
+        )
+      )
     }
   }
 

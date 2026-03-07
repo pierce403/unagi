@@ -18,8 +18,15 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
 class MainViewModel(app: Application) : AndroidViewModel(app) {
-  private val repository = (app as ThingAlertApp).repository
-  private val scanner = ScanController(app, viewModelScope, repository)
+  private val thingAlertApp = app as ThingAlertApp
+  private val repository = thingAlertApp.repository
+  private val scanner = ScanController(
+    app,
+    viewModelScope,
+    repository,
+    thingAlertApp.alertRuleRepository,
+    thingAlertApp.deviceAlertNotifier
+  )
   private val vendorRegistry = VendorPrefixRegistryProvider.get(app)
 
   private val filterQuery = MutableStateFlow("")
