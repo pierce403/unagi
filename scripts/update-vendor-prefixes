@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "$0")/.." && pwd)"
+output_path="$repo_root/app/src/main/assets/vendor_prefixes.txt.gz"
+
+mkdir -p "$(dirname "$output_path")"
+
+python3 - "$output_path" <<'PY'
+import csv
+import gzip
+import io
+import re
+import sys
+from pathlib import Path
+from urllib.request import Request, urlopen
+
+OUTPUT = Path(sys.argv[1])
+SOURCES = (
+    "https://standards-oui.ieee.org/oui/oui.csv",
+    "https://standards-oui.ieee.org/oui28/mam.csv",
+    "https://standards-oui.ieee.org/oui36/oui36.csv",
+)
+
+entries: dict[str, str] = {}
+
+for url in SOURCES:
+    request = Request(url, headers={"User-Agent": "unagi-vendor-prefix-updater/1.0"})
+    with urlopen(request, timeout=60) as response:
+        payload = response.read().decode("utf-8-sig")
+    reader = csv.DictReader(io.StringIO(payload))
+    for row in reader:
+        prefix = re.sub(r"[^0-9A-Fa-f]", "", row.get("Assignment", "")).upper()
+        vendor = " ".join((row.get("Organization Name", "") or "").split())
+        if not prefix or not vendor or vendor == "Private":
+            continue
+        entries[prefix] = vendor
+
+with gzip.open(OUTPUT, "wt", encoding="utf-8", newline="\n") as handle:
+    for prefix, vendor in sorted(entries.items(), key=lambda item: (-len(item[0]), item[0])):
+        handle.write(f"{prefix}|{vendor}\n")
+
+print(f"Wrote {len(entries)} vendor prefixes to {OUTPUT}")
+PY

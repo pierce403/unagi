@@ -26,9 +26,8 @@ class DeviceAdapter(
     private val onClick: (DeviceListItem) -> Unit
   ) : RecyclerView.ViewHolder(binding.root) {
     fun bind(item: DeviceListItem) {
-      binding.deviceName.text = Formatters.formatName(item.displayName)
-      val lastSeen = Formatters.formatTimestamp(item.lastSeen)
-      binding.deviceMeta.text = "Last seen: $lastSeen • ${item.sightingsCount} sightings"
+      binding.deviceName.text = item.displayTitle
+      binding.deviceMeta.text = item.metaLine
       binding.deviceRssi.text = Formatters.formatRssi(item.lastRssi)
       binding.root.setOnClickListener { onClick(item) }
     }

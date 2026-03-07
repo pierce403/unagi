@@ -54,6 +54,8 @@ Build the MVP: scan -> list -> tap -> history.
 - `unagi` now matches WiGLE's scan-relevant permission posture by requesting `ACCESS_COARSE_LOCATION` and `ACCESS_FINE_LOCATION` alongside modern Bluetooth scan/connect permissions
 - When shipping a user-visible APK change, bump `versionCode` and `versionName` in `app/build.gradle.kts` and keep the installed version obvious in the main UI
 - Since `targetSdk` is 35, new top-level screens need explicit system-bar inset handling or the toolbar can overlap the Android 15 status bar
+- Device identity is now richer: prefer BLE advertised local names over generic Bluetooth names, and resolve vendor prefixes locally from the bundled IEEE MA-L / MA-M / MA-S registries
 - Deployment: GitHub Pages publishes from `main` at repo root to `https://unagi.ninja`
 - Site artifacts: keep `index.html`, `downloads/unagi-debug.apk`, and `CNAME` aligned when shipping landing-page changes
+- Vendor-prefix data is refreshed with `scripts/update-vendor-prefixes`, which writes `app/src/main/assets/vendor_prefixes.txt.gz`
 - Reflection: before handoff, record any new command, pitfall, deploy detail, or collaborator preference discovered during the task

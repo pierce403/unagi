@@ -16,7 +16,9 @@ import android.util.SparseArray
 import com.thingalert.data.DeviceObservation
 import com.thingalert.data.DeviceRepository
 import com.thingalert.util.DebugLog
+import com.thingalert.util.ObservedIdentityResolver
 import com.thingalert.util.PermissionsHelper
+import com.thingalert.util.VendorPrefixRegistryProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -34,6 +36,7 @@ class ScanController(
 ) {
   private val bluetoothManager = context.getSystemService(BluetoothManager::class.java)
   private val bluetoothAdapter: BluetoothAdapter? = bluetoothManager?.adapter
+  private val vendorRegistry by lazy { VendorPrefixRegistryProvider.get(context) }
   private fun currentLeScanner(): BluetoothLeScanner? = bluetoothAdapter?.bluetoothLeScanner
 
   private val _scanState = MutableStateFlow<ScanState>(ScanState.Idle)
@@ -425,35 +428,60 @@ class ScanController(
 
   private fun handleBleResult(result: ScanResult) {
     val device = result.device
-    val name = safeName(device)
     val address = safeAddress(device)
+    val advertisedName = normalizeName(result.scanRecord?.deviceName)
+    val systemName = safeName(device)
+    val identity = ObservedIdentityResolver.forBle(
+      advertisedName = advertisedName,
+      systemName = systemName,
+      address = address,
+      vendorRegistry = vendorRegistry
+    )
     val serviceUuids = result.scanRecord?.serviceUuids
       ?.mapNotNull { it.uuid?.toString() }
       ?: emptyList()
     val manufacturerData = parseManufacturerData(result.scanRecord?.manufacturerSpecificData)
 
     val input = ObservationInput(
-      name = name,
+      name = identity.displayName,
       address = address,
       rssi = result.rssi,
       timestamp = System.currentTimeMillis(),
       serviceUuids = serviceUuids,
       manufacturerData = manufacturerData,
-      source = "BLE"
+      source = "BLE",
+      advertisedName = identity.advertisedName,
+      systemName = identity.systemName,
+      nameSource = identity.nameSource.metadataValue,
+      vendorName = identity.vendorName,
+      vendorSource = identity.vendorSource,
+      locallyAdministeredAddress = identity.locallyAdministeredAddress
     )
 
     handleObservation(input)
   }
 
   private fun handleClassicResult(device: BluetoothDevice, rssi: Int) {
+    val systemName = safeName(device)
+    val address = safeAddress(device)
+    val identity = ObservedIdentityResolver.forClassic(
+      systemName = systemName,
+      address = address,
+      vendorRegistry = vendorRegistry
+    )
     val input = ObservationInput(
-      name = safeName(device),
-      address = safeAddress(device),
+      name = identity.displayName,
+      address = address,
       rssi = rssi,
       timestamp = System.currentTimeMillis(),
       serviceUuids = emptyList(),
       manufacturerData = emptyMap(),
-      source = "Classic"
+      source = "Classic",
+      systemName = identity.systemName,
+      nameSource = identity.nameSource.metadataValue,
+      vendorName = identity.vendorName,
+      vendorSource = identity.vendorSource,
+      locallyAdministeredAddress = identity.locallyAdministeredAddress
     )
 
     handleObservation(input)
@@ -485,7 +513,7 @@ class ScanController(
 
   private fun safeName(device: BluetoothDevice): String? {
     return try {
-      device.name
+      normalizeName(device.name)
     } catch (_: SecurityException) {
       null
     }
@@ -515,6 +543,12 @@ class ScanController(
     json.put("source", input.source)
     json.put("name", input.name)
     json.put("address", input.address)
+    json.put("advertisedName", input.advertisedName)
+    json.put("systemName", input.systemName)
+    json.put("nameSource", input.nameSource)
+    json.put("vendorName", input.vendorName)
+    json.put("vendorSource", input.vendorSource)
+    json.put("locallyAdministeredAddress", input.locallyAdministeredAddress)
     json.put("rssi", input.rssi)
     json.put("timestamp", input.timestamp)
 
@@ -533,6 +567,10 @@ class ScanController(
 
   private fun ByteArray.toHexString(): String {
     return joinToString("") { b -> "%02x".format(b) }
+  }
+
+  private fun normalizeName(name: String?): String? {
+    return name?.trim()?.takeIf { it.isNotEmpty() }
   }
 
   private fun recordBleCallbacks(count: Int) {

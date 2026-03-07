@@ -50,6 +50,7 @@ Foundation for later "alert me when X is nearby."
 - `./gradlew installDebug`
 - `adb devices` to confirm device connection
 - `scripts/stage-apk` to copy the built debug APK to `downloads/unagi-debug.apk` for the website
+- `scripts/update-vendor-prefixes` refreshes the bundled IEEE MA-L / MA-M / MA-S vendor-prefix asset at `app/src/main/assets/vendor_prefixes.txt.gz`
 - The main screen shows the installed app version prominently in the toolbar and a dedicated build banner so testers can confirm which APK is running
 - Because the app targets SDK 35, system-bar insets must be handled explicitly; the main, diagnostics, and detail toolbars now pad below the status bar on Android 15+
 
@@ -65,6 +66,8 @@ Foundation for later "alert me when X is nearby."
 - If a scan fails to start, open Diagnostics to inspect BLE/classic startup results, the last BLE error code, and permission/Bluetooth snapshots
 - Use `Copy scan debug report` in Diagnostics to capture app version, device/build info, persisted device inventory, and recent scan events for bug reports
 - `unagi` now requests the same scan-relevant Bluetooth/location permissions that WiGLE does; if scans still return zero callbacks, the remaining gap is more likely ROM/profile behavior than a missing manifest permission
+- `unagi` now prefers BLE advertised local names over generic Bluetooth device names, so BLE peripherals should surface the short broadcast name they actually expose
+- Vendor labels come from a bundled offline IEEE prefix database; locally administered/randomized BLE addresses are called out explicitly instead of being mis-labeled with a guessed vendor
 - If a scan runs but returns zero devices, try Compatibility mode from Diagnostics and compare the callback counters before retrying
 - Compatibility mode uses balanced BLE scanning, skips classic discovery, and keeps the session alive longer for conservative testing
 - “Bluetooth LE scanner unavailable” usually means Bluetooth is off, restricted, or unavailable in the current profile

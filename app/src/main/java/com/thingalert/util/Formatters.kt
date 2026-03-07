@@ -17,7 +17,22 @@ object Formatters {
     return "RSSI: $rssi dBm"
   }
 
-  fun formatName(name: String?): String {
-    return if (name.isNullOrBlank()) "Unknown device" else name
+  fun formatName(name: String?, vendorName: String? = null): String {
+    if (!name.isNullOrBlank()) {
+      return name
+    }
+    return if (vendorName.isNullOrBlank()) {
+      "Unknown device"
+    } else {
+      "$vendorName device"
+    }
+  }
+
+  fun formatSightingsCount(count: Int): String {
+    return if (count == 1) {
+      "1 sighting"
+    } else {
+      "$count sightings"
+    }
   }
 }

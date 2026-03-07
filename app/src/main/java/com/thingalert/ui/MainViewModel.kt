@@ -6,6 +6,9 @@ import androidx.lifecycle.viewModelScope
 import com.thingalert.ThingAlertApp
 import com.thingalert.scan.ScanController
 import com.thingalert.scan.ScanState
+import com.thingalert.util.DeviceIdentityPresenter
+import com.thingalert.util.Formatters
+import com.thingalert.util.VendorPrefixRegistryProvider
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -16,6 +19,7 @@ import kotlinx.coroutines.flow.stateIn
 class MainViewModel(app: Application) : AndroidViewModel(app) {
   private val repository = (app as ThingAlertApp).repository
   private val scanner = ScanController(app, viewModelScope, repository)
+  private val vendorRegistry = VendorPrefixRegistryProvider.get(app)
 
   private val filterQuery = MutableStateFlow("")
   private val sortMode = MutableStateFlow(SortMode.RECENT)
@@ -26,13 +30,28 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
   private val devicesFlow = repository.observeDevices()
     .map { entities ->
       entities.map {
+        val identity = DeviceIdentityPresenter.present(
+          displayName = it.displayName,
+          address = it.lastAddress,
+          metadataJson = it.lastMetadataJson,
+          vendorRegistry = vendorRegistry
+        )
+        val metaParts = mutableListOf<String>()
+        identity.nameSourceLabel?.let(metaParts::add)
+        identity.vendorName?.let(metaParts::add)
+          ?: identity.addressTypeLabel?.let(metaParts::add)
+        metaParts += "Last seen: ${Formatters.formatTimestamp(it.lastSeen)}"
+        metaParts += Formatters.formatSightingsCount(it.sightingsCount)
         DeviceListItem(
           deviceKey = it.deviceKey,
           displayName = it.displayName,
+          displayTitle = identity.title,
+          metaLine = metaParts.joinToString(" • "),
           lastSeen = it.lastSeen,
           lastRssi = it.lastRssi,
           sightingsCount = it.sightingsCount,
-          lastAddress = it.lastAddress
+          lastAddress = it.lastAddress,
+          vendorName = identity.vendorName
         )
       }
     }
@@ -43,8 +62,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         list
       } else {
         list.filter { item ->
-          !item.displayName.isNullOrBlank() &&
-            item.displayName.contains(query, ignoreCase = true)
+          item.displayTitle.contains(query, ignoreCase = true) ||
+            (item.vendorName?.contains(query, ignoreCase = true) == true) ||
+            (item.lastAddress?.contains(query, ignoreCase = true) == true)
         }
       }
     }
@@ -57,7 +77,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
       when (sort) {
         SortMode.RECENT -> list.sortedByDescending { it.lastSeen }
         SortMode.STRONGEST -> list.sortedByDescending { it.lastRssi }
-        SortMode.NAME -> list.sortedBy { it.displayName ?: "" }
+        SortMode.NAME -> list.sortedBy { it.displayTitle.lowercase() }
       }
     }
     .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
