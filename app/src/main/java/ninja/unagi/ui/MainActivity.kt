@@ -39,6 +39,8 @@ class MainActivity : AppCompatActivity() {
   private lateinit var viewModel: MainViewModel
   private lateinit var adapter: DeviceAdapter
   private var recoveryAction = RecoveryAction.NONE
+  private var bannerCollapsed = false
+  private var compactCards = false
 
   private val permissionLauncher = registerForActivityResult(
     ActivityResultContracts.RequestMultiplePermissions()
@@ -79,10 +81,13 @@ class MainActivity : AppCompatActivity() {
     WindowInsetsHelper.applyToolbarInsets(binding.toolbar)
     WindowInsetsHelper.applyBottomInsets(binding.deviceList)
     WindowInsetsHelper.requestApplyInsets(binding.root)
+    bannerCollapsed = MainDisplayPreferences.isTopBannerCollapsed(this)
+    compactCards = MainDisplayPreferences.isCompactDeviceCards(this)
 
     adapter = DeviceAdapter { item ->
       startActivity(DeviceDetailActivity.intent(this, item.deviceKey))
     }
+    setCompactCards(compactCards, persist = false)
 
     binding.deviceList.layoutManager = LinearLayoutManager(this)
     binding.deviceList.adapter = adapter
@@ -117,6 +122,9 @@ class MainActivity : AppCompatActivity() {
       viewModel.updateQuery(text?.toString().orEmpty())
     }
 
+    binding.topBannerHeader.setOnClickListener {
+      setBannerCollapsed(!bannerCollapsed)
+    }
     binding.unknownOnly.setOnCheckedChangeListener { _, isChecked ->
       viewModel.setUnknownOnly(isChecked)
     }
@@ -124,6 +132,7 @@ class MainActivity : AppCompatActivity() {
     binding.startScanButton.setOnClickListener { handleStartScan() }
     binding.stopScanButton.setOnClickListener { viewModel.stopScan() }
     binding.permissionActionButton.setOnClickListener { runRecoveryAction() }
+    setBannerCollapsed(bannerCollapsed, persist = false)
 
     DebugLog.log("MainActivity created")
     viewModel.refreshPreflightState()
@@ -160,6 +169,7 @@ class MainActivity : AppCompatActivity() {
 
   override fun onCreateOptionsMenu(menu: android.view.Menu?): Boolean {
     menuInflater.inflate(R.menu.main_menu, menu)
+    menu?.findItem(R.id.menu_compact_cards)?.isChecked = compactCards
     return true
   }
 
@@ -173,7 +183,33 @@ class MainActivity : AppCompatActivity() {
         startActivity(Intent(this, DiagnosticsActivity::class.java))
         true
       }
+      R.id.menu_compact_cards -> {
+        val enabled = !item.isChecked
+        item.isChecked = enabled
+        setCompactCards(enabled)
+        true
+      }
       else -> super.onOptionsItemSelected(item)
+    }
+  }
+
+  private fun setBannerCollapsed(collapsed: Boolean, persist: Boolean = true) {
+    bannerCollapsed = collapsed
+    binding.topBannerContent.isVisible = !collapsed
+    binding.topBannerDivider.isVisible = !collapsed
+    binding.bannerToggleLabel.text = getString(
+      if (collapsed) R.string.show_controls else R.string.hide_controls
+    )
+    if (persist) {
+      MainDisplayPreferences.setTopBannerCollapsed(this, collapsed)
+    }
+  }
+
+  private fun setCompactCards(enabled: Boolean, persist: Boolean = true) {
+    compactCards = enabled
+    adapter.setCompactMode(enabled)
+    if (persist) {
+      MainDisplayPreferences.setCompactDeviceCards(this, enabled)
     }
   }
 

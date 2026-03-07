@@ -7,4 +7,9 @@
       android:id="@+id/menu_diagnostics"
       android:title="@string/diagnostics"
       android:showAsAction="never" />
+  <item
+      android:id="@+id/menu_compact_cards"
+      android:checkable="true"
+      android:title="@string/compact_cards"
+      android:showAsAction="never" />
 </menu>

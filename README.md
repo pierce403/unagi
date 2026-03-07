@@ -55,6 +55,7 @@ Foreground alerts for "let me know when X is nearby."
 - The main screen shows the installed app version prominently in the toolbar and a dedicated build banner so testers can confirm which APK is running
 - Because the app targets SDK 35, system-bar insets must be handled explicitly; the main, diagnostics, and detail toolbars now pad below the status bar on Android 15+
 - The Android package identity is now `ninja.unagi`; older `com.thingalert` installs will not upgrade in place and should be uninstalled manually before testing the new build
+- The main controls banner can be collapsed by tapping its header, and the overflow menu now includes a persisted `Compact device cards` toggle for denser scanning sessions
 
 ## Permissions notes (MVP)
 

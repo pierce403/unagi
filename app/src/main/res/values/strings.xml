@@ -16,6 +16,9 @@
   <string name="filter_hint">Filter by name, vendor, or MAC</string>
   <string name="sort_label">Sort</string>
   <string name="unknown_only">Unknown only</string>
+  <string name="show_controls">Show controls</string>
+  <string name="hide_controls">Hide controls</string>
+  <string name="compact_cards">Compact device cards</string>
   <string name="alerts">Alerts</string>
   <string name="alerts_section_title">Alert rules</string>
   <string name="alerts_section_detail">Create audible alerts with a chosen emoji and sound preset. Rules can match an OUI prefix, a full MAC address, or a Bluetooth name.</string>
