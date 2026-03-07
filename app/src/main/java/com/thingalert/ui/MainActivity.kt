@@ -19,6 +19,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.thingalert.R
 import com.thingalert.databinding.ActivityMainBinding
 import com.thingalert.scan.ScanState
+import com.thingalert.util.AppVersion
 import com.thingalert.util.DebugLog
 import com.thingalert.util.PermissionsHelper
 import kotlinx.coroutines.launch
@@ -71,6 +72,10 @@ class MainActivity : AppCompatActivity() {
     viewModel = ViewModelProvider(this)[MainViewModel::class.java]
 
     setSupportActionBar(binding.toolbar)
+    val appVersion = AppVersion.read(this)
+    val versionLabel = appVersion.visibleLabel
+    supportActionBar?.subtitle = versionLabel
+    binding.appVersionLabel.text = versionLabel
 
     adapter = DeviceAdapter { item ->
       startActivity(DeviceDetailActivity.intent(this, item.deviceKey))

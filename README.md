@@ -50,6 +50,7 @@ Foundation for later "alert me when X is nearby."
 - `./gradlew installDebug`
 - `adb devices` to confirm device connection
 - `scripts/stage-apk` to copy the built debug APK to `downloads/unagi-debug.apk` for the website
+- The main screen shows the installed app version in the toolbar and status card so testers can confirm which APK is running
 
 ## Permissions notes (MVP)
 

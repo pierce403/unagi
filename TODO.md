@@ -72,4 +72,5 @@
 
 - [x] App icon placeholder
 - [x] Versioning and CHANGELOG.md updates
+- [x] Bump app version and surface it prominently in the UI
 - [x] License selection (MIT/Apache-2.0/etc)

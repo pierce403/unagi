@@ -49,6 +49,7 @@ Build the MVP: scan -> list -> tap -> history.
 - Local validation needs `ANDROID_HOME` / `ANDROID_SDK_ROOT`; on this workstation the SDK is at `~/Android/Sdk`
 - Compatibility mode is toggled from Diagnostics and uses BLE-only `SCAN_MODE_BALANCED` with a 30-second timeout
 - Diagnostics now has a `Copy scan debug report` action with platform/build info, persisted device inventory, and recent scan events
+- When shipping a user-visible APK change, bump `versionCode` and `versionName` in `app/build.gradle.kts` and keep the installed version obvious in the main UI
 - Deployment: GitHub Pages publishes from `main` at repo root to `https://unagi.ninja`
 - Site artifacts: keep `index.html`, `downloads/unagi-debug.apk`, and `CNAME` aligned when shipping landing-page changes
 - Reflection: before handoff, record any new command, pitfall, deploy detail, or collaborator preference discovered during the task
