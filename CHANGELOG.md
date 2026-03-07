@@ -19,3 +19,4 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 - Make the installed build number much more prominent with a dedicated banner on the main screen
 - Fix SDK 35 edge-to-edge toolbar overlap with the status bar and keep version text visible in a dedicated banner
 - Resolve vendor names locally from bundled IEEE OUI registries and prefer BLE advertised names over generic Bluetooth names when available
+- Let the live device filter match normalized MAC and OUI fragments, not just displayed text

@@ -10,6 +10,10 @@
 
 ## Active backlog
 
+### Alerts
+
+- [ ] Add configurable alert rules with emoji, sound preset, and notification details for OUI, MAC, and device-name matches
+
 ### Scan robustness
 
 - [ ] Add raw BLE/classic callback samples to diagnostics, not just counters

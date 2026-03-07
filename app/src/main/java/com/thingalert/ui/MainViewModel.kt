@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.thingalert.ThingAlertApp
 import com.thingalert.scan.ScanController
 import com.thingalert.scan.ScanState
+import com.thingalert.util.BluetoothAddressTools
 import com.thingalert.util.DeviceIdentityPresenter
 import com.thingalert.util.Formatters
 import com.thingalert.util.VendorPrefixRegistryProvider
@@ -61,10 +62,16 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
       if (query.isBlank()) {
         list
       } else {
+        val normalizedAddressFragment = BluetoothAddressTools.normalizeFilterFragment(query)
         list.filter { item ->
           item.displayTitle.contains(query, ignoreCase = true) ||
             (item.vendorName?.contains(query, ignoreCase = true) == true) ||
-            (item.lastAddress?.contains(query, ignoreCase = true) == true)
+            (item.lastAddress?.contains(query, ignoreCase = true) == true) ||
+            (
+              normalizedAddressFragment != null &&
+                BluetoothAddressTools.normalizeAddress(item.lastAddress)
+                  ?.contains(normalizedAddressFragment) == true
+              )
         }
       }
     }
