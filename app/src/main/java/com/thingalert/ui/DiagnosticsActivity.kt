@@ -63,10 +63,17 @@ class DiagnosticsActivity : AppCompatActivity() {
 
     val missing = PermissionsHelper.missingPermissions(this)
     builder.appendLine("Missing permissions: ${if (missing.isEmpty()) "none" else missing.joinToString()}")
+    builder.appendLine("Permission labels: ${PermissionsHelper.missingPermissionLabels(this).ifEmpty { listOf("none") }.joinToString()}")
+    builder.appendLine("Permissions blocked by 'don't ask again' or policy: ${PermissionsHelper.shouldOpenAppSettings(this)}")
+    if (PermissionsHelper.isLocationServicesRequired()) {
+      builder.appendLine("Location services enabled: ${PermissionsHelper.isLocationServicesEnabled(this)}")
+    }
 
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
       builder.appendLine("Note: Location permission and location services may be required for BLE scans on Android 11 and below.")
     }
+
+    builder.appendLine("GrapheneOS note: unagi does not request sensor-class permissions in its APK manifest.")
 
     builder.appendLine()
     builder.appendLine("Recent events:")

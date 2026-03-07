@@ -82,6 +82,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     scanner.stopScan()
   }
 
+  fun refreshPreflightState() {
+    scanner.refreshState()
+  }
+
   override fun onCleared() {
     scanner.stopScan()
     super.onCleared()

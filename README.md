@@ -55,6 +55,8 @@ Foundation for later "alert me when X is nearby."
 
 - Bluetooth scanning permission model differs by Android version; plan explicitly for Android 12+ BLUETOOTH_SCAN
 - Using `neverForLocation` can filter some BLE beacons; unagi currently does not set this flag to avoid filtering
+- On Android 11 and below, BLE results can still depend on location services being enabled in addition to permission grant
+- GrapheneOS note: the APK manifest does not request sensor-class permissions; Nearby devices is the permission to grant on Android 12+
 
 ## Privacy stance
 

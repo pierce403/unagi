@@ -13,3 +13,4 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 - Rename user-facing branding to unagi
 - Add `unagi.ninja` landing page and stable APK download path
 - Restyle the app and website with a ninja-inspired black and electric-blue theme
+- Improve scan preflight checks and recovery messaging for denied permissions, Bluetooth off, and location-services-off devices

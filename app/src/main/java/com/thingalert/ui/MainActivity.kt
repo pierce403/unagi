@@ -3,7 +3,9 @@ package com.thingalert.ui
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothManager
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
+import android.provider.Settings
 import android.widget.ArrayAdapter
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -22,9 +24,19 @@ import com.thingalert.util.PermissionsHelper
 import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
+  private enum class RecoveryAction {
+    NONE,
+    REQUEST_PERMISSIONS,
+    OPEN_APP_SETTINGS,
+    ENABLE_BLUETOOTH,
+    OPEN_LOCATION_SETTINGS,
+    RETRY_SCAN
+  }
+
   private lateinit var binding: ActivityMainBinding
   private lateinit var viewModel: MainViewModel
   private lateinit var adapter: DeviceAdapter
+  private var recoveryAction = RecoveryAction.NONE
 
   private val permissionLauncher = registerForActivityResult(
     ActivityResultContracts.RequestMultiplePermissions()
@@ -34,8 +46,7 @@ class MainActivity : AppCompatActivity() {
     if (granted) {
       handleStartScan()
     } else {
-      binding.permissionHint.isVisible = true
-      binding.permissionHint.text = getString(R.string.permissions_required)
+      viewModel.refreshPreflightState()
     }
   }
 
@@ -104,8 +115,10 @@ class MainActivity : AppCompatActivity() {
 
     binding.startScanButton.setOnClickListener { handleStartScan() }
     binding.stopScanButton.setOnClickListener { viewModel.stopScan() }
+    binding.permissionActionButton.setOnClickListener { runRecoveryAction() }
 
     DebugLog.log("MainActivity created")
+    viewModel.refreshPreflightState()
 
     lifecycleScope.launch {
       repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -125,6 +138,11 @@ class MainActivity : AppCompatActivity() {
         }
       }
     }
+  }
+
+  override fun onResume() {
+    super.onResume()
+    viewModel.refreshPreflightState()
   }
 
   override fun onStop() {
@@ -149,8 +167,18 @@ class MainActivity : AppCompatActivity() {
 
   private fun handleStartScan() {
     if (!PermissionsHelper.hasPermissions(this)) {
-      DebugLog.log("Requesting permissions: ${PermissionsHelper.requiredPermissions()}")
-      permissionLauncher.launch(PermissionsHelper.requiredPermissions().toTypedArray())
+      if (PermissionsHelper.shouldOpenAppSettings(this)) {
+        DebugLog.log("Permissions blocked; directing user to app settings", level = android.util.Log.WARN)
+        viewModel.refreshPreflightState()
+      } else {
+        requestScanPermissions()
+      }
+      return
+    }
+
+    if (!PermissionsHelper.isLocationServicesEnabled(this)) {
+      DebugLog.log("Location services disabled before scan", level = android.util.Log.WARN)
+      viewModel.refreshPreflightState()
       return
     }
 
@@ -165,6 +193,8 @@ class MainActivity : AppCompatActivity() {
   }
 
   private fun updateScanState(state: ScanState) {
+    clearRecoveryUi()
+
     when (state) {
       is ScanState.Scanning -> {
         binding.scanStatus.text = getString(R.string.scan_active)
@@ -181,9 +211,36 @@ class MainActivity : AppCompatActivity() {
       is ScanState.MissingPermission -> {
         binding.scanStatus.text = getString(R.string.scan_inactive)
         binding.permissionHint.isVisible = true
-        binding.permissionHint.text = getString(R.string.permissions_required)
+        val missing = PermissionsHelper.missingPermissionLabels(this).joinToString()
+        val blocked = PermissionsHelper.shouldOpenAppSettings(this)
+        binding.permissionHint.text = if (blocked) {
+          getString(R.string.permissions_blocked_detail, missing)
+        } else {
+          getString(R.string.permissions_required_detail, missing)
+        }
         binding.startScanButton.isEnabled = true
         binding.stopScanButton.isEnabled = false
+        recoveryAction = if (blocked) {
+          RecoveryAction.OPEN_APP_SETTINGS
+        } else {
+          RecoveryAction.REQUEST_PERMISSIONS
+        }
+        binding.permissionActionButton.text = if (blocked) {
+          getString(R.string.open_app_settings)
+        } else {
+          getString(R.string.grant_access)
+        }
+        binding.permissionActionButton.isVisible = true
+      }
+      is ScanState.LocationServicesOff -> {
+        binding.scanStatus.text = getString(R.string.scan_inactive)
+        binding.permissionHint.isVisible = true
+        binding.permissionHint.text = getString(R.string.location_services_required_detail)
+        binding.startScanButton.isEnabled = true
+        binding.stopScanButton.isEnabled = false
+        recoveryAction = RecoveryAction.OPEN_LOCATION_SETTINGS
+        binding.permissionActionButton.text = getString(R.string.open_location_settings)
+        binding.permissionActionButton.isVisible = true
       }
       is ScanState.BluetoothOff -> {
         binding.scanStatus.text = getString(R.string.scan_inactive)
@@ -191,6 +248,9 @@ class MainActivity : AppCompatActivity() {
         binding.permissionHint.text = getString(R.string.enable_bluetooth)
         binding.startScanButton.isEnabled = true
         binding.stopScanButton.isEnabled = false
+        recoveryAction = RecoveryAction.ENABLE_BLUETOOTH
+        binding.permissionActionButton.text = getString(R.string.enable_bluetooth_action)
+        binding.permissionActionButton.isVisible = true
       }
       is ScanState.Unsupported -> {
         binding.scanStatus.text = getString(R.string.bluetooth_unsupported)
@@ -200,11 +260,14 @@ class MainActivity : AppCompatActivity() {
         binding.stopScanButton.isEnabled = false
       }
       is ScanState.Error -> {
-        binding.scanStatus.text = "Scan error"
+        binding.scanStatus.text = getString(R.string.scan_error)
         binding.permissionHint.isVisible = true
         binding.permissionHint.text = state.message
         binding.startScanButton.isEnabled = true
         binding.stopScanButton.isEnabled = false
+        recoveryAction = RecoveryAction.RETRY_SCAN
+        binding.permissionActionButton.text = getString(R.string.retry_scan)
+        binding.permissionActionButton.isVisible = true
       }
     }
   }
@@ -217,5 +280,42 @@ class MainActivity : AppCompatActivity() {
     } catch (_: SecurityException) {
       false
     }
+  }
+
+  private fun requestScanPermissions() {
+    DebugLog.log("Requesting permissions: ${PermissionsHelper.requiredPermissions()}")
+    PermissionsHelper.markPermissionRequestAttempted(this)
+    permissionLauncher.launch(PermissionsHelper.requiredPermissions().toTypedArray())
+  }
+
+  private fun openAppSettings() {
+    val intent = Intent(
+      Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+      Uri.fromParts("package", packageName, null)
+    )
+    startActivity(intent)
+  }
+
+  private fun openLocationSettings() {
+    startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
+  }
+
+  private fun runRecoveryAction() {
+    when (recoveryAction) {
+      RecoveryAction.NONE -> Unit
+      RecoveryAction.REQUEST_PERMISSIONS -> requestScanPermissions()
+      RecoveryAction.OPEN_APP_SETTINGS -> openAppSettings()
+      RecoveryAction.ENABLE_BLUETOOTH -> {
+        val enableIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
+        enableBluetoothLauncher.launch(enableIntent)
+      }
+      RecoveryAction.OPEN_LOCATION_SETTINGS -> openLocationSettings()
+      RecoveryAction.RETRY_SCAN -> handleStartScan()
+    }
+  }
+
+  private fun clearRecoveryUi() {
+    recoveryAction = RecoveryAction.NONE
+    binding.permissionActionButton.isVisible = false
   }
 }

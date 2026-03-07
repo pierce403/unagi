@@ -83,21 +83,10 @@ class ScanController(
   }
 
   fun startScan() {
-    if (!PermissionsHelper.hasPermissions(context)) {
-      _scanState.value = ScanState.MissingPermission
-      DebugLog.log("Missing permissions: ${PermissionsHelper.missingPermissions(context)}", level = android.util.Log.WARN)
-      return
-    }
-
-    if (bluetoothAdapter == null) {
-      _scanState.value = ScanState.Unsupported
-      DebugLog.log("Bluetooth adapter missing", level = android.util.Log.WARN)
-      return
-    }
-
-    if (!bluetoothAdapter.isEnabled) {
-      _scanState.value = ScanState.BluetoothOff
-      DebugLog.log("Bluetooth disabled", level = android.util.Log.WARN)
+    val preflightState = preflightState()
+    if (preflightState != ScanState.Idle) {
+      _scanState.value = preflightState
+      DebugLog.log("Scan blocked by preflight state=$preflightState", level = android.util.Log.WARN)
       return
     }
 
@@ -111,6 +100,22 @@ class ScanController(
     timeoutJob = scope.launch {
       delay(SCAN_TIMEOUT_MS)
       stopScan()
+    }
+  }
+
+  fun refreshState() {
+    val state = preflightState()
+    if (_scanState.value is ScanState.Scanning && state != ScanState.Idle) {
+      timeoutJob?.cancel()
+      stopBleScan()
+      stopClassicDiscovery()
+      _scanState.value = state
+      DebugLog.log("Scanning interrupted by preflight state=$state", level = android.util.Log.WARN)
+      return
+    }
+
+    if (_scanState.value !is ScanState.Scanning) {
+      _scanState.value = state
     }
   }
 
@@ -202,6 +207,40 @@ class ScanController(
       }
       receiverRegistered = false
     }
+  }
+
+  private fun preflightState(): ScanState {
+    if (!PermissionsHelper.hasPermissions(context)) {
+      DebugLog.log(
+        "Missing permissions: ${PermissionsHelper.missingPermissions(context)}",
+        level = android.util.Log.WARN
+      )
+      return ScanState.MissingPermission
+    }
+
+    if (bluetoothAdapter == null) {
+      DebugLog.log("Bluetooth adapter missing", level = android.util.Log.WARN)
+      return ScanState.Unsupported
+    }
+
+    val bluetoothEnabled = try {
+      bluetoothAdapter.isEnabled
+    } catch (sec: SecurityException) {
+      DebugLog.log("Bluetooth enabled check missing permission", level = android.util.Log.WARN, throwable = sec)
+      return ScanState.MissingPermission
+    }
+
+    if (!bluetoothEnabled) {
+      DebugLog.log("Bluetooth disabled", level = android.util.Log.WARN)
+      return ScanState.BluetoothOff
+    }
+
+    if (!PermissionsHelper.isLocationServicesEnabled(context)) {
+      DebugLog.log("Location services disabled on pre-Android-12 device", level = android.util.Log.WARN)
+      return ScanState.LocationServicesOff
+    }
+
+    return ScanState.Idle
   }
 
   private fun handleBleResult(result: ScanResult) {
