@@ -22,3 +22,4 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 - Let the live device filter match normalized MAC and OUI fragments, not just displayed text
 - Add configurable device alerts with emoji, sound presets, and detail notifications for OUI, MAC, and Bluetooth-name matches
 - Fix startup crash by making vendor-prefix asset loading resilient to APK asset renaming and plain-text packaging
+- Resolve BLE manufacturer company IDs and advertised service UUIDs from bundled Bluetooth SIG assigned-number registries so unnamed devices surface richer identity hints

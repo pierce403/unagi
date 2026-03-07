@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.thingalert.ThingAlertApp
 import com.thingalert.scan.ScanController
 import com.thingalert.scan.ScanState
+import com.thingalert.util.BluetoothAssignedNumbersProvider
 import com.thingalert.util.BluetoothAddressTools
 import com.thingalert.util.DeviceIdentityPresenter
 import com.thingalert.util.Formatters
@@ -28,6 +29,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     thingAlertApp.deviceAlertNotifier
   )
   private val vendorRegistry = VendorPrefixRegistryProvider.get(app)
+  private val assignedNumbers = BluetoothAssignedNumbersProvider.get(app)
 
   private val filterQuery = MutableStateFlow("")
   private val sortMode = MutableStateFlow(SortMode.RECENT)
@@ -42,19 +44,28 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
           displayName = it.displayName,
           address = it.lastAddress,
           metadataJson = it.lastMetadataJson,
-          vendorRegistry = vendorRegistry
+          vendorRegistry = vendorRegistry,
+          assignedNumbers = assignedNumbers
         )
         val metaParts = mutableListOf<String>()
         identity.nameSourceLabel?.let(metaParts::add)
-        identity.vendorName?.let(metaParts::add)
+        identity.vendorName?.let { metaParts += "Vendor: $it" }
           ?: identity.addressTypeLabel?.let(metaParts::add)
+        metaParts += identity.metadataSummary.listLabels.take(2)
         metaParts += "Last seen: ${Formatters.formatTimestamp(it.lastSeen)}"
         metaParts += Formatters.formatSightingsCount(it.sightingsCount)
+        val searchParts = buildList {
+          add(identity.title)
+          it.lastAddress?.let(::add)
+          identity.vendorName?.let(::add)
+          addAll(identity.metadataSummary.searchTerms)
+        }
         DeviceListItem(
           deviceKey = it.deviceKey,
           displayName = it.displayName,
           displayTitle = identity.title,
           metaLine = metaParts.joinToString(" • "),
+          searchText = searchParts.joinToString("\n"),
           lastSeen = it.lastSeen,
           lastRssi = it.lastRssi,
           sightingsCount = it.sightingsCount,
@@ -71,8 +82,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
       } else {
         val normalizedAddressFragment = BluetoothAddressTools.normalizeFilterFragment(query)
         list.filter { item ->
-          item.displayTitle.contains(query, ignoreCase = true) ||
-            (item.vendorName?.contains(query, ignoreCase = true) == true) ||
+          item.searchText.contains(query, ignoreCase = true) ||
             (item.lastAddress?.contains(query, ignoreCase = true) == true) ||
             (
               normalizedAddressFragment != null &&

@@ -17,14 +17,20 @@ object Formatters {
     return "RSSI: $rssi dBm"
   }
 
-  fun formatName(name: String?, vendorName: String? = null): String {
+  fun formatName(
+    name: String?,
+    vendorName: String? = null,
+    fallbackName: String? = null
+  ): String {
     if (!name.isNullOrBlank()) {
       return name
     }
-    return if (vendorName.isNullOrBlank()) {
-      "Unknown device"
-    } else {
+    return if (!vendorName.isNullOrBlank()) {
       "$vendorName device"
+    } else if (!fallbackName.isNullOrBlank()) {
+      fallbackName
+    } else {
+      "Unknown device"
     }
   }
 

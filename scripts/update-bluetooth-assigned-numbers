@@ -1,0 +1,91 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "$0")/.." && pwd)"
+company_output="$repo_root/app/src/main/assets/bluetooth_company_identifiers.txt.gz"
+service_output="$repo_root/app/src/main/assets/bluetooth_service_uuids.txt.gz"
+
+mkdir -p "$(dirname "$company_output")"
+
+python3 - "$company_output" "$service_output" <<'PY'
+import gzip
+import re
+import sys
+from pathlib import Path
+from urllib.request import Request, urlopen
+
+COMPANY_OUTPUT = Path(sys.argv[1])
+SERVICE_OUTPUT = Path(sys.argv[2])
+
+SOURCES = {
+    "company": "https://bitbucket.org/bluetooth-SIG/public/raw/main/assigned_numbers/company_identifiers/company_identifiers.yaml",
+    "service": "https://bitbucket.org/bluetooth-SIG/public/raw/main/assigned_numbers/uuids/service_uuids.yaml",
+    "member": "https://bitbucket.org/bluetooth-SIG/public/raw/main/assigned_numbers/uuids/member_uuids.yaml",
+}
+
+
+def fetch_text(url: str) -> str:
+    request = Request(url, headers={"User-Agent": "unagi-assigned-numbers-updater/1.0"})
+    with urlopen(request, timeout=60) as response:
+        return response.read().decode("utf-8")
+
+
+def parse_yaml_scalar(raw: str) -> str:
+    value = raw.strip()
+    if value.startswith("'") and value.endswith("'"):
+        return value[1:-1].replace("''", "'").strip()
+    if value.startswith('"') and value.endswith('"'):
+        return value[1:-1].replace('\\"', '"').strip()
+    return value.strip()
+
+
+def parse_entries(text: str, key_field: str, value_field: str) -> dict[str, str]:
+    entries: dict[str, str] = {}
+    current_key: str | None = None
+
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+
+        key_match = re.match(rf"^-?\s*{re.escape(key_field)}:\s*(.+)$", line)
+        if key_match:
+            current_key = key_match.group(1).strip()
+            continue
+
+        value_match = re.match(rf"^{re.escape(value_field)}:\s*(.+)$", line)
+        if value_match and current_key is not None:
+            entries[current_key] = parse_yaml_scalar(value_match.group(1))
+            current_key = None
+
+    return entries
+
+
+company_entries = parse_entries(fetch_text(SOURCES["company"]), "value", "name")
+service_entries = parse_entries(fetch_text(SOURCES["service"]), "uuid", "name")
+service_entries.update(parse_entries(fetch_text(SOURCES["member"]), "uuid", "name"))
+
+
+def normalize_hex(value: str) -> str:
+    cleaned = re.sub(r"[^0-9A-Fa-f]", "", value).upper()
+    return cleaned
+
+
+with gzip.open(COMPANY_OUTPUT, "wt", encoding="utf-8", newline="\n") as handle:
+    for raw_key, name in sorted(company_entries.items(), key=lambda item: int(normalize_hex(item[0]), 16)):
+        key = normalize_hex(raw_key).rjust(4, "0")
+        if key and name:
+            handle.write(f"{key}|{name}\n")
+
+with gzip.open(SERVICE_OUTPUT, "wt", encoding="utf-8", newline="\n") as handle:
+    for raw_key, name in sorted(
+        service_entries.items(),
+        key=lambda item: (len(normalize_hex(item[0])), normalize_hex(item[0])),
+    ):
+        key = normalize_hex(raw_key)
+        if key and name:
+            handle.write(f"{key}|{name}\n")
+
+print(f"Wrote {len(company_entries)} company identifiers to {COMPANY_OUTPUT}")
+print(f"Wrote {len(service_entries)} service/member UUID labels to {SERVICE_OUTPUT}")
+PY

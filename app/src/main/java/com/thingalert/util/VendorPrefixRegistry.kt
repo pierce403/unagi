@@ -1,9 +1,7 @@
 package com.thingalert.util
 
 import android.content.Context
-import java.io.BufferedInputStream
 import java.io.InputStream
-import java.util.zip.GZIPInputStream
 
 data class VendorResolution(
   val normalizedAddress: String,
@@ -51,12 +49,10 @@ class VendorPrefixRegistry private constructor(
     private const val MA_L_LENGTH = 6
     private const val MA_M_LENGTH = 7
     private const val MA_S_LENGTH = 9
-    private const val GZIP_MAGIC_FIRST = 0x1F
-    private const val GZIP_MAGIC_SECOND = 0x8B
     private val SUPPORTED_PREFIX_LENGTHS = listOf(MA_S_LENGTH, MA_M_LENGTH, MA_L_LENGTH)
 
     fun fromInputStream(inputStream: InputStream): VendorPrefixRegistry {
-      val resolvedStream = prepareInputStream(inputStream)
+      val resolvedStream = CompressedTextAsset.prepareInputStream(inputStream)
       return resolvedStream.bufferedReader().use { reader ->
         fromLines(reader.lineSequence())
       }
@@ -115,24 +111,6 @@ class VendorPrefixRegistry private constructor(
         else -> "IEEE MA-L"
       }
     }
-
-    private fun prepareInputStream(inputStream: InputStream): InputStream {
-      val buffered = if (inputStream is BufferedInputStream) {
-        inputStream
-      } else {
-        BufferedInputStream(inputStream)
-      }
-      buffered.mark(2)
-      val first = buffered.read()
-      val second = buffered.read()
-      buffered.reset()
-      val isGzip = first == GZIP_MAGIC_FIRST && second == GZIP_MAGIC_SECOND
-      return if (isGzip) {
-        GZIPInputStream(buffered)
-      } else {
-        buffered
-      }
-    }
   }
 }
 
@@ -147,24 +125,12 @@ object VendorPrefixRegistryProvider {
     }
 
     return synchronized(this) {
-      cached ?: openFirstAvailableAsset(context)?.use { inputStream ->
+      cached ?: CompressedTextAsset.openFirstAvailable(context, ASSET_CANDIDATES)?.use { inputStream ->
         VendorPrefixRegistry.fromInputStream(inputStream).also { loaded ->
           cached = loaded
         }
       } ?: error("Missing vendor prefix asset: ${ASSET_CANDIDATES.joinToString()}")
     }
-  }
-
-  private fun openFirstAvailableAsset(context: Context): InputStream? {
-    val assets = context.applicationContext.assets
-    for (assetName in ASSET_CANDIDATES) {
-      try {
-        return assets.open(assetName)
-      } catch (_: java.io.FileNotFoundException) {
-        // Try next candidate
-      }
-    }
-    return null
   }
 
   private val ASSET_CANDIDATES = listOf("vendor_prefixes.txt.gz", "vendor_prefixes.txt")

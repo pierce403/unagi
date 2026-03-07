@@ -8,7 +8,7 @@ The landing page is intended for `unagi.ninja`, and the publishable debug APK is
 
 Quick situational awareness for nearby "things" (headphones, trackers, consoles, dev boards, etc.).
 
-Foundation for later "alert me when X is nearby."
+Foreground alerts for "let me know when X is nearby."
 
 ## MVP scope
 
@@ -20,7 +20,7 @@ Foundation for later "alert me when X is nearby."
 
 - No connecting or pairing
 - No "tracking" UI (no directional finder)
-- No background scanning or alerts yet
+- No background scanning
 
 ## Tooling constraints
 
@@ -51,6 +51,7 @@ Foundation for later "alert me when X is nearby."
 - `adb devices` to confirm device connection
 - `scripts/stage-apk` to copy the built debug APK to `downloads/unagi-debug.apk` for the website
 - `scripts/update-vendor-prefixes` refreshes the bundled IEEE MA-L / MA-M / MA-S vendor-prefix asset at `app/src/main/assets/vendor_prefixes.txt.gz`
+- `scripts/update-bluetooth-assigned-numbers` refreshes the bundled Bluetooth SIG company/service registries at `app/src/main/assets/bluetooth_company_identifiers.txt.gz` and `app/src/main/assets/bluetooth_service_uuids.txt.gz`
 - The main screen shows the installed app version prominently in the toolbar and a dedicated build banner so testers can confirm which APK is running
 - Because the app targets SDK 35, system-bar insets must be handled explicitly; the main, diagnostics, and detail toolbars now pad below the status bar on Android 15+
 
@@ -68,6 +69,7 @@ Foundation for later "alert me when X is nearby."
 - `unagi` now requests the same scan-relevant Bluetooth/location permissions that WiGLE does; if scans still return zero callbacks, the remaining gap is more likely ROM/profile behavior than a missing manifest permission
 - `unagi` now prefers BLE advertised local names over generic Bluetooth device names, so BLE peripherals should surface the short broadcast name they actually expose
 - Vendor labels come from a bundled offline IEEE prefix database; locally administered/randomized BLE addresses are called out explicitly instead of being mis-labeled with a guessed vendor
+- Unnamed BLE devices now surface manufacturer-company IDs and advertised service UUID labels from bundled Bluetooth SIG assigned-number registries, with the raw JSON still available in Device Details for deeper inspection
 - The main search field now matches normalized MAC and OUI fragments, so `001122` and `00:11:22` both work as live filters
 - The Alerts screen lets you match devices by OUI, full MAC, or Bluetooth name, choose an emoji and sound preset, and receive a detail notification when a rule fires
 - On Android 13+, grant notification permission from the Alerts screen if you want system notifications in addition to the audible alert

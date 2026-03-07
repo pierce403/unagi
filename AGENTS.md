@@ -49,6 +49,7 @@ Build the MVP: scan -> list -> tap -> history.
 
 - Build/test: `./gradlew assembleDebug`, `./gradlew installDebug`, and `scripts/stage-apk`
 - Local validation needs `ANDROID_HOME` / `ANDROID_SDK_ROOT`; on this workstation the SDK is at `~/Android/Sdk`
+- Headless AVD boot can be flaky on this workstation; if `thingalert_api35` exits immediately, fall back to `assembleDebug` + unit tests and verify on-device
 - Compatibility mode is toggled from Diagnostics and uses BLE-only `SCAN_MODE_BALANCED` with a 30-second timeout
 - Diagnostics now has a `Copy scan debug report` action with platform/build info, persisted device inventory, and recent scan events
 - `unagi` now matches WiGLE's scan-relevant permission posture by requesting `ACCESS_COARSE_LOCATION` and `ACCESS_FINE_LOCATION` alongside modern Bluetooth scan/connect permissions
@@ -61,4 +62,6 @@ Build the MVP: scan -> list -> tap -> history.
 - Deployment: GitHub Pages publishes from `main` at repo root to `https://unagi.ninja`
 - Site artifacts: keep `index.html`, `downloads/unagi-debug.apk`, and `CNAME` aligned when shipping landing-page changes
 - Vendor-prefix data is refreshed with `scripts/update-vendor-prefixes`, which writes `app/src/main/assets/vendor_prefixes.txt.gz`
+- Bluetooth SIG assigned-number data is refreshed with `scripts/update-bluetooth-assigned-numbers`, which writes `app/src/main/assets/bluetooth_company_identifiers.txt.gz` and `app/src/main/assets/bluetooth_service_uuids.txt.gz`
+- When unnamed BLE devices still lack a human name, prefer surfacing manufacturer-company IDs and advertised service UUID labels rather than leaving the UI at a bare “Unknown device”
 - Reflection: before handoff, record any new command, pitfall, deploy detail, or collaborator preference discovered during the task

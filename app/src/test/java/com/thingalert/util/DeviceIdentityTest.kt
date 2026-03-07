@@ -9,6 +9,10 @@ class DeviceIdentityTest {
   private val registry = VendorPrefixRegistry.fromLines(
     sequenceOf("001122|Acme Audio")
   )
+  private val assignedNumbers = BluetoothAssignedNumbersRegistry.fromLines(
+    companyLines = sequenceOf("004C|Apple"),
+    serviceLines = sequenceOf("180F|Battery Service", "180A|Device Information")
+  )
 
   @Test
   fun `ble identity prefers advertised name`() {
@@ -42,7 +46,8 @@ class DeviceIdentityTest {
       displayName = null,
       address = "00:11:22:33:44:55",
       metadataJson = null,
-      vendorRegistry = registry
+      vendorRegistry = registry,
+      assignedNumbers = assignedNumbers
     )
 
     assertEquals("Acme Audio device", presentation.title)
@@ -59,7 +64,11 @@ class DeviceIdentityTest {
         "nameSource": "ble_advertised",
         "vendorName": "Acme Audio",
         "vendorSource": "IEEE MA-L",
-        "locallyAdministeredAddress": true
+        "locallyAdministeredAddress": true,
+        "serviceUuids": ["0000180F-0000-1000-8000-00805F9B34FB"],
+        "manufacturerData": {
+          "76": "0102A0"
+        }
       }
       """.trimIndent()
     )
@@ -69,6 +78,35 @@ class DeviceIdentityTest {
     assertEquals("Acme Audio", metadata.vendorName)
     assertEquals("IEEE MA-L", metadata.vendorSource)
     assertTrue(metadata.locallyAdministeredAddress == true)
+    assertEquals(listOf("0000180F-0000-1000-8000-00805F9B34FB"), metadata.serviceUuids)
+    assertEquals("0102A0", metadata.manufacturerData[76])
     assertNull(ObservationMetadataParser.parse(null).vendorName)
+  }
+
+  @Test
+  fun `device presentation falls back to manufacturer and service hints`() {
+    val presentation = DeviceIdentityPresenter.present(
+      displayName = null,
+      address = "DA:A1:19:00:00:01",
+      metadataJson = """
+        {
+          "serviceUuids": ["0000180F-0000-1000-8000-00805F9B34FB"],
+          "manufacturerData": {
+            "76": "0215AABBCCDD"
+          }
+        }
+      """.trimIndent(),
+      vendorRegistry = registry,
+      assignedNumbers = assignedNumbers
+    )
+
+    assertEquals("BLE device: Apple", presentation.title)
+    assertTrue(presentation.metadataSummary.listLabels.contains("Mfr: Apple"))
+    assertTrue(presentation.metadataSummary.listLabels.contains("Svc: Battery Service"))
+    assertTrue(
+      presentation.metadataSummary.detailLines.any { detail ->
+        detail.contains("Apple (0x004C)")
+      }
+    )
   }
 }

@@ -11,6 +11,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.thingalert.ThingAlertApp
 import com.thingalert.databinding.ActivityDeviceDetailBinding
+import com.thingalert.util.BluetoothAssignedNumbersProvider
 import com.thingalert.util.DeviceIdentityPresenter
 import com.thingalert.util.Formatters
 import com.thingalert.util.VendorPrefixRegistryProvider
@@ -21,6 +22,7 @@ class DeviceDetailActivity : AppCompatActivity() {
   private lateinit var binding: ActivityDeviceDetailBinding
   private lateinit var adapter: SightingAdapter
   private val vendorRegistry by lazy { VendorPrefixRegistryProvider.get(this) }
+  private val assignedNumbers by lazy { BluetoothAssignedNumbersProvider.get(this) }
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
@@ -38,7 +40,7 @@ class DeviceDetailActivity : AppCompatActivity() {
       return
     }
 
-    adapter = SightingAdapter()
+    adapter = SightingAdapter(assignedNumbers)
     binding.sightingsList.layoutManager = LinearLayoutManager(this)
     binding.sightingsList.adapter = adapter
 
@@ -53,7 +55,8 @@ class DeviceDetailActivity : AppCompatActivity() {
               displayName = device.displayName,
               address = device.lastAddress,
               metadataJson = device.lastMetadataJson,
-              vendorRegistry = vendorRegistry
+              vendorRegistry = vendorRegistry,
+              assignedNumbers = assignedNumbers
             )
             binding.detailName.text = identity.title
             val identityLines = mutableListOf<String>()
@@ -74,6 +77,7 @@ class DeviceDetailActivity : AppCompatActivity() {
             identity.systemName
               ?.takeUnless { it == device.displayName }
               ?.let { identityLines += "Bluetooth device name: $it" }
+            identityLines += identity.metadataSummary.detailLines
             binding.detailIdentity.isVisible = identityLines.isNotEmpty()
             binding.detailIdentity.text = identityLines.joinToString("\n")
             binding.detailKey.text = "Device key: ${device.deviceKey}"
