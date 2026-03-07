@@ -11,6 +11,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.thingalert.ThingAlertApp
 import com.thingalert.databinding.ActivityDeviceDetailBinding
 import com.thingalert.util.Formatters
+import com.thingalert.util.WindowInsetsHelper
 import kotlinx.coroutines.launch
 
 class DeviceDetailActivity : AppCompatActivity() {
@@ -24,6 +25,9 @@ class DeviceDetailActivity : AppCompatActivity() {
 
     setSupportActionBar(binding.toolbar)
     supportActionBar?.setDisplayHomeAsUpEnabled(true)
+    WindowInsetsHelper.applyToolbarInsets(binding.toolbar)
+    WindowInsetsHelper.applyBottomInsets(binding.detailScroll)
+    WindowInsetsHelper.requestApplyInsets(binding.root)
 
     val deviceKey = intent.getStringExtra(EXTRA_DEVICE_KEY) ?: run {
       finish()

@@ -53,6 +53,7 @@ Build the MVP: scan -> list -> tap -> history.
 - Diagnostics now has a `Copy scan debug report` action with platform/build info, persisted device inventory, and recent scan events
 - `unagi` now matches WiGLE's scan-relevant permission posture by requesting `ACCESS_COARSE_LOCATION` and `ACCESS_FINE_LOCATION` alongside modern Bluetooth scan/connect permissions
 - When shipping a user-visible APK change, bump `versionCode` and `versionName` in `app/build.gradle.kts` and keep the installed version obvious in the main UI
+- Since `targetSdk` is 35, new top-level screens need explicit system-bar inset handling or the toolbar can overlap the Android 15 status bar
 - Deployment: GitHub Pages publishes from `main` at repo root to `https://unagi.ninja`
 - Site artifacts: keep `index.html`, `downloads/unagi-debug.apk`, and `CNAME` aligned when shipping landing-page changes
 - Reflection: before handoff, record any new command, pitfall, deploy detail, or collaborator preference discovered during the task

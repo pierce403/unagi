@@ -17,3 +17,4 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 - Bump the Android app to `0.1.1` / version code `2` and surface the installed version prominently in the main UI
 - Mirror WiGLE's scan-relevant permission set by requesting coarse/fine location alongside Bluetooth scan/connect
 - Make the installed build number much more prominent with a dedicated banner on the main screen
+- Fix SDK 35 edge-to-edge toolbar overlap with the status bar and keep version text visible in a dedicated banner

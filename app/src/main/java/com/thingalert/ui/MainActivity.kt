@@ -22,6 +22,7 @@ import com.thingalert.scan.ScanState
 import com.thingalert.util.AppVersion
 import com.thingalert.util.DebugLog
 import com.thingalert.util.PermissionsHelper
+import com.thingalert.util.WindowInsetsHelper
 import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
@@ -74,8 +75,10 @@ class MainActivity : AppCompatActivity() {
     setSupportActionBar(binding.toolbar)
     val appVersion = AppVersion.read(this)
     val versionLabel = appVersion.visibleLabel
-    supportActionBar?.subtitle = versionLabel
     binding.appVersionLabel.text = versionLabel
+    WindowInsetsHelper.applyToolbarInsets(binding.toolbar)
+    WindowInsetsHelper.applyBottomInsets(binding.deviceList)
+    WindowInsetsHelper.requestApplyInsets(binding.root)
 
     adapter = DeviceAdapter { item ->
       startActivity(DeviceDetailActivity.intent(this, item.deviceKey))

@@ -51,6 +51,7 @@ Foundation for later "alert me when X is nearby."
 - `adb devices` to confirm device connection
 - `scripts/stage-apk` to copy the built debug APK to `downloads/unagi-debug.apk` for the website
 - The main screen shows the installed app version prominently in the toolbar and a dedicated build banner so testers can confirm which APK is running
+- Because the app targets SDK 35, system-bar insets must be handled explicitly; the main, diagnostics, and detail toolbars now pad below the status bar on Android 15+
 
 ## Permissions notes (MVP)
 

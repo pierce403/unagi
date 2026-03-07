@@ -23,6 +23,7 @@
     android:background="@color/thingalert_stroke_soft" />
 
   <ScrollView
+    android:id="@+id/detailScroll"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/thingalert_background"

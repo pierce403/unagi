@@ -20,6 +20,7 @@ import com.thingalert.scan.ScanModePreset
 import com.thingalert.util.AppVersion
 import com.thingalert.util.DebugLog
 import com.thingalert.util.PermissionsHelper
+import com.thingalert.util.WindowInsetsHelper
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
@@ -36,6 +37,9 @@ class DiagnosticsActivity : AppCompatActivity() {
     setSupportActionBar(binding.toolbar)
     supportActionBar?.setDisplayHomeAsUpEnabled(true)
     supportActionBar?.subtitle = AppVersion.read(this).visibleLabel
+    WindowInsetsHelper.applyToolbarInsets(binding.toolbar)
+    WindowInsetsHelper.applyBottomInsets(binding.diagnosticsScroll)
+    WindowInsetsHelper.requestApplyInsets(binding.root)
 
     binding.compatibilityModeSwitch.isChecked = ScanModePreferences.get(this) == ScanModePreset.COMPATIBILITY
     binding.compatibilityModeSwitch.setOnCheckedChangeListener { _, isChecked ->
