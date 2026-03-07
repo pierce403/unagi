@@ -33,6 +33,8 @@ Build the MVP: scan -> list -> tap -> history.
 - Small PRs, each linked to TODO item
 - Add or update docs with every new requirement
 - Commit and push after every task; if a push is blocked, surface the blocker immediately
+- Track active multi-step work in `TODO.md` and update the checklist before or during implementation as scope changes
+- For long-running work, commit and push each completed sub-task even when the larger feature is still in progress
 
 ## Recursive learning
 

@@ -45,6 +45,18 @@
 - [x] Device detail screen (summary + history timeline)
 - [x] Diagnostics screen (permissions state, scan state, SDK/API level notes)
 
+## Scan robustness
+
+- [ ] Fix false `Scanning` state and only enter active scan after a path starts successfully
+- [ ] Return structured startup results for BLE and classic scan paths
+- [ ] Treat `BluetoothLeScanner == null` as a surfaced startup failure
+- [ ] Honor `BluetoothAdapter.startDiscovery()` boolean result
+- [ ] Track scan session outcome: startup failure vs zero results vs results
+- [ ] Add per-path callback counters and startup diagnostics
+- [ ] Add compatibility scan mode and expose it in diagnostics
+- [ ] Add focused unit tests for scan state transitions and timeout outcomes
+- [ ] Add troubleshooting docs for scan startup failures and zero-result sessions
+
 ## Testing
 
 - [x] Unit tests for deviceKey generation and deduping logic
