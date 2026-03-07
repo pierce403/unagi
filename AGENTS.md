@@ -32,4 +32,18 @@ Build the MVP: scan -> list -> tap -> history.
 
 - Small PRs, each linked to TODO item
 - Add or update docs with every new requirement
-- Commit and push after each completed task by default; if a push is blocked, surface the blocker immediately
+- Commit and push after every task; if a push is blocked, surface the blocker immediately
+
+## Recursive learning
+
+- Update `AGENTS.md` whenever you learn anything important about the project, workflow, or collaborator preferences
+- Capture both wins and misses: what to repeat, what to avoid, and any blocker that slowed delivery
+- Keep notes concrete and reusable: build/test commands, deployment steps, project structure, coding conventions, pitfalls, and formatting preferences
+- Prefer small, timely updates in the same task that revealed the learning, and replace stale guidance when it is superseded
+
+## Agent memory checklist
+
+- Build/test: `./gradlew assembleDebug`, `./gradlew installDebug`, and `scripts/stage-apk`
+- Deployment: GitHub Pages publishes from `main` at repo root to `https://unagi.ninja`
+- Site artifacts: keep `index.html`, `downloads/unagi-debug.apk`, and `CNAME` aligned when shipping landing-page changes
+- Reflection: before handoff, record any new command, pitfall, deploy detail, or collaborator preference discovered during the task
