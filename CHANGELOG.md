@@ -16,3 +16,4 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 - Improve scan preflight checks and recovery messaging for denied permissions, Bluetooth off, and location-services-off devices
 - Bump the Android app to `0.1.1` / version code `2` and surface the installed version prominently in the main UI
 - Mirror WiGLE's scan-relevant permission set by requesting coarse/fine location alongside Bluetooth scan/connect
+- Make the installed build number much more prominent with a dedicated banner on the main screen

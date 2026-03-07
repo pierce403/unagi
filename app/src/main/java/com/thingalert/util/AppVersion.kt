@@ -9,7 +9,7 @@ data class AppVersionInfo(
   val versionCode: Long
 ) {
   val visibleLabel: String
-    get() = "v$versionName ($versionCode)"
+    get() = "v$versionName • build $versionCode"
 }
 
 object AppVersion {

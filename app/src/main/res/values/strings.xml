@@ -4,6 +4,7 @@
   <string name="scan_stop">Stop scan</string>
   <string name="scan_active">Scanning is active</string>
   <string name="scan_inactive">Scanning is stopped</string>
+  <string name="installed_build">Installed build</string>
   <string name="version_label">Version</string>
   <string name="scan_complete">Scan complete</string>
   <string name="scan_complete_no_devices">Scan ran but found no devices.</string>

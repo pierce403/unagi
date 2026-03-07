@@ -37,33 +37,38 @@
       android:orientation="vertical"
       android:padding="16dp">
 
-      <LinearLayout
+      <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/installed_build"
+        android:textAllCaps="true"
+        android:textColor="@color/thingalert_secondary"
+        android:textSize="12sp"
+        android:textStyle="bold" />
+
+      <TextView
+        android:id="@+id/appVersionLabel"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:gravity="center_vertical"
-        android:orientation="horizontal">
+        android:layout_marginTop="8dp"
+        android:background="@drawable/version_banner"
+        android:fontFamily="monospace"
+        android:gravity="center"
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="16dp"
+        android:text="@string/version_label"
+        android:textColor="@color/thingalert_on_primary"
+        android:textSize="24sp"
+        android:textStyle="bold" />
 
-        <TextView
-          android:id="@+id/scanStatus"
-          android:layout_width="0dp"
-          android:layout_height="wrap_content"
-          android:layout_weight="1"
-          android:text="@string/scan_inactive"
-          android:textColor="@color/thingalert_secondary"
-          android:textStyle="bold" />
-
-        <TextView
-          android:id="@+id/appVersionLabel"
-          android:layout_width="wrap_content"
-          android:layout_height="wrap_content"
-          android:background="@drawable/panel_surface_subtle"
-          android:fontFamily="monospace"
-          android:paddingHorizontal="12dp"
-          android:paddingVertical="8dp"
-          android:text="@string/version_label"
-          android:textColor="@color/thingalert_on_surface"
-          android:textStyle="bold" />
-      </LinearLayout>
+      <TextView
+        android:id="@+id/scanStatus"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="@string/scan_inactive"
+        android:textColor="@color/thingalert_secondary"
+        android:textStyle="bold" />
 
       <TextView
         android:id="@+id/permissionHint"
