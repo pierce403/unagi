@@ -1,13 +1,15 @@
 <resources>
-  <color name="thingalert_primary">#4CAF50</color>
-  <color name="thingalert_primary_variant">#2E7D32</color>
-  <color name="thingalert_secondary">#26A69A</color>
-  <color name="thingalert_secondary_variant">#00796B</color>
-  <color name="thingalert_background">#121212</color>
-  <color name="thingalert_surface">#1E1E1E</color>
-  <color name="thingalert_surface_variant">#2A2A2A</color>
-  <color name="thingalert_on_primary">#FFFFFF</color>
-  <color name="thingalert_on_secondary">#FFFFFF</color>
-  <color name="thingalert_on_background">#EDEDED</color>
-  <color name="thingalert_on_surface">#EDEDED</color>
+  <color name="thingalert_primary">#1594FF</color>
+  <color name="thingalert_primary_variant">#0A4FDE</color>
+  <color name="thingalert_secondary">#53E1FF</color>
+  <color name="thingalert_secondary_variant">#1489FF</color>
+  <color name="thingalert_background">#05070D</color>
+  <color name="thingalert_surface">#0C1220</color>
+  <color name="thingalert_surface_variant">#141C2C</color>
+  <color name="thingalert_on_primary">#F7FBFF</color>
+  <color name="thingalert_on_secondary">#031019</color>
+  <color name="thingalert_on_background">#EAF2FF</color>
+  <color name="thingalert_on_surface">#F4F8FF</color>
+  <color name="thingalert_stroke">#3353E1FF</color>
+  <color name="thingalert_stroke_soft">#1F53E1FF</color>
 </resources>

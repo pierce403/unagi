@@ -1,14 +1,32 @@
 <resources>
   <style name="ThingAlertTextInputStyle" parent="Widget.MaterialComponents.TextInputLayout.OutlinedBox">
-    <item name="boxBackgroundColor">@color/thingalert_surface</item>
+    <item name="boxBackgroundColor">@color/thingalert_surface_variant</item>
     <item name="boxStrokeColor">@color/thingalert_secondary</item>
     <item name="boxStrokeWidth">1dp</item>
     <item name="boxStrokeWidthFocused">2dp</item>
-    <item name="hintTextColor">@color/thingalert_on_surface</item>
+    <item name="hintTextColor">@color/thingalert_secondary</item>
   </style>
 
   <style name="ThingAlertSpinnerStyle" parent="Widget.AppCompat.Spinner.Underlined">
     <item name="android:backgroundTint">@color/thingalert_secondary</item>
-    <item name="android:popupBackground">@color/thingalert_surface</item>
+    <item name="android:popupBackground">@color/thingalert_surface_variant</item>
+  </style>
+
+  <style name="ThingAlertPrimaryButton" parent="Widget.MaterialComponents.Button">
+    <item name="android:textColor">@color/thingalert_on_primary</item>
+    <item name="backgroundTint">@color/thingalert_primary</item>
+    <item name="cornerRadius">18dp</item>
+    <item name="elevation">0dp</item>
+    <item name="rippleColor">@color/thingalert_secondary</item>
+  </style>
+
+  <style name="ThingAlertSecondaryButton" parent="Widget.MaterialComponents.Button.OutlinedButton">
+    <item name="android:textColor">@color/thingalert_on_surface</item>
+    <item name="backgroundTint">@color/thingalert_surface_variant</item>
+    <item name="strokeColor">@color/thingalert_secondary</item>
+    <item name="strokeWidth">1dp</item>
+    <item name="cornerRadius">18dp</item>
+    <item name="elevation">0dp</item>
+    <item name="rippleColor">@color/thingalert_secondary</item>
   </style>
 </resources>

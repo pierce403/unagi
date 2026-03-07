@@ -3,108 +3,135 @@
   xmlns:app="http://schemas.android.com/apk/res-auto"
   android:layout_width="match_parent"
   android:layout_height="match_parent"
+  android:background="@color/thingalert_background"
   android:orientation="vertical">
 
   <com.google.android.material.appbar.MaterialToolbar
     android:id="@+id/toolbar"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:background="?attr/colorPrimary"
-    android:elevation="2dp"
+    android:background="@color/thingalert_surface"
+    android:elevation="0dp"
     android:theme="@style/ThemeOverlay.MaterialComponents.Dark.ActionBar"
+    app:titleTextColor="@color/thingalert_on_surface"
     android:title="@string/app_name" />
 
-  <LinearLayout
+  <View
+    android:layout_width="match_parent"
+    android:layout_height="1dp"
+    android:background="@color/thingalert_stroke_soft" />
+
+  <com.google.android.material.card.MaterialCardView
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:padding="16dp">
-
-    <TextView
-      android:id="@+id/scanStatus"
-      android:layout_width="wrap_content"
-      android:layout_height="wrap_content"
-      android:text="@string/scan_inactive"
-      android:textStyle="bold" />
-
-    <TextView
-      android:id="@+id/permissionHint"
-      android:layout_width="wrap_content"
-      android:layout_height="wrap_content"
-      android:layout_marginTop="8dp"
-      android:text="@string/permissions_required"
-      android:visibility="gone" />
+    android:layout_margin="16dp"
+    app:cardBackgroundColor="@color/thingalert_surface"
+    app:cardCornerRadius="24dp"
+    app:cardElevation="0dp"
+    app:strokeColor="@color/thingalert_stroke"
+    app:strokeWidth="1dp">
 
     <LinearLayout
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
-      android:layout_marginTop="12dp"
-      android:orientation="horizontal">
-
-      <Button
-        android:id="@+id/startScanButton"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:text="@string/scan_start" />
-
-      <Button
-        android:id="@+id/stopScanButton"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="12dp"
-        android:layout_weight="1"
-        android:text="@string/scan_stop" />
-    </LinearLayout>
-
-    <com.google.android.material.textfield.TextInputLayout
-      android:layout_width="match_parent"
-      android:layout_height="wrap_content"
-      android:layout_marginTop="12dp">
-
-      <com.google.android.material.textfield.TextInputEditText
-        android:id="@+id/filterInput"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:textColor="@color/thingalert_on_surface"
-        android:textColorHint="@color/thingalert_on_surface"
-        android:hint="@string/filter_hint" />
-    </com.google.android.material.textfield.TextInputLayout>
-
-    <LinearLayout
-      android:layout_width="match_parent"
-      android:layout_height="wrap_content"
-      android:layout_marginTop="12dp"
-      android:orientation="horizontal"
-      android:gravity="center_vertical">
+      android:orientation="vertical"
+      android:padding="16dp">
 
       <TextView
+        android:id="@+id/scanStatus"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="@string/sort_label" />
+        android:text="@string/scan_inactive"
+        android:textColor="@color/thingalert_secondary"
+        android:textStyle="bold" />
 
-      <Spinner
-        android:id="@+id/sortSpinner"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="8dp"
-        android:layout_weight="1" />
-
-      <CheckBox
-        android:id="@+id/unknownOnly"
+      <TextView
+        android:id="@+id/permissionHint"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="8dp"
-        android:text="@string/unknown_only" />
+        android:layout_marginTop="8dp"
+        android:text="@string/permissions_required"
+        android:textColor="@color/thingalert_on_background"
+        android:visibility="gone" />
+
+      <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:orientation="horizontal">
+
+        <com.google.android.material.button.MaterialButton
+          android:id="@+id/startScanButton"
+          style="@style/ThingAlertPrimaryButton"
+          android:layout_width="0dp"
+          android:layout_height="wrap_content"
+          android:layout_weight="1"
+          android:text="@string/scan_start" />
+
+        <com.google.android.material.button.MaterialButton
+          android:id="@+id/stopScanButton"
+          style="@style/ThingAlertSecondaryButton"
+          android:layout_width="0dp"
+          android:layout_height="wrap_content"
+          android:layout_marginStart="12dp"
+          android:layout_weight="1"
+          android:text="@string/scan_stop" />
+      </LinearLayout>
+
+      <com.google.android.material.textfield.TextInputLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp">
+
+        <com.google.android.material.textfield.TextInputEditText
+          android:id="@+id/filterInput"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:textColor="@color/thingalert_on_surface"
+          android:textColorHint="@color/thingalert_secondary"
+          android:hint="@string/filter_hint" />
+      </com.google.android.material.textfield.TextInputLayout>
+
+      <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:text="@string/sort_label"
+          android:textColor="@color/thingalert_on_background" />
+
+        <Spinner
+          android:id="@+id/sortSpinner"
+          android:layout_width="0dp"
+          android:layout_height="wrap_content"
+          android:layout_marginStart="8dp"
+          android:layout_weight="1" />
+
+        <CheckBox
+          android:id="@+id/unknownOnly"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:layout_marginStart="8dp"
+          android:text="@string/unknown_only"
+          android:textColor="@color/thingalert_on_background" />
+      </LinearLayout>
     </LinearLayout>
-  </LinearLayout>
+  </com.google.android.material.card.MaterialCardView>
 
   <TextView
     android:id="@+id/emptyState"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:padding="16dp"
+    android:layout_marginHorizontal="16dp"
+    android:background="@drawable/panel_surface_subtle"
+    android:padding="20dp"
     android:text="@string/no_devices"
+    android:textColor="@color/thingalert_on_background"
     android:gravity="center"
     android:visibility="gone" />
 
@@ -114,6 +141,7 @@
     android:layout_height="0dp"
     android:layout_weight="1"
     android:clipToPadding="false"
-    android:paddingBottom="16dp" />
+    android:paddingTop="4dp"
+    android:paddingBottom="24dp" />
 
 </LinearLayout>

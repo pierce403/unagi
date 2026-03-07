@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Ninja icon">
+  <defs>
+    <linearGradient id="edge" x1="0%" x2="100%" y1="0%" y2="100%">
+      <stop offset="0%" stop-color="#53E1FF"/>
+      <stop offset="100%" stop-color="#1489FF"/>
+    </linearGradient>
+  </defs>
+  <rect x="8" y="8" width="112" height="112" rx="28" fill="#05070D" stroke="url(#edge)" stroke-width="6"/>
+  <path d="M64 24c-22.1 0-40 17.9-40 40 0 23.5 17.9 40 40 40s40-16.5 40-40c0-22.1-17.9-40-40-40z" fill="#0C1220"/>
+  <path d="M26 60c10-18.7 23.9-28 38-28s28 9.3 38 28l-11 10H37z" fill="#1594FF"/>
+  <rect x="33" y="58" width="62" height="22" rx="11" fill="#05070D" stroke="#53E1FF" stroke-opacity=".55"/>
+  <path d="M44 72c6-5 13-8 20-8-3.7 5.3-10 8-20 8z" fill="#F4F8FF"/>
+  <path d="M84 72c-6-5-13-8-20-8 3.7 5.3 10 8 20 8z" fill="#F4F8FF"/>
+</svg>

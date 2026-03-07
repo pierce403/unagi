@@ -8,19 +8,25 @@
   android:layout_marginBottom="8dp"
   android:clickable="true"
   android:foreground="?attr/selectableItemBackground"
-  app:cardElevation="1dp"
-  app:cardUseCompatPadding="true">
+  app:cardBackgroundColor="@color/thingalert_surface_variant"
+  app:cardCornerRadius="20dp"
+  app:cardElevation="0dp"
+  app:cardUseCompatPadding="false"
+  app:rippleColor="@color/thingalert_secondary"
+  app:strokeColor="@color/thingalert_stroke_soft"
+  app:strokeWidth="1dp">
 
   <LinearLayout
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:padding="16dp">
+    android:padding="18dp">
 
     <TextView
       android:id="@+id/deviceName"
       android:layout_width="wrap_content"
       android:layout_height="wrap_content"
+      android:textColor="@color/thingalert_secondary"
       android:textStyle="bold"
       android:textSize="16sp" />
 
@@ -28,12 +34,14 @@
       android:id="@+id/deviceMeta"
       android:layout_width="wrap_content"
       android:layout_height="wrap_content"
-      android:layout_marginTop="4dp" />
+      android:layout_marginTop="6dp"
+      android:textColor="@color/thingalert_on_background" />
 
     <TextView
       android:id="@+id/deviceRssi"
       android:layout_width="wrap_content"
       android:layout_height="wrap_content"
-      android:layout_marginTop="4dp" />
+      android:layout_marginTop="4dp"
+      android:textColor="@color/thingalert_primary" />
   </LinearLayout>
 </com.google.android.material.card.MaterialCardView>
