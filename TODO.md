@@ -56,6 +56,7 @@
 - [x] Add compatibility scan mode and expose it in diagnostics
 - [x] Add focused unit tests for scan state transitions and timeout outcomes
 - [x] Add troubleshooting docs for scan startup failures and zero-result sessions
+- [x] Add copyable debug report with device inventory and platform snapshot
 
 ## Testing
 

@@ -52,6 +52,14 @@
         android:text="@string/compatibility_mode_detail"
         android:textColor="@color/thingalert_on_background" />
 
+      <com.google.android.material.button.MaterialButton
+        android:id="@+id/copyDebugReportButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="12dp"
+        android:text="@string/copy_scan_debug_report" />
+
       <TextView
         android:id="@+id/diagnosticsText"
         android:layout_width="match_parent"

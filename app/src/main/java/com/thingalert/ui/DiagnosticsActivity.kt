@@ -1,26 +1,32 @@
 package com.thingalert.ui
 
 import android.bluetooth.BluetoothManager
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import com.thingalert.ThingAlertApp
+import com.thingalert.data.DeviceEntity
 import com.thingalert.databinding.ActivityDiagnosticsBinding
 import com.thingalert.scan.ScanDiagnosticsSnapshot
 import com.thingalert.scan.ScanDiagnosticsStore
 import com.thingalert.scan.ScanModePreferences
 import com.thingalert.scan.ScanModePreset
-import com.thingalert.scan.ScanStateDecider
 import com.thingalert.util.DebugLog
-import com.thingalert.util.Formatters
 import com.thingalert.util.PermissionsHelper
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
 class DiagnosticsActivity : AppCompatActivity() {
   private lateinit var binding: ActivityDiagnosticsBinding
+  private val repository by lazy { (application as ThingAlertApp).repository }
+  private var latestDiagnosticsReport: String = ""
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
@@ -37,13 +43,17 @@ class DiagnosticsActivity : AppCompatActivity() {
       ScanDiagnosticsStore.update { it.copy(scanMode = mode) }
       DebugLog.log("Scan mode set to ${mode.label}")
     }
+    binding.copyDebugReportButton.isEnabled = false
+    binding.copyDebugReportButton.setOnClickListener { copyDebugReport() }
 
     lifecycleScope.launch {
       repeatOnLifecycle(Lifecycle.State.STARTED) {
-        combine(DebugLog.entries, ScanDiagnosticsStore.snapshot) { entries, snapshot ->
-          buildDiagnostics(entries, snapshot)
+        combine(DebugLog.entries, ScanDiagnosticsStore.snapshot, repository.observeDevices()) { entries, snapshot, devices ->
+          buildDiagnostics(entries, snapshot, devices)
         }.collect { text ->
+          latestDiagnosticsReport = text
           binding.diagnosticsText.text = text
+          binding.copyDebugReportButton.isEnabled = text.isNotBlank()
         }
       }
     }
@@ -51,7 +61,6 @@ class DiagnosticsActivity : AppCompatActivity() {
 
   override fun onResume() {
     super.onResume()
-    binding.diagnosticsText.text = buildDiagnostics(DebugLog.entries.value, ScanDiagnosticsStore.snapshot.value)
     DebugLog.log("Diagnostics opened")
   }
 
@@ -60,96 +69,88 @@ class DiagnosticsActivity : AppCompatActivity() {
     return true
   }
 
-  private fun buildDiagnostics(entries: List<String>, scanDiagnostics: ScanDiagnosticsSnapshot): String {
-    val builder = StringBuilder()
-    builder.appendLine("unagi diagnostics")
-    builder.appendLine()
-    builder.appendLine("SDK: ${Build.VERSION.SDK_INT}")
-    builder.appendLine("Release: ${Build.VERSION.RELEASE}")
-
+  private fun buildDiagnostics(
+    entries: List<String>,
+    scanDiagnostics: ScanDiagnosticsSnapshot,
+    devices: List<DeviceEntity>
+  ): String {
     val manager = getSystemService(BluetoothManager::class.java)
     val adapter = manager?.adapter
-    builder.appendLine("Bluetooth supported: ${adapter != null}")
-
     val enabled = try {
       adapter?.isEnabled == true
     } catch (_: SecurityException) {
       false
     }
-    builder.appendLine("Bluetooth enabled: $enabled")
 
-    val missing = PermissionsHelper.missingPermissions(this)
-    builder.appendLine("Missing permissions: ${if (missing.isEmpty()) "none" else missing.joinToString()}")
-    builder.appendLine("Permission labels: ${PermissionsHelper.missingPermissionLabels(this).ifEmpty { listOf("none") }.joinToString()}")
-    builder.appendLine("Permissions blocked by 'don't ask again' or policy: ${PermissionsHelper.shouldOpenAppSettings(this)}")
-    if (PermissionsHelper.isLocationServicesRequired()) {
-      builder.appendLine("Location services enabled: ${PermissionsHelper.isLocationServicesEnabled(this)}")
-    }
-
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
-      builder.appendLine("Note: Location permission and location services may be required for BLE scans on Android 11 and below.")
-    }
-
-    builder.appendLine("GrapheneOS note: unagi does not request sensor-class permissions in its APK manifest.")
-    builder.appendLine()
-    builder.appendLine("Latest scan session:")
-    builder.appendLine("Scan mode: ${scanDiagnostics.scanMode.label}")
-    builder.appendLine("BLE scan mode: ${bleModeLabel(scanDiagnostics.scanMode)}")
-    builder.appendLine("Classic discovery enabled: ${scanDiagnostics.scanMode.startsClassicDiscovery}")
-    builder.appendLine("Timeout ms: ${scanDiagnostics.scanMode.timeoutMs}")
-    builder.appendLine(
-      "Start time: ${scanDiagnostics.startTimeMs?.let(Formatters::formatTimestamp) ?: "none"}"
+    return DiagnosticsReportBuilder.build(
+      entries = entries,
+      scanDiagnostics = scanDiagnostics,
+      persistedDevices = devices,
+      platformInfo = DiagnosticsPlatformInfo(
+        appVersionName = appVersionName(),
+        appVersionCode = appVersionCode(),
+        packageName = packageName,
+        manufacturer = Build.MANUFACTURER,
+        model = Build.MODEL,
+        device = Build.DEVICE,
+        product = Build.PRODUCT,
+        buildType = Build.TYPE,
+        buildDisplay = Build.DISPLAY,
+        fingerprint = Build.FINGERPRINT,
+        sdkInt = Build.VERSION.SDK_INT,
+        release = Build.VERSION.RELEASE,
+        grapheneOsLikely = isGrapheneOsLikely()
+      ),
+      permissionInfo = DiagnosticsPermissionInfo(
+        missingPermissions = PermissionsHelper.missingPermissions(this),
+        permissionLabels = PermissionsHelper.missingPermissionLabels(this),
+        permissionsBlocked = PermissionsHelper.shouldOpenAppSettings(this),
+        locationServicesRequired = PermissionsHelper.isLocationServicesRequired(),
+        locationServicesEnabled = PermissionsHelper.isLocationServicesEnabled(this)
+      ),
+      bluetoothSupported = adapter != null,
+      bluetoothEnabled = enabled
     )
-    builder.appendLine(
-      "Elapsed ms: ${scanDiagnostics.startTimeMs?.let { System.currentTimeMillis() - it } ?: 0L}"
-    )
-    builder.appendLine("Outcome: ${scanDiagnostics.outcome?.label ?: "none"}")
-    builder.appendLine("Timeout reached: ${scanDiagnostics.timeoutReached}")
-    builder.appendLine("BLE startup attempted: ${scanDiagnostics.bleStartup != null}")
-    builder.appendLine("BLE startup succeeded: ${scanDiagnostics.bleStartup?.started == true}")
-    builder.appendLine("BLE startup detail: ${scanDiagnostics.bleStartup?.reason ?: "none"}")
-    builder.appendLine("Classic startup attempted: ${scanDiagnostics.classicStartup != null}")
-    builder.appendLine("Classic startup succeeded: ${scanDiagnostics.classicStartup?.started == true}")
-    builder.appendLine("Classic startup detail: ${scanDiagnostics.classicStartup?.reason ?: "none"}")
-    builder.appendLine("BLE scanner unavailable: ${scanDiagnostics.bleScannerUnavailable}")
-    builder.appendLine(
-      "Last BLE error: ${
-        scanDiagnostics.lastBleErrorCode?.let {
-          "$it (${ScanStateDecider.describeBleFailureCode(it)})"
-        } ?: "none"
-      }"
-    )
-    builder.appendLine("BLE callbacks: ${scanDiagnostics.bleCallbackCount}")
-    builder.appendLine("Classic callbacks: ${scanDiagnostics.classicCallbackCount}")
-    builder.appendLine("Raw callbacks: ${scanDiagnostics.rawCallbackCount}")
-    builder.appendLine("Unique devices: ${scanDiagnostics.uniqueDeviceCount}")
-    builder.appendLine(
-      "Permission snapshot: ${
-        if (scanDiagnostics.missingPermissions.isEmpty()) "none" else scanDiagnostics.missingPermissions.joinToString()
-      }"
-    )
-    builder.appendLine("Bluetooth enabled snapshot: ${scanDiagnostics.bluetoothEnabled ?: "unknown"}")
-    builder.appendLine("Location services snapshot: ${scanDiagnostics.locationServicesEnabled ?: "unknown"}")
-
-    builder.appendLine()
-    builder.appendLine("Recent events:")
-    if (entries.isEmpty()) {
-      builder.appendLine("  (none yet)")
-    } else {
-      entries.takeLast(200).forEach { line ->
-        builder.appendLine(line)
-      }
-    }
-
-    return builder.toString()
   }
 
-  private fun bleModeLabel(scanMode: ScanModePreset): String {
-    return when (scanMode.bleScanMode) {
-      android.bluetooth.le.ScanSettings.SCAN_MODE_LOW_LATENCY -> "LOW_LATENCY"
-      android.bluetooth.le.ScanSettings.SCAN_MODE_BALANCED -> "BALANCED"
-      android.bluetooth.le.ScanSettings.SCAN_MODE_LOW_POWER -> "LOW_POWER"
-      else -> scanMode.bleScanMode.toString()
+  private fun copyDebugReport() {
+    if (latestDiagnosticsReport.isBlank()) {
+      return
+    }
+
+    getSystemService(ClipboardManager::class.java)?.setPrimaryClip(
+      ClipData.newPlainText(getString(com.thingalert.R.string.diagnostics), latestDiagnosticsReport)
+    )
+    DebugLog.log("Copied scan debug report")
+    Toast.makeText(this, com.thingalert.R.string.scan_debug_report_copied, Toast.LENGTH_SHORT).show()
+  }
+
+  private fun isGrapheneOsLikely(): Boolean {
+    val fields = listOf(Build.FINGERPRINT, Build.DISPLAY, Build.VERSION.INCREMENTAL, Build.ID)
+    return fields.any { value -> value.contains("graphene", ignoreCase = true) }
+  }
+
+  @Suppress("DEPRECATION")
+  private fun appVersionName(): String {
+    val info = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+      packageManager.getPackageInfo(packageName, PackageManager.PackageInfoFlags.of(0))
+    } else {
+      packageManager.getPackageInfo(packageName, 0)
+    }
+    return info.versionName ?: "unknown"
+  }
+
+  @Suppress("DEPRECATION")
+  private fun appVersionCode(): Long {
+    val info = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+      packageManager.getPackageInfo(packageName, PackageManager.PackageInfoFlags.of(0))
+    } else {
+      packageManager.getPackageInfo(packageName, 0)
+    }
+    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+      info.longVersionCode
+    } else {
+      info.versionCode.toLong()
     }
   }
 }

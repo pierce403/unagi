@@ -61,6 +61,7 @@ Foundation for later "alert me when X is nearby."
 ## Troubleshooting scans
 
 - If a scan fails to start, open Diagnostics to inspect BLE/classic startup results, the last BLE error code, and permission/Bluetooth snapshots
+- Use `Copy scan debug report` in Diagnostics to capture app version, device/build info, persisted device inventory, and recent scan events for bug reports
 - If a scan runs but returns zero devices, try Compatibility mode from Diagnostics and compare the callback counters before retrying
 - Compatibility mode uses balanced BLE scanning, skips classic discovery, and keeps the session alive longer for conservative testing
 - “Bluetooth LE scanner unavailable” usually means Bluetooth is off, restricted, or unavailable in the current profile
