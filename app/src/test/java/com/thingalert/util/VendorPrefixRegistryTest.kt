@@ -1,5 +1,8 @@
 package com.thingalert.util
 
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
+import java.util.zip.GZIPOutputStream
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -41,5 +44,24 @@ class VendorPrefixRegistryTest {
   fun `isLocallyAdministered checks first-octet local bit`() {
     assertTrue(VendorPrefixRegistry.isLocallyAdministered("A2B2C3D4E5F6"))
     assertFalse(VendorPrefixRegistry.isLocallyAdministered("A0B2C3D4E5F6"))
+  }
+
+  @Test
+  fun `fromInputStream supports plain text and gzip`() {
+    val plainRegistry = VendorPrefixRegistry.fromInputStream(
+      ByteArrayInputStream("001122|Acme\n".toByteArray())
+    )
+    val gzipBytes = ByteArrayOutputStream().use { output ->
+      GZIPOutputStream(output).bufferedWriter().use { writer ->
+        writer.write("001122|Acme\n")
+      }
+      output.toByteArray()
+    }
+    val gzipRegistry = VendorPrefixRegistry.fromInputStream(
+      ByteArrayInputStream(gzipBytes)
+    )
+
+    assertEquals("Acme", plainRegistry.resolve("00:11:22:33:44:55")?.vendorName)
+    assertEquals("Acme", gzipRegistry.resolve("00:11:22:33:44:55")?.vendorName)
   }
 }

@@ -21,3 +21,4 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 - Resolve vendor names locally from bundled IEEE OUI registries and prefer BLE advertised names over generic Bluetooth names when available
 - Let the live device filter match normalized MAC and OUI fragments, not just displayed text
 - Add configurable device alerts with emoji, sound presets, and detail notifications for OUI, MAC, and Bluetooth-name matches
+- Fix startup crash by making vendor-prefix asset loading resilient to APK asset renaming and plain-text packaging

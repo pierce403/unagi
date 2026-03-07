@@ -57,6 +57,7 @@ Build the MVP: scan -> list -> tap -> history.
 - Device identity is now richer: prefer BLE advertised local names over generic Bluetooth names, and resolve vendor prefixes locally from the bundled IEEE MA-L / MA-M / MA-S registries
 - Alert rules now live in the dedicated Alerts screen and can match OUI, full MAC, or Bluetooth name with a chosen emoji and sound preset
 - Alert notifications are posted on a silent channel and the audible alert is played manually, so different presets stay distinct without depending on per-channel OS sounds
+- The vendor-prefix asset may be packaged in the APK as `vendor_prefixes.txt` even when the source file is `vendor_prefixes.txt.gz`, so the loader must handle both names and both plain/gzip content
 - Deployment: GitHub Pages publishes from `main` at repo root to `https://unagi.ninja`
 - Site artifacts: keep `index.html`, `downloads/unagi-debug.apk`, and `CNAME` aligned when shipping landing-page changes
 - Vendor-prefix data is refreshed with `scripts/update-vendor-prefixes`, which writes `app/src/main/assets/vendor_prefixes.txt.gz`
