@@ -33,9 +33,14 @@
   <string name="alert_emoji_label">Emoji</string>
   <string name="alert_sound_label">Sound</string>
   <string name="add_alert">Add alert</string>
+  <string name="add_alert_rule_title">Add alert rule</string>
+  <string name="edit_alert_rule_title">Edit alert rule</string>
+  <string name="save_alert">Save alert</string>
+  <string name="edit_alert">Edit</string>
   <string name="delete_alert">Delete</string>
-  <string name="no_alert_rules">No alerts yet. Add one above.</string>
+  <string name="no_alert_rules">No alerts yet. Use + to add one.</string>
   <string name="alert_rule_added">Alert rule added.</string>
+  <string name="alert_rule_updated">Alert rule updated.</string>
   <string name="alert_rule_deleted">Alert rule deleted.</string>
   <string name="alert_invalid_oui">Enter an OUI like 00:11:22.</string>
   <string name="alert_invalid_mac">Enter a full MAC like 00:11:22:33:44:55.</string>

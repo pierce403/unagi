@@ -12,9 +12,6 @@
 
 ### Alerts
 
-- [ ] Move alert creation to a modal flow with a plus action
-- [ ] Add alert editing from the alerts list
-
 ### Scan robustness
 
 - [ ] Add raw BLE/classic callback samples to diagnostics, not just counters

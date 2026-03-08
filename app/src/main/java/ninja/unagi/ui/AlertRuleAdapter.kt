@@ -12,12 +12,13 @@ import ninja.unagi.databinding.ItemAlertRuleBinding
 
 class AlertRuleAdapter(
   private val onEnabledChanged: (AlertRuleEntity, Boolean) -> Unit,
+  private val onEdit: (AlertRuleEntity) -> Unit,
   private val onDelete: (AlertRuleEntity) -> Unit
 ) : ListAdapter<AlertRuleEntity, AlertRuleAdapter.AlertRuleViewHolder>(DiffCallback) {
 
   override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): AlertRuleViewHolder {
     val binding = ItemAlertRuleBinding.inflate(LayoutInflater.from(parent.context), parent, false)
-    return AlertRuleViewHolder(binding, onEnabledChanged, onDelete)
+    return AlertRuleViewHolder(binding, onEnabledChanged, onEdit, onDelete)
   }
 
   override fun onBindViewHolder(holder: AlertRuleViewHolder, position: Int) {
@@ -27,6 +28,7 @@ class AlertRuleAdapter(
   class AlertRuleViewHolder(
     private val binding: ItemAlertRuleBinding,
     private val onEnabledChanged: (AlertRuleEntity, Boolean) -> Unit,
+    private val onEdit: (AlertRuleEntity) -> Unit,
     private val onDelete: (AlertRuleEntity) -> Unit
   ) : RecyclerView.ViewHolder(binding.root) {
     fun bind(item: AlertRuleEntity) {
@@ -38,6 +40,8 @@ class AlertRuleAdapter(
       binding.ruleEnabled.setOnCheckedChangeListener { _, isChecked ->
         onEnabledChanged(item, isChecked)
       }
+      binding.root.setOnClickListener { onEdit(item) }
+      binding.editRuleButton.setOnClickListener { onEdit(item) }
       binding.deleteRuleButton.setOnClickListener { onDelete(item) }
     }
   }

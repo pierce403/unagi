@@ -86,6 +86,7 @@ Foreground alerts for "let me know when X is nearby."
 - The main search field now matches normalized MAC and OUI fragments, so `001122` and `00:11:22` both work as live filters
 - Sightings are now deduped across continuous presence, so a device that stays nearby updates `last seen` and signal stats without endlessly inflating the sightings counter or history timeline
 - The Alerts screen lets you match devices by OUI, full MAC, or Bluetooth name, choose an emoji and sound preset, and receive a detail notification when a rule fires
+- Alert creation/editing now lives behind a compact `+` modal editor instead of a permanently expanded form, so the alerts list stays focused on active rules
 - New installs now seed editable default alert rules for `Flipper`, `Axon Body`, `TASER`, and `Ray-Ban` name matches so common high-interest devices alert immediately without manual setup
 - On Android 13+, grant notification permission from the Alerts screen if you want system notifications in addition to the audible alert
 - If a scan runs but returns zero devices, try Compatibility mode from Diagnostics and compare the callback counters before retrying

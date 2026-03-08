@@ -36,3 +36,5 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 - Bump the Android app to `0.2.2` / version code `12` for the active-scanning release
 - Add direct starring from device cards, a starred-only filter, and continuous-sighting dedup so long-lived scans stop inflating the history count
 - Bump the Android app to `0.2.3` / version code `13` for the starring and dedup release
+- Replace the alerts screen’s large inline add form with a `+` modal editor and add in-place alert editing from the list
+- Bump the Android app to `0.2.4` / version code `14` for the alert-editor release

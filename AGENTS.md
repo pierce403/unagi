@@ -80,6 +80,7 @@ Build the MVP: scan -> list -> tap -> history.
 - Background-capable active scanning needs `ACCESS_BACKGROUND_LOCATION` on Android 10/11 plus a `connectedDevice` foreground service notification; keep the permission flow and manifest declarations aligned
 - Device history now treats `sightingsCount` as deduped presence sessions, not raw callback volume; use `observationCount` for signal-stat sampling math and diagnostics
 - Star state now lives on `DeviceEntity`; keep starred filters wired off persisted state instead of transient UI-only flags
+- The Alerts screen now uses a FAB + modal editor flow; keep add and edit behavior on the same validated dialog instead of growing a permanent inline form again
 - Passive vendor decoders now live in `PassiveVendorDecoderRegistry`; they should add soft hints (ecosystem, beacon/tracker/dev-board style) without claiming stable product identity
 - Default alert rules are seeded once from `DefaultAlertSeeder`; use versioned seed keys so new defaults can ship without duplicating or constantly re-adding deleted user rules
 - Reflection: before handoff, record any new command, pitfall, deploy detail, or collaborator preference discovered during the task

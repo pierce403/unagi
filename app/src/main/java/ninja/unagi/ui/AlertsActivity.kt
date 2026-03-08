@@ -5,12 +5,15 @@ import android.os.Bundle
 import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.isVisible
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import kotlinx.coroutines.launch
 import ninja.unagi.R
 import ninja.unagi.ThingAlertApp
 import ninja.unagi.alerts.AlertEmojiPreset
@@ -20,10 +23,9 @@ import ninja.unagi.alerts.AlertSoundPreset
 import ninja.unagi.data.AlertRuleEntity
 import ninja.unagi.data.AlertRuleRepository
 import ninja.unagi.databinding.ActivityAlertsBinding
+import ninja.unagi.databinding.DialogAlertRuleBinding
 import ninja.unagi.util.NotificationPermissionHelper
 import ninja.unagi.util.WindowInsetsHelper
-import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.launch
 
 class AlertsActivity : AppCompatActivity() {
   private lateinit var binding: ActivityAlertsBinding
@@ -55,6 +57,9 @@ class AlertsActivity : AppCompatActivity() {
           alertRuleRepository.setEnabled(rule.id, enabled)
         }
       },
+      onEdit = { rule ->
+        showRuleDialog(rule)
+      },
       onDelete = { rule ->
         lifecycleScope.launch {
           alertRuleRepository.deleteRule(rule.id)
@@ -65,8 +70,7 @@ class AlertsActivity : AppCompatActivity() {
     binding.alertRulesList.layoutManager = LinearLayoutManager(this)
     binding.alertRulesList.adapter = adapter
 
-    setupSpinners()
-    binding.addAlertButton.setOnClickListener { addRule() }
+    binding.addAlertFab.setOnClickListener { showRuleDialog() }
     binding.notificationPermissionButton.setOnClickListener { requestNotificationPermission() }
     updateNotificationPermissionUi()
 
@@ -91,16 +95,51 @@ class AlertsActivity : AppCompatActivity() {
     return true
   }
 
-  private fun setupSpinners() {
-    binding.alertTypeSpinner.adapter = ArrayAdapter(
+  private fun showRuleDialog(existingRule: AlertRuleEntity? = null) {
+    val dialogBinding = DialogAlertRuleBinding.inflate(layoutInflater)
+    setupSpinners(dialogBinding, existingRule)
+    dialogBinding.alertTargetInput.setText(existingRule?.displayValue.orEmpty())
+
+    val dialog = MaterialAlertDialogBuilder(this)
+      .setTitle(
+        if (existingRule == null) {
+          R.string.add_alert_rule_title
+        } else {
+          R.string.edit_alert_rule_title
+        }
+      )
+      .setView(dialogBinding.root)
+      .setNegativeButton(android.R.string.cancel, null)
+      .setPositiveButton(
+        if (existingRule == null) {
+          R.string.add_alert
+        } else {
+          R.string.save_alert
+        },
+        null
+      )
+      .create()
+
+    dialog.setOnShowListener {
+      dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+        saveRule(dialogBinding, existingRule, dialog)
+      }
+    }
+    dialog.show()
+  }
+
+  private fun setupSpinners(
+    dialogBinding: DialogAlertRuleBinding,
+    existingRule: AlertRuleEntity?
+  ) {
+    dialogBinding.alertTypeSpinner.adapter = ArrayAdapter(
       this,
       R.layout.spinner_item,
       AlertRuleType.entries.map { it.label }
     ).apply {
       setDropDownViewResource(R.layout.spinner_dropdown_item)
     }
-    binding.alertTypeSpinner.setSelection(AlertRuleType.NAME.ordinal)
-    binding.alertTypeSpinner.onItemSelectedListener =
+    dialogBinding.alertTypeSpinner.onItemSelectedListener =
       object : android.widget.AdapterView.OnItemSelectedListener {
         override fun onItemSelected(
           parent: android.widget.AdapterView<*>?,
@@ -108,40 +147,66 @@ class AlertsActivity : AppCompatActivity() {
           position: Int,
           id: Long
         ) {
-          updateTargetHint(AlertRuleType.entries[position])
+          updateTargetHint(dialogBinding, AlertRuleType.entries[position])
         }
 
         override fun onNothingSelected(parent: android.widget.AdapterView<*>?) = Unit
       }
+    dialogBinding.alertTypeSpinner.setSelection(
+      existingRule
+        ?.matchType
+        ?.let { storageValue -> AlertRuleType.entries.indexOfFirst { it.storageValue == storageValue } }
+        ?.takeIf { it >= 0 }
+        ?: AlertRuleType.NAME.ordinal
+    )
 
-    binding.alertEmojiSpinner.adapter = ArrayAdapter(
+    dialogBinding.alertEmojiSpinner.adapter = ArrayAdapter(
       this,
       R.layout.spinner_item,
       AlertEmojiPreset.entries.map { "${it.emoji} ${it.label}" }
     ).apply {
       setDropDownViewResource(R.layout.spinner_dropdown_item)
     }
+    dialogBinding.alertEmojiSpinner.setSelection(
+      existingRule
+        ?.emoji
+        ?.let { emoji -> AlertEmojiPreset.entries.indexOfFirst { it.emoji == emoji } }
+        ?.takeIf { it >= 0 }
+        ?: 0
+    )
 
-    binding.alertSoundSpinner.adapter = ArrayAdapter(
+    dialogBinding.alertSoundSpinner.adapter = ArrayAdapter(
       this,
       R.layout.spinner_item,
       AlertSoundPreset.entries.map { it.label }
     ).apply {
       setDropDownViewResource(R.layout.spinner_dropdown_item)
     }
+    dialogBinding.alertSoundSpinner.setSelection(
+      existingRule
+        ?.soundPreset
+        ?.let { storageValue -> AlertSoundPreset.entries.indexOfFirst { it.storageValue == storageValue } }
+        ?.takeIf { it >= 0 }
+        ?: 0
+    )
 
-    updateTargetHint(AlertRuleType.NAME)
+    val initialType = AlertRuleType.entries[dialogBinding.alertTypeSpinner.selectedItemPosition]
+    updateTargetHint(dialogBinding, initialType)
   }
 
-  private fun updateTargetHint(type: AlertRuleType) {
-    binding.alertTargetInputLayout.hint = type.inputHint
+  private fun updateTargetHint(dialogBinding: DialogAlertRuleBinding, type: AlertRuleType) {
+    dialogBinding.alertTargetInputLayout.hint = type.inputHint
   }
 
-  private fun addRule() {
-    val type = AlertRuleType.entries[binding.alertTypeSpinner.selectedItemPosition]
-    val emoji = AlertEmojiPreset.entries[binding.alertEmojiSpinner.selectedItemPosition]
-    val soundPreset = AlertSoundPreset.entries[binding.alertSoundSpinner.selectedItemPosition]
-    val rawInput = binding.alertTargetInput.text?.toString().orEmpty()
+  private fun saveRule(
+    dialogBinding: DialogAlertRuleBinding,
+    existingRule: AlertRuleEntity?,
+    dialog: AlertDialog
+  ) {
+    val type = AlertRuleType.entries[dialogBinding.alertTypeSpinner.selectedItemPosition]
+    val emoji = AlertEmojiPreset.entries[dialogBinding.alertEmojiSpinner.selectedItemPosition]
+    val soundPreset = AlertSoundPreset.entries[dialogBinding.alertSoundSpinner.selectedItemPosition]
+    val rawInput = dialogBinding.alertTargetInput.text?.toString().orEmpty()
     val normalized = AlertRuleInputNormalizer.normalize(type, rawInput)
     if (normalized == null) {
       val message = when (type) {
@@ -154,20 +219,30 @@ class AlertsActivity : AppCompatActivity() {
     }
 
     lifecycleScope.launch {
-      alertRuleRepository.addRule(
+      alertRuleRepository.upsertRule(
         AlertRuleEntity(
+          id = existingRule?.id ?: 0L,
           matchType = type.storageValue,
           matchPattern = normalized.pattern,
           displayValue = normalized.displayValue,
           emoji = emoji.emoji,
           soundPreset = soundPreset.storageValue,
-          enabled = true,
-          createdAt = System.currentTimeMillis()
+          enabled = existingRule?.enabled ?: true,
+          createdAt = existingRule?.createdAt ?: System.currentTimeMillis()
         )
       )
-      binding.alertTargetInput.setText("")
-      toast(getString(R.string.alert_rule_added))
-      if (NotificationPermissionHelper.requiresRuntimePermission() &&
+      dialog.dismiss()
+      toast(
+        getString(
+          if (existingRule == null) {
+            R.string.alert_rule_added
+          } else {
+            R.string.alert_rule_updated
+          }
+        )
+      )
+      if (
+        NotificationPermissionHelper.requiresRuntimePermission() &&
         !NotificationPermissionHelper.canPostNotifications(this@AlertsActivity)
       ) {
         requestNotificationPermission()

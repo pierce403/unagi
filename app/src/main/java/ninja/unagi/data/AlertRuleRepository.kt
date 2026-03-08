@@ -13,6 +13,8 @@ class AlertRuleRepository(
 
   suspend fun addRule(rule: AlertRuleEntity): Long = alertRuleDao.insert(rule)
 
+  suspend fun upsertRule(rule: AlertRuleEntity): Long = alertRuleDao.insert(rule)
+
   suspend fun setEnabled(id: Long, enabled: Boolean) {
     alertRuleDao.setEnabled(id, enabled)
   }
