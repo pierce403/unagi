@@ -7,10 +7,10 @@ import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import ninja.unagi.data.SightingEntity
 import ninja.unagi.databinding.ItemSightingBinding
-import ninja.unagi.util.BleMetadataInterpreter
 import ninja.unagi.util.BluetoothAssignedNumbersRegistry
 import ninja.unagi.util.Formatters
 import ninja.unagi.util.ObservationMetadataParser
+import ninja.unagi.util.PassiveMetadataInterpreter
 
 class SightingAdapter(
   private val assignedNumbers: BluetoothAssignedNumbersRegistry
@@ -32,7 +32,7 @@ class SightingAdapter(
     fun bind(item: SightingEntity) {
       binding.sightingTimestamp.text = Formatters.formatTimestamp(item.timestamp)
       binding.sightingRssi.text = Formatters.formatRssi(item.rssi)
-      val metadataSummary = BleMetadataInterpreter.summarize(
+      val metadataSummary = PassiveMetadataInterpreter.summarize(
         ObservationMetadataParser.parse(item.metadataJson),
         assignedNumbers
       )

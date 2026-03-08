@@ -18,22 +18,17 @@ class DeviceIdentityTest {
   fun `ble identity prefers advertised name`() {
     val identity = ObservedIdentityResolver.forBle(
       advertisedName = "Earbuds",
-      systemName = "Pierce's Earbuds",
-      address = "00:11:22:33:44:55",
-      vendorRegistry = registry
+      systemName = "Pierce's Earbuds"
     )
 
     assertEquals("Earbuds", identity.displayName)
     assertEquals(DeviceNameSource.BLE_ADVERTISED, identity.nameSource)
-    assertEquals("Acme Audio", identity.vendorName)
   }
 
   @Test
   fun `classic identity uses bluetooth device name`() {
     val identity = ObservedIdentityResolver.forClassic(
-      systemName = "Gamepad",
-      address = "00:11:22:33:44:55",
-      vendorRegistry = registry
+      systemName = "Gamepad"
     )
 
     assertEquals("Gamepad", identity.displayName)
@@ -45,7 +40,15 @@ class DeviceIdentityTest {
     val presentation = DeviceIdentityPresenter.present(
       displayName = null,
       address = "00:11:22:33:44:55",
-      metadataJson = null,
+      metadataJson = """
+        {
+          "transport": "classic",
+          "addressType": "public",
+          "vendorName": "Acme Audio",
+          "vendorSource": "IEEE MA-L",
+          "vendorConfidence": "high"
+        }
+      """.trimIndent(),
       vendorRegistry = registry,
       assignedNumbers = assignedNumbers
     )
@@ -64,7 +67,14 @@ class DeviceIdentityTest {
         "nameSource": "ble_advertised",
         "vendorName": "Acme Audio",
         "vendorSource": "IEEE MA-L",
+        "vendorConfidence": "high",
         "locallyAdministeredAddress": true,
+        "normalizedAddress": "001122334455",
+        "addressType": "public",
+        "classificationCategory": "tracker",
+        "classificationLabel": "tracker / tag",
+        "classificationConfidence": "medium",
+        "classificationEvidence": ["service:tracker", "company:Apple"],
         "serviceUuids": ["0000180F-0000-1000-8000-00805F9B34FB"],
         "manufacturerData": {
           "76": "0102A0"
@@ -77,7 +87,13 @@ class DeviceIdentityTest {
     assertEquals(DeviceNameSource.BLE_ADVERTISED, metadata.nameSource)
     assertEquals("Acme Audio", metadata.vendorName)
     assertEquals("IEEE MA-L", metadata.vendorSource)
+    assertEquals(VendorConfidence.HIGH, metadata.vendorConfidence)
     assertTrue(metadata.locallyAdministeredAddress == true)
+    assertEquals(PassiveAddressType.PUBLIC, metadata.addressType)
+    assertEquals("tracker", metadata.classificationCategory)
+    assertEquals("tracker / tag", metadata.classificationLabel)
+    assertEquals(ClassificationConfidence.MEDIUM, metadata.classificationConfidence)
+    assertEquals(listOf("service:tracker", "company:Apple"), metadata.classificationEvidence)
     assertEquals(listOf("0000180F-0000-1000-8000-00805F9B34FB"), metadata.serviceUuids)
     assertEquals("0102A0", metadata.manufacturerData[76])
     assertNull(ObservationMetadataParser.parse(null).vendorName)
@@ -100,9 +116,11 @@ class DeviceIdentityTest {
       assignedNumbers = assignedNumbers
     )
 
-    assertEquals("BLE device: Apple", presentation.title)
+    assertEquals("Apple device", presentation.title)
     assertTrue(presentation.metadataSummary.listLabels.contains("Mfr: Apple"))
     assertTrue(presentation.metadataSummary.listLabels.contains("Svc: Battery Service"))
+    assertEquals("Manufacturer company ID", presentation.vendorSource)
+    assertEquals("medium", presentation.vendorConfidenceLabel)
     assertTrue(
       presentation.metadataSummary.detailLines.any { detail ->
         detail.contains("Apple (0x004C)")

@@ -5,21 +5,30 @@ import java.security.MessageDigest
 object DeviceKey {
   fun from(input: ObservationInput): String {
     val token = when {
-      input.manufacturerData.isNotEmpty() -> {
-        val parts = input.manufacturerData.toSortedMap().map { (id, data) ->
-          "$id:$data"
-        }
-        "m:" + parts.joinToString("|")
-      }
-      input.serviceUuids.isNotEmpty() -> {
-        "s:" + input.serviceUuids.sorted().joinToString("|")
-      }
+      !input.normalizedAddress.isNullOrBlank() -> "a:${input.normalizedAddress}"
       !input.address.isNullOrBlank() -> "a:${input.address}"
       !input.name.isNullOrBlank() -> "n:${input.name}"
-      else -> "unknown"
+      else -> buildFallbackToken(input)
     }
 
     return sha256(token)
+  }
+
+  private fun buildFallbackToken(input: ObservationInput): String {
+    return buildString {
+      append("volatile:")
+      append(input.source.lowercase())
+      append(':')
+      append(input.timestamp)
+      append(':')
+      append(input.rssi)
+      append(':')
+      append(input.classificationFingerprint ?: "none")
+      append(':')
+      append(input.serviceUuids.size)
+      append(':')
+      append(input.manufacturerData.size)
+    }
   }
 
   private fun sha256(value: String): String {

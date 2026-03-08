@@ -61,13 +61,34 @@ class DeviceDetailActivity : AppCompatActivity() {
             binding.detailName.text = identity.title
             val identityLines = mutableListOf<String>()
             identity.vendorName?.let { vendor ->
-              val sourceSuffix = identity.vendorSource?.let { " ($it)" }.orEmpty()
+              val sourceSuffix = buildString {
+                identity.vendorSource?.let { append(" ($it") }
+                identity.vendorConfidenceLabel?.let { confidence ->
+                  if (isNotEmpty()) {
+                    append(", ")
+                    append(confidence)
+                  } else {
+                    append(" (")
+                    append(confidence)
+                  }
+                }
+                if (isNotEmpty()) {
+                  append(')')
+                }
+              }
               identityLines += "Vendor: $vendor$sourceSuffix"
             }
             identity.addressLabel?.let { address ->
               identityLines += "Address: $address"
             }
             identity.addressTypeLabel?.let(identityLines::add)
+            identity.classificationLabel?.let { label ->
+              val confidenceSuffix = identity.classificationConfidenceLabel?.let { " ($it)" }.orEmpty()
+              identityLines += "Likely classification: $label$confidenceSuffix"
+            }
+            if (identity.classificationEvidence.isNotEmpty()) {
+              identityLines += "Classification evidence: ${identity.classificationEvidence.joinToString(", ")}"
+            }
             identity.nameSourceLabel?.let { label ->
               identityLines += "Name source: $label"
             }
@@ -77,7 +98,14 @@ class DeviceDetailActivity : AppCompatActivity() {
             identity.systemName
               ?.takeUnless { it == device.displayName }
               ?.let { identityLines += "Bluetooth device name: $it" }
-            identityLines += identity.metadataSummary.detailLines
+            identityLines += identity.metadataSummary.detailLines.filterNot { line ->
+              line.startsWith("Vendor source:") ||
+                line.startsWith("Likely classification:") ||
+                line.startsWith("Classification evidence:")
+            }
+            identity.classificationFingerprint?.let { fingerprint ->
+              identityLines += "Classification fingerprint: ${fingerprint.take(12)}…"
+            }
             binding.detailIdentity.isVisible = identityLines.isNotEmpty()
             binding.detailIdentity.text = identityLines.joinToString("\n")
             binding.detailKey.text = "Device key: ${device.deviceKey}"

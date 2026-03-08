@@ -1,9 +1,11 @@
 package ninja.unagi.scan
 
 import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothClass
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
 import android.bluetooth.le.BluetoothLeScanner
+import android.bluetooth.le.ScanRecord
 import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanResult
 import android.bluetooth.le.ScanSettings
@@ -16,12 +18,19 @@ import android.util.SparseArray
 import ninja.unagi.alerts.AlertObservation
 import ninja.unagi.alerts.DeviceAlertMatcher
 import ninja.unagi.alerts.DeviceAlertNotifier
-import ninja.unagi.data.DeviceObservation
 import ninja.unagi.data.AlertRuleEntity
 import ninja.unagi.data.AlertRuleRepository
+import ninja.unagi.data.DeviceObservation
 import ninja.unagi.data.DeviceRepository
+import ninja.unagi.util.BluetoothAssignedNumbersProvider
+import ninja.unagi.util.ClassificationFingerprint
+import ninja.unagi.util.ClassificationMetadata
 import ninja.unagi.util.DebugLog
+import ninja.unagi.util.DeviceClassificationEngine
+import ninja.unagi.util.ObservedTransport
 import ninja.unagi.util.ObservedIdentityResolver
+import ninja.unagi.util.PassiveAddressResolver
+import ninja.unagi.util.PassiveVendorResolver
 import ninja.unagi.util.PermissionsHelper
 import ninja.unagi.util.VendorPrefixRegistryProvider
 import kotlinx.coroutines.CoroutineScope
@@ -44,6 +53,7 @@ class ScanController(
   private val bluetoothManager = context.getSystemService(BluetoothManager::class.java)
   private val bluetoothAdapter: BluetoothAdapter? = bluetoothManager?.adapter
   private val vendorRegistry by lazy { VendorPrefixRegistryProvider.get(context) }
+  private val assignedNumbers by lazy { BluetoothAssignedNumbersProvider.get(context) }
   private fun currentLeScanner(): BluetoothLeScanner? = bluetoothAdapter?.bluetoothLeScanner
 
   private val _scanState = MutableStateFlow<ScanState>(ScanState.Idle)
@@ -447,19 +457,58 @@ class ScanController(
 
   private fun handleBleResult(result: ScanResult) {
     val device = result.device
+    val scanRecord = result.scanRecord
     val address = safeAddress(device)
-    val advertisedName = normalizeName(result.scanRecord?.deviceName)
+    val advertisedName = normalizeName(scanRecord?.deviceName)
     val systemName = safeName(device)
     val identity = ObservedIdentityResolver.forBle(
       advertisedName = advertisedName,
-      systemName = systemName,
-      address = address,
-      vendorRegistry = vendorRegistry
+      systemName = systemName
     )
-    val serviceUuids = result.scanRecord?.serviceUuids
+    val rawAddressType = safeBleAddressType(device)
+    val addressInsight = PassiveAddressResolver.resolve(address, rawAddressType)
+    val serviceUuids = scanRecord?.serviceUuids
       ?.mapNotNull { it.uuid?.toString() }
       ?: emptyList()
-    val manufacturerData = parseManufacturerData(result.scanRecord?.manufacturerSpecificData)
+    val manufacturerData = parseManufacturerData(scanRecord?.manufacturerSpecificData)
+    val serviceData = parseServiceData(scanRecord)
+    val appearance = parseAppearance(scanRecord)
+    val bluetoothClass = safeBluetoothClass(device)
+    val transport = effectiveTransport(source = "BLE", deviceType = safeDeviceType(device))
+    val vendorHint = PassiveVendorResolver.resolve(
+      addressInsight = addressInsight,
+      assignedNumbers = assignedNumbers,
+      vendorRegistry = vendorRegistry,
+      manufacturerData = manufacturerData,
+      serviceUuids = serviceUuids,
+      displayName = identity.displayName
+    )
+    val classificationFingerprint = ClassificationFingerprint.from(
+      addressInsight = addressInsight,
+      manufacturerData = manufacturerData,
+      serviceUuids = serviceUuids,
+      serviceData = serviceData,
+      appearance = appearance,
+      classicMajorClass = bluetoothClass?.majorDeviceClass,
+      classicDeviceClass = bluetoothClass?.deviceClass,
+      displayName = identity.displayName
+    )
+    val classification = DeviceClassificationEngine.classify(
+      metadata = ClassificationMetadata(
+        transport = transport,
+        addressType = addressInsight.addressType,
+        manufacturerData = manufacturerData,
+        serviceUuids = serviceUuids,
+        serviceData = serviceData,
+        appearance = appearance,
+        classicMajorClass = bluetoothClass?.majorDeviceClass,
+        classicDeviceClass = bluetoothClass?.deviceClass,
+        displayName = identity.displayName
+      ),
+      assignedNumbers = assignedNumbers
+    )
+    val deviceType = safeDeviceType(device)
+    val bondState = safeBondState(device)
 
     val input = ObservationInput(
       name = identity.displayName,
@@ -468,13 +517,80 @@ class ScanController(
       timestamp = System.currentTimeMillis(),
       serviceUuids = serviceUuids,
       manufacturerData = manufacturerData,
+      serviceData = serviceData,
       source = "BLE",
+      transport = transport.metadataValue,
       advertisedName = identity.advertisedName,
       systemName = identity.systemName,
       nameSource = identity.nameSource.metadataValue,
-      vendorName = identity.vendorName,
-      vendorSource = identity.vendorSource,
-      locallyAdministeredAddress = identity.locallyAdministeredAddress
+      vendorName = vendorHint.vendorName,
+      vendorSource = vendorHint.vendorSource,
+      vendorConfidence = vendorHint.confidence.metadataValue,
+      locallyAdministeredAddress = addressInsight.locallyAdministered,
+      normalizedAddress = addressInsight.normalizedAddress,
+      addressType = addressInsight.addressType.metadataValue,
+      addressTypeLabel = addressInsight.addressType.label,
+      rawAndroidAddressType = rawAddressType,
+      deviceType = deviceType,
+      deviceTypeLabel = formatDeviceType(deviceType),
+      bondState = bondState,
+      bondStateLabel = formatBondState(bondState),
+      advertiseFlags = scanRecord?.advertiseFlags?.takeIf { it >= 0 },
+      txPowerLevel = scanRecord?.txPowerLevel?.takeIf { it != Int.MIN_VALUE },
+      resultTxPower = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        result.txPower.takeIf { it != ScanResult.TX_POWER_NOT_PRESENT }
+      } else {
+        null
+      },
+      connectable = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        result.isConnectable
+      } else {
+        null
+      },
+      legacy = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        result.isLegacy
+      } else {
+        null
+      },
+      dataStatus = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        result.dataStatus
+      } else {
+        null
+      },
+      primaryPhy = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        result.primaryPhy.takeIf { it != ScanResult.PHY_UNUSED }
+      } else {
+        null
+      },
+      secondaryPhy = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        result.secondaryPhy.takeIf { it != ScanResult.PHY_UNUSED }
+      } else {
+        null
+      },
+      advertisingSid = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        result.advertisingSid.takeIf { it != ScanResult.SID_NOT_PRESENT }
+      } else {
+        null
+      },
+      periodicAdvertisingInterval = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        result.periodicAdvertisingInterval.takeIf { it != ScanResult.PERIODIC_INTERVAL_NOT_PRESENT }
+      } else {
+        null
+      },
+      appearance = appearance,
+      appearanceLabel = formatAppearance(appearance),
+      classicMajorClass = bluetoothClass?.majorDeviceClass,
+      classicMajorClassLabel = formatClassicMajorClass(bluetoothClass?.majorDeviceClass),
+      classicDeviceClass = bluetoothClass?.deviceClass,
+      classicDeviceClassLabel = formatClassicDeviceClass(bluetoothClass?.deviceClass),
+      classificationFingerprint = classificationFingerprint,
+      classificationCategory = classification.category.metadataValue
+        .takeIf { classification.category.metadataValue != "unknown" },
+      classificationLabel = classification.category.label
+        .takeIf { classification.category.metadataValue != "unknown" },
+      classificationConfidence = classification.confidence.metadataValue
+        .takeIf { classification.confidence.metadataValue != "unknown" },
+      classificationEvidence = classification.evidence
     )
 
     handleObservation(input)
@@ -484,9 +600,44 @@ class ScanController(
     val systemName = safeName(device)
     val address = safeAddress(device)
     val identity = ObservedIdentityResolver.forClassic(
-      systemName = systemName,
-      address = address,
-      vendorRegistry = vendorRegistry
+      systemName = systemName
+    )
+    val addressInsight = PassiveAddressResolver.resolve(address, BluetoothDevice.ADDRESS_TYPE_PUBLIC)
+    val bluetoothClass = safeBluetoothClass(device)
+    val deviceType = safeDeviceType(device)
+    val bondState = safeBondState(device)
+    val transport = effectiveTransport(source = "Classic", deviceType = deviceType)
+    val vendorHint = PassiveVendorResolver.resolve(
+      addressInsight = addressInsight,
+      assignedNumbers = assignedNumbers,
+      vendorRegistry = vendorRegistry,
+      manufacturerData = emptyMap(),
+      serviceUuids = emptyList(),
+      displayName = identity.displayName
+    )
+    val classificationFingerprint = ClassificationFingerprint.from(
+      addressInsight = addressInsight,
+      manufacturerData = emptyMap(),
+      serviceUuids = emptyList(),
+      serviceData = emptyMap(),
+      appearance = null,
+      classicMajorClass = bluetoothClass?.majorDeviceClass,
+      classicDeviceClass = bluetoothClass?.deviceClass,
+      displayName = identity.displayName
+    )
+    val classification = DeviceClassificationEngine.classify(
+      metadata = ClassificationMetadata(
+        transport = transport,
+        addressType = addressInsight.addressType,
+        manufacturerData = emptyMap(),
+        serviceUuids = emptyList(),
+        serviceData = emptyMap(),
+        appearance = null,
+        classicMajorClass = bluetoothClass?.majorDeviceClass,
+        classicDeviceClass = bluetoothClass?.deviceClass,
+        displayName = identity.displayName
+      ),
+      assignedNumbers = assignedNumbers
     )
     val input = ObservationInput(
       name = identity.displayName,
@@ -496,11 +647,33 @@ class ScanController(
       serviceUuids = emptyList(),
       manufacturerData = emptyMap(),
       source = "Classic",
+      transport = transport.metadataValue,
       systemName = identity.systemName,
       nameSource = identity.nameSource.metadataValue,
-      vendorName = identity.vendorName,
-      vendorSource = identity.vendorSource,
-      locallyAdministeredAddress = identity.locallyAdministeredAddress
+      vendorName = vendorHint.vendorName,
+      vendorSource = vendorHint.vendorSource,
+      vendorConfidence = vendorHint.confidence.metadataValue,
+      locallyAdministeredAddress = addressInsight.locallyAdministered,
+      normalizedAddress = addressInsight.normalizedAddress,
+      addressType = addressInsight.addressType.metadataValue,
+      addressTypeLabel = addressInsight.addressType.label,
+      rawAndroidAddressType = BluetoothDevice.ADDRESS_TYPE_PUBLIC,
+      deviceType = deviceType,
+      deviceTypeLabel = formatDeviceType(deviceType),
+      bondState = bondState,
+      bondStateLabel = formatBondState(bondState),
+      classicMajorClass = bluetoothClass?.majorDeviceClass,
+      classicMajorClassLabel = formatClassicMajorClass(bluetoothClass?.majorDeviceClass),
+      classicDeviceClass = bluetoothClass?.deviceClass,
+      classicDeviceClassLabel = formatClassicDeviceClass(bluetoothClass?.deviceClass),
+      classificationFingerprint = classificationFingerprint,
+      classificationCategory = classification.category.metadataValue
+        .takeIf { classification.category.metadataValue != "unknown" },
+      classificationLabel = classification.category.label
+        .takeIf { classification.category.metadataValue != "unknown" },
+      classificationConfidence = classification.confidence.metadataValue
+        .takeIf { classification.confidence.metadataValue != "unknown" },
+      classificationEvidence = classification.evidence
     )
 
     handleObservation(input)
@@ -591,6 +764,42 @@ class ScanController(
     }
   }
 
+  private fun safeBleAddressType(device: BluetoothDevice): Int? {
+    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
+      try {
+        device.addressType
+      } catch (_: SecurityException) {
+        null
+      }
+    } else {
+      null
+    }
+  }
+
+  private fun safeDeviceType(device: BluetoothDevice): Int? {
+    return try {
+      device.type
+    } catch (_: SecurityException) {
+      null
+    }
+  }
+
+  private fun safeBondState(device: BluetoothDevice): Int? {
+    return try {
+      device.bondState
+    } catch (_: SecurityException) {
+      null
+    }
+  }
+
+  private fun safeBluetoothClass(device: BluetoothDevice): BluetoothClass? {
+    return try {
+      device.bluetoothClass
+    } catch (_: SecurityException) {
+      null
+    }
+  }
+
   private fun parseManufacturerData(data: SparseArray<ByteArray>?): Map<Int, String> {
     if (data == null || data.size() == 0) return emptyMap()
     val map = mutableMapOf<Int, String>()
@@ -602,17 +811,79 @@ class ScanController(
     return map
   }
 
+  private fun parseServiceData(scanRecord: ScanRecord?): Map<String, String> {
+    val data = scanRecord?.serviceData ?: return emptyMap()
+    return data.entries.associate { (uuid, payload) ->
+      uuid.uuid.toString() to payload.toHexString()
+    }
+  }
+
+  private fun parseAppearance(scanRecord: ScanRecord?): Int? {
+    val bytes = scanRecord?.bytes ?: return null
+    var index = 0
+    while (index < bytes.size) {
+      val length = bytes[index].toInt() and 0xFF
+      if (length == 0) {
+        break
+      }
+      val typeIndex = index + 1
+      val dataStart = typeIndex + 1
+      val dataEndExclusive = (index + length + 1).coerceAtMost(bytes.size)
+      if (typeIndex >= bytes.size || dataStart >= dataEndExclusive) {
+        break
+      }
+      val type = bytes[typeIndex].toInt() and 0xFF
+      if (type == ScanRecord.DATA_TYPE_APPEARANCE && dataStart + 1 < dataEndExclusive) {
+        val low = bytes[dataStart].toInt() and 0xFF
+        val high = bytes[dataStart + 1].toInt() and 0xFF
+        return low or (high shl 8)
+      }
+      index += length + 1
+    }
+    return null
+  }
+
   private fun buildMetadataJson(input: ObservationInput): String {
     val json = JSONObject()
     json.put("source", input.source)
+    json.putIfNotNull("transport", input.transport)
     json.put("name", input.name)
     json.put("address", input.address)
     json.put("advertisedName", input.advertisedName)
     json.put("systemName", input.systemName)
     json.put("nameSource", input.nameSource)
-    json.put("vendorName", input.vendorName)
-    json.put("vendorSource", input.vendorSource)
-    json.put("locallyAdministeredAddress", input.locallyAdministeredAddress)
+    json.putIfNotNull("vendorName", input.vendorName)
+    json.putIfNotNull("vendorSource", input.vendorSource)
+    json.putIfNotNull("vendorConfidence", input.vendorConfidence)
+    json.putIfNotNull("locallyAdministeredAddress", input.locallyAdministeredAddress)
+    json.putIfNotNull("normalizedAddress", input.normalizedAddress)
+    json.putIfNotNull("addressType", input.addressType)
+    json.putIfNotNull("addressTypeLabel", input.addressTypeLabel)
+    json.putIfNotNull("rawAndroidAddressType", input.rawAndroidAddressType)
+    json.putIfNotNull("deviceType", input.deviceType)
+    json.putIfNotNull("deviceTypeLabel", input.deviceTypeLabel)
+    json.putIfNotNull("bondState", input.bondState)
+    json.putIfNotNull("bondStateLabel", input.bondStateLabel)
+    json.putIfNotNull("advertiseFlags", input.advertiseFlags)
+    json.putIfNotNull("txPowerLevel", input.txPowerLevel)
+    json.putIfNotNull("resultTxPower", input.resultTxPower)
+    json.putIfNotNull("connectable", input.connectable)
+    json.putIfNotNull("legacy", input.legacy)
+    json.putIfNotNull("dataStatus", input.dataStatus)
+    json.putIfNotNull("primaryPhy", input.primaryPhy)
+    json.putIfNotNull("secondaryPhy", input.secondaryPhy)
+    json.putIfNotNull("advertisingSid", input.advertisingSid)
+    json.putIfNotNull("periodicAdvertisingInterval", input.periodicAdvertisingInterval)
+    json.putIfNotNull("appearance", input.appearance)
+    json.putIfNotNull("appearanceLabel", input.appearanceLabel)
+    json.putIfNotNull("classicMajorClass", input.classicMajorClass)
+    json.putIfNotNull("classicMajorClassLabel", input.classicMajorClassLabel)
+    json.putIfNotNull("classicDeviceClass", input.classicDeviceClass)
+    json.putIfNotNull("classicDeviceClassLabel", input.classicDeviceClassLabel)
+    json.putIfNotNull("classificationFingerprint", input.classificationFingerprint)
+    json.putIfNotNull("classificationCategory", input.classificationCategory)
+    json.putIfNotNull("classificationLabel", input.classificationLabel)
+    json.putIfNotNull("classificationConfidence", input.classificationConfidence)
     json.put("rssi", input.rssi)
     json.put("timestamp", input.timestamp)
 
@@ -620,13 +891,29 @@ class ScanController(
     input.serviceUuids.forEach { services.put(it) }
     json.put("serviceUuids", services)
 
+    val serviceDataJson = JSONObject()
+    input.serviceData.forEach { (uuid, data) ->
+      serviceDataJson.put(uuid, data)
+    }
+    json.put("serviceData", serviceDataJson)
+
     val manufacturerJson = JSONObject()
     input.manufacturerData.forEach { (id, data) ->
       manufacturerJson.put(id.toString(), data)
     }
     json.put("manufacturerData", manufacturerJson)
 
+    val classificationEvidence = JSONArray()
+    input.classificationEvidence.forEach { classificationEvidence.put(it) }
+    json.put("classificationEvidence", classificationEvidence)
+
     return json.toString(2)
+  }
+
+  private fun JSONObject.putIfNotNull(key: String, value: Any?) {
+    if (value != null) {
+      put(key, value)
+    }
   }
 
   private fun ByteArray.toHexString(): String {
@@ -708,5 +995,85 @@ class ScanController(
   }
 
   companion object {
+    private fun effectiveTransport(source: String, deviceType: Int?): ObservedTransport {
+      return when {
+        deviceType == BluetoothDevice.DEVICE_TYPE_DUAL -> ObservedTransport.DUAL
+        source.equals("BLE", ignoreCase = true) || deviceType == BluetoothDevice.DEVICE_TYPE_LE -> ObservedTransport.BLE
+        source.equals("Classic", ignoreCase = true) || deviceType == BluetoothDevice.DEVICE_TYPE_CLASSIC -> ObservedTransport.CLASSIC
+        else -> ObservedTransport.UNKNOWN
+      }
+    }
+
+    private fun formatDeviceType(deviceType: Int?): String? {
+      return when (deviceType) {
+        BluetoothDevice.DEVICE_TYPE_CLASSIC -> "Classic"
+        BluetoothDevice.DEVICE_TYPE_LE -> "BLE"
+        BluetoothDevice.DEVICE_TYPE_DUAL -> "Dual"
+        BluetoothDevice.DEVICE_TYPE_UNKNOWN -> "Unknown"
+        else -> null
+      }
+    }
+
+    private fun formatBondState(bondState: Int?): String? {
+      return when (bondState) {
+        BluetoothDevice.BOND_BONDED -> "Bonded"
+        BluetoothDevice.BOND_BONDING -> "Bonding"
+        BluetoothDevice.BOND_NONE -> "Not bonded"
+        else -> null
+      }
+    }
+
+    private fun formatAppearance(appearance: Int?): String? {
+      return when {
+        appearance == null -> null
+        appearance in 0x03C0..0x03FF -> "Human interface device"
+        appearance in 0x0340..0x037F -> "Watch / wearable"
+        appearance in 0x0380..0x03BF -> "Heart-rate / health"
+        appearance in 0x0940..0x097F -> "Audio / media"
+        else -> "Appearance class"
+      }
+    }
+
+    private fun formatClassicMajorClass(majorClass: Int?): String? {
+      return when (majorClass) {
+        BluetoothClass.Device.Major.AUDIO_VIDEO -> "Audio / video"
+        BluetoothClass.Device.Major.COMPUTER -> "Computer"
+        BluetoothClass.Device.Major.HEALTH -> "Health"
+        BluetoothClass.Device.Major.IMAGING -> "Imaging"
+        BluetoothClass.Device.Major.MISC -> "Misc"
+        BluetoothClass.Device.Major.NETWORKING -> "Networking"
+        BluetoothClass.Device.Major.PERIPHERAL -> "Peripheral"
+        BluetoothClass.Device.Major.PHONE -> "Phone"
+        BluetoothClass.Device.Major.TOY -> "Toy"
+        BluetoothClass.Device.Major.UNCATEGORIZED -> "Uncategorized"
+        BluetoothClass.Device.Major.WEARABLE -> "Wearable"
+        else -> null
+      }
+    }
+
+    private fun formatClassicDeviceClass(deviceClass: Int?): String? {
+      return when (deviceClass) {
+        BluetoothClass.Device.AUDIO_VIDEO_HEADPHONES -> "Headphones"
+        BluetoothClass.Device.AUDIO_VIDEO_WEARABLE_HEADSET -> "Wearable headset"
+        BluetoothClass.Device.AUDIO_VIDEO_HANDSFREE -> "Hands-free"
+        BluetoothClass.Device.AUDIO_VIDEO_HIFI_AUDIO -> "Hi-fi audio"
+        BluetoothClass.Device.AUDIO_VIDEO_LOUDSPEAKER -> "Loudspeaker"
+        BluetoothClass.Device.AUDIO_VIDEO_CAR_AUDIO -> "Car audio"
+        BluetoothClass.Device.COMPUTER_LAPTOP -> "Laptop"
+        BluetoothClass.Device.PHONE_SMART -> "Smartphone"
+        BluetoothClass.Device.PHONE_CELLULAR -> "Cellular phone"
+        BluetoothClass.Device.PERIPHERAL_KEYBOARD -> "Keyboard"
+        BluetoothClass.Device.PERIPHERAL_KEYBOARD_POINTING -> "Keyboard / pointing"
+        BluetoothClass.Device.PERIPHERAL_POINTING -> "Pointing device"
+        BluetoothClass.Device.PERIPHERAL_NON_KEYBOARD_NON_POINTING -> "Peripheral"
+        BluetoothClass.Device.TOY_CONTROLLER -> "Controller"
+        BluetoothClass.Device.HEALTH_GLUCOSE -> "Glucose meter"
+        BluetoothClass.Device.HEALTH_PULSE_RATE -> "Pulse monitor"
+        BluetoothClass.Device.HEALTH_PULSE_OXIMETER -> "Pulse oximeter"
+        BluetoothClass.Device.HEALTH_THERMOMETER -> "Thermometer"
+        BluetoothClass.Device.HEALTH_WEIGHING -> "Scale"
+        else -> null
+      }
+    }
   }
 }

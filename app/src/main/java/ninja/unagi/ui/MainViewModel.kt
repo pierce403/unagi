@@ -48,16 +48,29 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
           assignedNumbers = assignedNumbers
         )
         val metaParts = mutableListOf<String>()
+        identity.classificationLabel?.let { label ->
+          val confidenceSuffix = identity.classificationConfidenceLabel?.let { " ($it)" }.orEmpty()
+          metaParts += "Likely: $label$confidenceSuffix"
+        }
+        identity.addressTypeLabel?.let(metaParts::add)
         identity.nameSourceLabel?.let(metaParts::add)
-        identity.vendorName?.let { metaParts += "Vendor: $it" }
-          ?: identity.addressTypeLabel?.let(metaParts::add)
-        metaParts += identity.metadataSummary.listLabels.take(2)
+        identity.vendorName?.let { vendor ->
+          val confidenceSuffix = identity.vendorConfidenceLabel?.let { " ($it)" }.orEmpty()
+          metaParts += "Vendor: $vendor$confidenceSuffix"
+        }
+        metaParts += identity.metadataSummary.listLabels
+          .filterNot { label -> metaParts.any { it.equals(label, ignoreCase = true) } }
+          .take(2)
         metaParts += "Last seen: ${Formatters.formatTimestamp(it.lastSeen)}"
         metaParts += Formatters.formatSightingsCount(it.sightingsCount)
         val searchParts = buildList {
           add(identity.title)
           it.lastAddress?.let(::add)
           identity.vendorName?.let(::add)
+          identity.vendorSource?.let(::add)
+          identity.addressTypeLabel?.let(::add)
+          identity.classificationLabel?.let(::add)
+          addAll(identity.classificationEvidence)
           addAll(identity.metadataSummary.searchTerms)
         }
         DeviceListItem(

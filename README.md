@@ -72,6 +72,8 @@ Foreground alerts for "let me know when X is nearby."
 - `unagi` now prefers BLE advertised local names over generic Bluetooth device names, so BLE peripherals should surface the short broadcast name they actually expose
 - Vendor labels come from a bundled offline IEEE prefix database; locally administered/randomized BLE addresses are called out explicitly instead of being mis-labeled with a guessed vendor
 - Unnamed BLE devices now surface manufacturer-company IDs and advertised service UUID labels from bundled Bluetooth SIG assigned-number registries, with the raw JSON still available in Device Details for deeper inspection
+- Device identity and classification are now separated: list/detail views show address type, vendor-source confidence, likely device category, and the evidence used for that classification without treating those hints as stable identity
+- Classic discoveries now keep public-address vendor confidence, while BLE discoveries downgrade OUI trust when the address is randomized or uncertain
 - The main search field now matches normalized MAC and OUI fragments, so `001122` and `00:11:22` both work as live filters
 - The Alerts screen lets you match devices by OUI, full MAC, or Bluetooth name, choose an emoji and sound preset, and receive a detail notification when a rule fires
 - On Android 13+, grant notification permission from the Alerts screen if you want system notifications in addition to the audible alert

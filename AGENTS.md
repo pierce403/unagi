@@ -71,4 +71,6 @@ Build the MVP: scan -> list -> tap -> history.
 - When unnamed BLE devices still lack a human name, prefer surfacing manufacturer-company IDs and advertised service UUID labels rather than leaving the UI at a bare “Unknown device”
 - The current `DeviceKey` fallback order is collision-prone for common manufacturer/service payloads; future work should separate identity keys from classification fingerprints before deepening device intelligence
 - If active BLE querying is added, stop scanning first, keep it opt-in from `DeviceDetailActivity`, store enrichment separately from passive metadata, and treat DIS/GATT reads as hints rather than truth
+- Passive scan metadata now stores address type, vendor confidence/source, classification category/confidence/evidence, and a separate classification fingerprint; keep those fields in `lastMetadataJson` rather than overloading `deviceKey`
+- Treat classic Bluetooth discovery addresses as public for vendor-confidence purposes, but keep BLE OUI confidence downgraded unless the address type is explicitly public
 - Reflection: before handoff, record any new command, pitfall, deploy detail, or collaborator preference discovered during the task

@@ -25,3 +25,4 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 - Resolve BLE manufacturer company IDs and advertised service UUIDs from bundled Bluetooth SIG assigned-number registries so unnamed devices surface richer identity hints
 - Rename the Android namespace and application ID from `com.thingalert` to `ninja.unagi` so the shipped package matches the `unagi.ninja` brand
 - Make the top controls banner collapsible and add a persisted compact-device-card option from the main menu
+- Split device identity keys from passive classification fingerprints, add BLE address-type/vendor-confidence handling, and surface classification evidence in the list/detail UI
