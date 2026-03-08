@@ -78,6 +78,12 @@
   <string name="no_devices">No devices yet. Start a scan.</string>
   <string name="diagnostics">Diagnostics</string>
   <string name="device_details">Device details</string>
+  <string name="save_device_json">Save device JSON</string>
+  <string name="share_device_json">Share device JSON</string>
+  <string name="device_json_saved">Saved %1$s.</string>
+  <string name="device_json_saved_downloads">Saved %1$s to Downloads.</string>
+  <string name="device_json_save_failed">Could not save device JSON.</string>
+  <string name="device_json_share_subject">UNAGI device export: %1$s</string>
   <string name="active_ble_query">Active BLE query</string>
   <string name="query_device_info">Query device info (BLE)</string>
   <string name="query_device_info_running">Querying\u2026</string>

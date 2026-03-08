@@ -2,11 +2,20 @@ package ninja.unagi.ui
 
 import android.Manifest
 import android.bluetooth.BluetoothManager
+import android.content.ContentUris
+import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Environment
+import android.provider.MediaStore
+import android.view.Menu
+import android.view.MenuItem
+import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
@@ -20,6 +29,7 @@ import ninja.unagi.enrichment.ActiveBleQueryPreferences
 import ninja.unagi.enrichment.BleDeviceInfoQueryClient
 import ninja.unagi.enrichment.DeviceEnrichmentFormatter
 import ninja.unagi.data.DeviceEntity
+import ninja.unagi.data.DeviceEnrichmentEntity
 import ninja.unagi.util.BluetoothAssignedNumbersProvider
 import ninja.unagi.util.DeviceIdentityPresenter
 import ninja.unagi.util.Formatters
@@ -28,13 +38,17 @@ import ninja.unagi.util.ObservationMetadataParser
 import ninja.unagi.util.ObservedTransport
 import ninja.unagi.util.VendorPrefixRegistryProvider
 import ninja.unagi.util.WindowInsetsHelper
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class DeviceDetailActivity : AppCompatActivity() {
   private lateinit var binding: ActivityDeviceDetailBinding
   private lateinit var adapter: SightingAdapter
   private var currentDevice: DeviceEntity? = null
+  private var currentEnrichment: DeviceEnrichmentEntity? = null
   private var currentMetadata: ObservationMetadata = ObservationMetadata()
+  private var pendingExport: DeviceJsonExport? = null
   private var queryInProgress = false
   private val vendorRegistry by lazy { VendorPrefixRegistryProvider.get(this) }
   private val assignedNumbers by lazy { BluetoothAssignedNumbersProvider.get(this) }
@@ -47,6 +61,13 @@ class DeviceDetailActivity : AppCompatActivity() {
       bluetoothAdapter = getSystemService(BluetoothManager::class.java)?.adapter,
       scanController = app.scanController
     )
+  }
+  private val saveDeviceJsonLauncher = registerForActivityResult(ActivityResultContracts.CreateDocument("text/plain")) { uri ->
+    if (uri == null) {
+      pendingExport = null
+      return@registerForActivityResult
+    }
+    writePendingExportToUri(uri)
   }
 
   override fun onCreate(savedInstanceState: Bundle?) {
@@ -77,9 +98,15 @@ class DeviceDetailActivity : AppCompatActivity() {
       repeatOnLifecycle(Lifecycle.State.STARTED) {
         launch {
           repository.observeDevice(deviceKey).collect { device ->
-            if (device == null) return@collect
+            if (device == null) {
+              currentDevice = null
+              currentMetadata = ObservationMetadata()
+              invalidateOptionsMenu()
+              return@collect
+            }
             currentDevice = device
             currentMetadata = ObservationMetadataParser.parse(device.lastMetadataJson)
+            invalidateOptionsMenu()
             val identity = DeviceIdentityPresenter.present(
               displayName = device.displayName,
               address = device.lastAddress,
@@ -155,6 +182,7 @@ class DeviceDetailActivity : AppCompatActivity() {
 
         launch {
           enrichmentRepository.observeEnrichment(deviceKey).collect { enrichment ->
+            currentEnrichment = enrichment
             binding.detailEnrichment.text = DeviceEnrichmentFormatter.formatForDetail(
               enrichment = enrichment,
               assignedNumbers = assignedNumbers
@@ -168,6 +196,32 @@ class DeviceDetailActivity : AppCompatActivity() {
           }
         }
       }
+    }
+  }
+
+  override fun onCreateOptionsMenu(menu: Menu): Boolean {
+    menuInflater.inflate(ninja.unagi.R.menu.device_detail_menu, menu)
+    return true
+  }
+
+  override fun onPrepareOptionsMenu(menu: Menu): Boolean {
+    val exportReady = currentDevice != null
+    menu.findItem(ninja.unagi.R.id.menu_save_device_json)?.isEnabled = exportReady
+    menu.findItem(ninja.unagi.R.id.menu_share_device_json)?.isEnabled = exportReady
+    return super.onPrepareOptionsMenu(menu)
+  }
+
+  override fun onOptionsItemSelected(item: MenuItem): Boolean {
+    return when (item.itemId) {
+      ninja.unagi.R.id.menu_save_device_json -> {
+        saveCurrentDeviceJson()
+        true
+      }
+      ninja.unagi.R.id.menu_share_device_json -> {
+        shareCurrentDeviceJson()
+        true
+      }
+      else -> super.onOptionsItemSelected(item)
     }
   }
 
@@ -244,6 +298,115 @@ class DeviceDetailActivity : AppCompatActivity() {
       return QueryEligibility(false, getString(ninja.unagi.R.string.query_device_info_unavailable_non_connectable))
     }
     return QueryEligibility(true, getString(ninja.unagi.R.string.query_device_info_note))
+  }
+
+  private fun saveCurrentDeviceJson() {
+    val export = buildCurrentExport() ?: return
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+      lifecycleScope.launch {
+        val saved = withContext(Dispatchers.IO) { saveExportToDownloads(export) }
+        if (saved) {
+          Toast.makeText(
+            this@DeviceDetailActivity,
+            getString(ninja.unagi.R.string.device_json_saved_downloads, export.fileName),
+            Toast.LENGTH_SHORT
+          ).show()
+        } else {
+          Toast.makeText(
+            this@DeviceDetailActivity,
+            ninja.unagi.R.string.device_json_save_failed,
+            Toast.LENGTH_SHORT
+          ).show()
+        }
+      }
+      return
+    }
+    pendingExport = export
+    saveDeviceJsonLauncher.launch(export.fileName)
+  }
+
+  private fun shareCurrentDeviceJson() {
+    val export = buildCurrentExport() ?: return
+    val shareIntent = Intent(Intent.ACTION_SEND).apply {
+      type = "text/plain"
+      putExtra(Intent.EXTRA_SUBJECT, getString(ninja.unagi.R.string.device_json_share_subject, export.fileName))
+      putExtra(Intent.EXTRA_TEXT, export.json)
+    }
+    startActivity(Intent.createChooser(shareIntent, getString(ninja.unagi.R.string.share_device_json)))
+  }
+
+  private fun buildCurrentExport(): DeviceJsonExport? {
+    val device = currentDevice ?: return null
+    return DeviceDetailExport.build(device, currentEnrichment)
+  }
+
+  private fun writePendingExportToUri(uri: Uri) {
+    val export = pendingExport ?: return
+    pendingExport = null
+    lifecycleScope.launch {
+      val saved = withContext(Dispatchers.IO) {
+        runCatching {
+          contentResolver.openOutputStream(uri, "wt")?.use { stream ->
+            stream.write(export.json.toByteArray())
+          } ?: error("Unable to open export destination")
+        }.isSuccess
+      }
+      Toast.makeText(
+        this@DeviceDetailActivity,
+        if (saved) {
+          getString(ninja.unagi.R.string.device_json_saved, export.fileName)
+        } else {
+          getString(ninja.unagi.R.string.device_json_save_failed)
+        },
+        Toast.LENGTH_SHORT
+      ).show()
+    }
+  }
+
+  private fun saveExportToDownloads(export: DeviceJsonExport): Boolean {
+    val collection = MediaStore.Downloads.EXTERNAL_CONTENT_URI
+    val existingUri = findDownloadsExportUri(collection, export.fileName)
+    if (existingUri != null) {
+      return runCatching {
+        contentResolver.openOutputStream(existingUri, "wt")?.use { stream ->
+          stream.write(export.json.toByteArray())
+        } ?: error("Unable to open existing Downloads export")
+      }.isSuccess
+    }
+    val values = ContentValues().apply {
+      put(MediaStore.MediaColumns.DISPLAY_NAME, export.fileName)
+      put(MediaStore.MediaColumns.MIME_TYPE, "text/plain")
+      put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+      put(MediaStore.MediaColumns.IS_PENDING, 1)
+    }
+    val uri = contentResolver.insert(collection, values) ?: return false
+    return try {
+      contentResolver.openOutputStream(uri, "wt")?.use { stream ->
+        stream.write(export.json.toByteArray())
+      } ?: error("Unable to open Downloads export")
+      val completedValues = ContentValues().apply {
+        put(MediaStore.MediaColumns.IS_PENDING, 0)
+      }
+      contentResolver.update(uri, completedValues, null, null)
+      true
+    } catch (_: Exception) {
+      contentResolver.delete(uri, null, null)
+      false
+    }
+  }
+
+  private fun findDownloadsExportUri(collection: Uri, fileName: String): Uri? {
+    val projection = arrayOf(MediaStore.MediaColumns._ID)
+    val selection = "${MediaStore.MediaColumns.DISPLAY_NAME} = ? AND ${MediaStore.MediaColumns.RELATIVE_PATH} = ?"
+    val selectionArgs = arrayOf(fileName, "${Environment.DIRECTORY_DOWNLOADS}/")
+    contentResolver.query(collection, projection, selection, selectionArgs, null)?.use { cursor ->
+      if (!cursor.moveToFirst()) {
+        return null
+      }
+      val idIndex = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns._ID)
+      return ContentUris.withAppendedId(collection, cursor.getLong(idIndex))
+    }
+    return null
   }
 
   companion object {
