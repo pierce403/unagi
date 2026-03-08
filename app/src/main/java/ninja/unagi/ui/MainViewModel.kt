@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import ninja.unagi.ThingAlertApp
+import ninja.unagi.scan.ActiveScanPreferences
 import ninja.unagi.scan.ScanController
 import ninja.unagi.scan.ScanState
 import ninja.unagi.util.BluetoothAssignedNumbersProvider
@@ -11,14 +12,22 @@ import ninja.unagi.util.BluetoothAddressTools
 import ninja.unagi.util.DeviceIdentityPresenter
 import ninja.unagi.util.Formatters
 import ninja.unagi.util.VendorPrefixRegistryProvider
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 
 class MainViewModel(app: Application) : AndroidViewModel(app) {
+  private companion object {
+    const val LIVE_DEVICE_WINDOW_MS = 30_000L
+    const val LIVE_DEVICE_TICK_MS = 5_000L
+  }
+
   private val thingAlertApp = app as ThingAlertApp
   private val repository = thingAlertApp.repository
   private val scanner = thingAlertApp.scanController
@@ -113,6 +122,19 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
     .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+  val liveDeviceCount: StateFlow<Int> = repository.observeDevices()
+    .combine(
+      flow {
+        while (true) {
+          emit(System.currentTimeMillis())
+          delay(LIVE_DEVICE_TICK_MS)
+        }
+      }.onStart { emit(System.currentTimeMillis()) }
+    ) { devices, now ->
+      devices.count { now - it.lastSeen <= LIVE_DEVICE_WINDOW_MS }
+    }
+    .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
   fun updateQuery(query: String) {
     filterQuery.value = query
   }
@@ -138,7 +160,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
   }
 
   override fun onCleared() {
-    scanner.stopScan()
+    if (!ActiveScanPreferences.isEnabled(getApplication())) {
+      scanner.stopScan()
+    }
     super.onCleared()
   }
 }

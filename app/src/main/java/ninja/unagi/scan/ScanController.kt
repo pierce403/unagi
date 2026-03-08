@@ -151,6 +151,7 @@ class ScanController(
   }
 
   fun startScan() {
+    val activeScanning = ActiveScanPreferences.isEnabled(context)
     timeoutJob?.cancel()
     timeoutJob = null
     stopBleScan()
@@ -158,7 +159,7 @@ class ScanController(
     firedAlertKeys.clear()
 
     val scanMode = ScanModePreferences.get(context)
-    val preflight = preflight()
+    val preflight = preflight(activeScanning)
     ScanDiagnosticsStore.reset(
       ScanDiagnosticsSnapshot(
         scanMode = scanMode,
@@ -211,7 +212,8 @@ class ScanController(
   }
 
   fun refreshState() {
-    val preflight = preflight()
+    val activeScanning = ActiveScanPreferences.isEnabled(context)
+    val preflight = preflight(activeScanning)
     ScanDiagnosticsStore.update {
       it.copy(
         missingPermissions = preflight.missingPermissions,
@@ -384,8 +386,8 @@ class ScanController(
     }
   }
 
-  private fun preflight(): ScanPreflightResult {
-    val missingPermissions = PermissionsHelper.missingPermissions(context)
+  private fun preflight(activeScanning: Boolean): ScanPreflightResult {
+    val missingPermissions = PermissionsHelper.missingPermissions(context, activeScanning)
     val locationServicesEnabled = PermissionsHelper.isLocationServicesEnabled(context)
 
     if (missingPermissions.isNotEmpty()) {

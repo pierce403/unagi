@@ -32,3 +32,5 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 - Seed default alert rules for Flipper, Axon/TASER, and Ray-Ban Meta-style name matches on first launch
 - Bump the Android app to `0.2.1` / version code `11` for the seeded-default-alert release
 - Stage website APKs under versioned filenames and update the site download links during each release
+- Move scan controls into the main header, switch the title treatment to `UNAGI`, show a live device count, and add optional background-capable active scanning via a foreground service
+- Bump the Android app to `0.2.2` / version code `12` for the active-scanning release

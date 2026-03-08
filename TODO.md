@@ -28,7 +28,5 @@
 
 ### Main screen and releases
 
-- [ ] Move scan controls into the header, show the live device count, and use an all-caps UNAGI title
-- [ ] Add active/background scanning mode with the required service and permission flow
 - [ ] Keep continuous sightings from inflating the sightings count
 - [ ] Add starred devices and a starred-only filter

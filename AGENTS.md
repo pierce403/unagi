@@ -76,6 +76,8 @@ Build the MVP: scan -> list -> tap -> history.
 - Treat classic Bluetooth discovery addresses as public for vendor-confidence purposes, but keep BLE OUI confidence downgraded unless the address type is explicitly public
 - Active BLE enrichment now persists in the `device_enrichments` Room table; keep it separate from passive observation JSON and include it in Diagnostics/export paths
 - `ThingAlertApp` now owns the shared `ScanController`, so detail-page BLE queries can explicitly stop scans before opening a GATT connection
+- `Active scanning` is now a persisted mode in `ActiveScanPreferences`; when it is enabled, scanning should run via `ActiveScanService` instead of being tied to `MainActivity`
+- Background-capable active scanning needs `ACCESS_BACKGROUND_LOCATION` on Android 10/11 plus a `connectedDevice` foreground service notification; keep the permission flow and manifest declarations aligned
 - Passive vendor decoders now live in `PassiveVendorDecoderRegistry`; they should add soft hints (ecosystem, beacon/tracker/dev-board style) without claiming stable product identity
 - Default alert rules are seeded once from `DefaultAlertSeeder`; use versioned seed keys so new defaults can ship without duplicating or constantly re-adding deleted user rules
 - Reflection: before handoff, record any new command, pitfall, deploy detail, or collaborator preference discovered during the task

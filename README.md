@@ -18,9 +18,9 @@ Foreground alerts for "let me know when X is nearby."
 
 ## Non-goals (MVP)
 
-- No connecting or pairing
+- No connecting or pairing during passive scans
 - No "tracking" UI (no directional finder)
-- No background scanning
+- No cloud relay or remote logging
 
 ## Tooling constraints
 
@@ -53,6 +53,8 @@ Foreground alerts for "let me know when X is nearby."
 - `scripts/update-vendor-prefixes` refreshes the bundled IEEE MA-L / MA-M / MA-S vendor-prefix asset at `app/src/main/assets/vendor_prefixes.txt.gz`
 - `scripts/update-bluetooth-assigned-numbers` refreshes the bundled Bluetooth SIG company/service registries at `app/src/main/assets/bluetooth_company_identifiers.txt.gz` and `app/src/main/assets/bluetooth_service_uuids.txt.gz`
 - The main screen shows the installed app version prominently in the toolbar and a dedicated build banner so testers can confirm which APK is running
+- The main header now keeps the scan toggle, an all-caps `UNAGI` title, the installed build badge, and a `Live now` device count together at the top of the screen
+- Optional `Active scanning` mode keeps scans cycling in a foreground service so scanning can continue after the activity closes
 - Because the app targets SDK 35, system-bar insets must be handled explicitly; the main, diagnostics, and detail toolbars now pad below the status bar on Android 15+
 - The Android package identity is now `ninja.unagi`; older `com.thingalert` installs will not upgrade in place and should be uninstalled manually before testing the new build
 - The main controls banner can be collapsed by tapping its header, and the overflow menu now includes a persisted `Compact device cards` toggle for denser scanning sessions
@@ -60,6 +62,8 @@ Foreground alerts for "let me know when X is nearby."
 ## Permissions notes (MVP)
 
 - Bluetooth scanning permission model differs by Android version; unagi now requests WiGLE-style scan permissions: `BLUETOOTH_SCAN`, `BLUETOOTH_CONNECT`, `ACCESS_FINE_LOCATION`, and `ACCESS_COARSE_LOCATION`
+- When `Active scanning` is enabled, Android 10/11 builds also request `ACCESS_BACKGROUND_LOCATION` so the foreground service can keep discovering devices after the activity closes
+- Active scanning runs in a `connectedDevice` foreground service, so the app manifest now declares `FOREGROUND_SERVICE` and `FOREGROUND_SERVICE_CONNECTED_DEVICE`
 - Using `neverForLocation` can filter some BLE beacons; unagi currently does not set this flag to avoid filtering
 - On Android 11 and below, BLE results can still depend on location services being enabled in addition to permission grant
 - GrapheneOS note: the APK manifest does not request sensor-class permissions; Nearby devices is the permission to grant on Android 12+
@@ -67,6 +71,7 @@ Foreground alerts for "let me know when X is nearby."
 ## Troubleshooting scans
 
 - If a scan fails to start, open Diagnostics to inspect BLE/classic startup results, the last BLE error code, and permission/Bluetooth snapshots
+- If you need the app to keep scanning after you leave the activity, enable `Active scanning` from the overflow menu and keep the foreground notification running
 - Use `Copy scan debug report` in Diagnostics to capture app version, device/build info, persisted device inventory, and recent scan events for bug reports
 - `unagi` now requests the same scan-relevant Bluetooth/location permissions that WiGLE does; if scans still return zero callbacks, the remaining gap is more likely ROM/profile behavior than a missing manifest permission
 - `unagi` now prefers BLE advertised local names over generic Bluetooth device names, so BLE peripherals should surface the short broadcast name they actually expose

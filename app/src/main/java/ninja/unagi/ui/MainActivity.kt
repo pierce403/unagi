@@ -1,5 +1,6 @@
 package ninja.unagi.ui
 
+import android.Manifest
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothManager
 import android.content.Intent
@@ -16,14 +17,16 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
+import kotlinx.coroutines.launch
 import ninja.unagi.R
 import ninja.unagi.databinding.ActivityMainBinding
+import ninja.unagi.scan.ActiveScanPreferences
+import ninja.unagi.scan.ActiveScanService
 import ninja.unagi.scan.ScanState
 import ninja.unagi.util.AppVersion
 import ninja.unagi.util.DebugLog
 import ninja.unagi.util.PermissionsHelper
 import ninja.unagi.util.WindowInsetsHelper
-import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
   private enum class RecoveryAction {
@@ -41,12 +44,32 @@ class MainActivity : AppCompatActivity() {
   private var recoveryAction = RecoveryAction.NONE
   private var bannerCollapsed = false
   private var compactCards = false
+  private var activeScanningEnabled = false
 
   private val permissionLauncher = registerForActivityResult(
     ActivityResultContracts.RequestMultiplePermissions()
   ) { result ->
     val granted = result.values.all { it }
     DebugLog.log("Permission results: $result")
+    if (granted) {
+      if (
+        activeScanningEnabled &&
+        PermissionsHelper.requiresBackgroundLocationForActiveScan() &&
+        !PermissionsHelper.hasBackgroundLocationPermission(this)
+      ) {
+        requestBackgroundLocationPermission()
+      } else {
+        handleStartScan()
+      }
+    } else {
+      viewModel.refreshPreflightState()
+    }
+  }
+
+  private val backgroundLocationPermissionLauncher = registerForActivityResult(
+    ActivityResultContracts.RequestPermission()
+  ) { granted ->
+    DebugLog.log("Background location permission result: $granted")
     if (granted) {
       handleStartScan()
     } else {
@@ -59,7 +82,7 @@ class MainActivity : AppCompatActivity() {
   ) {
     if (isBluetoothEnabled()) {
       DebugLog.log("Bluetooth enabled by user")
-      viewModel.startScan()
+      beginScan()
     } else {
       DebugLog.log("Bluetooth enable declined")
       binding.permissionHint.isVisible = true
@@ -75,14 +98,16 @@ class MainActivity : AppCompatActivity() {
     viewModel = ViewModelProvider(this)[MainViewModel::class.java]
 
     setSupportActionBar(binding.toolbar)
-    val appVersion = AppVersion.read(this)
-    val versionLabel = appVersion.visibleLabel
-    binding.appVersionLabel.text = versionLabel
+    supportActionBar?.title = getString(R.string.app_name_header)
+    binding.appVersionLabel.text = AppVersion.read(this).visibleLabel
+
     WindowInsetsHelper.applyToolbarInsets(binding.toolbar)
     WindowInsetsHelper.applyBottomInsets(binding.deviceList)
     WindowInsetsHelper.requestApplyInsets(binding.root)
+
     bannerCollapsed = MainDisplayPreferences.isTopBannerCollapsed(this)
     compactCards = MainDisplayPreferences.isCompactDeviceCards(this)
+    activeScanningEnabled = ActiveScanPreferences.isEnabled(this)
 
     adapter = DeviceAdapter { item ->
       startActivity(DeviceDetailActivity.intent(this, item.deviceKey))
@@ -99,9 +124,8 @@ class MainActivity : AppCompatActivity() {
     )
     sortAdapter.setDropDownViewResource(R.layout.spinner_dropdown_item)
     binding.sortSpinner.adapter = sortAdapter
-
     binding.sortSpinner.setSelection(SortMode.RECENT.ordinal)
-    binding.sortSpinner.setOnItemSelectedListener(
+    binding.sortSpinner.onItemSelectedListener =
       object : android.widget.AdapterView.OnItemSelectedListener {
         override fun onItemSelected(
           parent: android.widget.AdapterView<*>?,
@@ -112,25 +136,23 @@ class MainActivity : AppCompatActivity() {
           viewModel.updateSortMode(SortMode.values()[position])
         }
 
-        override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {
-          // No-op
-        }
+        override fun onNothingSelected(parent: android.widget.AdapterView<*>?) = Unit
       }
-    )
 
     binding.filterInput.doAfterTextChanged { text ->
       viewModel.updateQuery(text?.toString().orEmpty())
     }
-
-    binding.topBannerHeader.setOnClickListener {
-      setBannerCollapsed(!bannerCollapsed)
-    }
+    binding.topBannerHeader.setOnClickListener { setBannerCollapsed(!bannerCollapsed) }
     binding.unknownOnly.setOnCheckedChangeListener { _, isChecked ->
       viewModel.setUnknownOnly(isChecked)
     }
-
-    binding.startScanButton.setOnClickListener { handleStartScan() }
-    binding.stopScanButton.setOnClickListener { viewModel.stopScan() }
+    binding.scanToggleButton.setOnClickListener {
+      if (viewModel.scanState.value is ScanState.Scanning) {
+        stopCurrentScan()
+      } else {
+        handleStartScan()
+      }
+    }
     binding.permissionActionButton.setOnClickListener { runRecoveryAction() }
     setBannerCollapsed(bannerCollapsed, persist = false)
 
@@ -153,22 +175,33 @@ class MainActivity : AppCompatActivity() {
             updateScanState(state)
           }
         }
+
+        launch {
+          viewModel.liveDeviceCount.collect { count ->
+            binding.deviceCountLabel.text = getString(R.string.live_device_count, count)
+          }
+        }
       }
     }
   }
 
   override fun onResume() {
     super.onResume()
+    activeScanningEnabled = ActiveScanPreferences.isEnabled(this)
     viewModel.refreshPreflightState()
+    invalidateOptionsMenu()
   }
 
   override fun onStop() {
     super.onStop()
-    viewModel.stopScan()
+    if (!activeScanningEnabled) {
+      viewModel.stopScan()
+    }
   }
 
   override fun onCreateOptionsMenu(menu: android.view.Menu?): Boolean {
     menuInflater.inflate(R.menu.main_menu, menu)
+    menu?.findItem(R.id.menu_active_scanning)?.isChecked = activeScanningEnabled
     menu?.findItem(R.id.menu_compact_cards)?.isChecked = compactCards
     return true
   }
@@ -181,6 +214,12 @@ class MainActivity : AppCompatActivity() {
       }
       R.id.menu_diagnostics -> {
         startActivity(Intent(this, DiagnosticsActivity::class.java))
+        true
+      }
+      R.id.menu_active_scanning -> {
+        val enabled = !item.isChecked
+        item.isChecked = enabled
+        setActiveScanningEnabled(enabled)
         true
       }
       R.id.menu_compact_cards -> {
@@ -213,9 +252,24 @@ class MainActivity : AppCompatActivity() {
     }
   }
 
+  private fun setActiveScanningEnabled(enabled: Boolean) {
+    if (activeScanningEnabled == enabled) {
+      return
+    }
+    activeScanningEnabled = enabled
+    ActiveScanPreferences.setEnabled(this, enabled)
+    if (!enabled) {
+      ActiveScanService.stop(this)
+    } else if (viewModel.scanState.value is ScanState.Scanning) {
+      ActiveScanService.start(this)
+    }
+    viewModel.refreshPreflightState()
+    invalidateOptionsMenu()
+  }
+
   private fun handleStartScan() {
-    if (!PermissionsHelper.hasPermissions(this)) {
-      if (PermissionsHelper.shouldOpenAppSettings(this)) {
+    if (!PermissionsHelper.hasPermissions(this, activeScanningEnabled)) {
+      if (PermissionsHelper.shouldOpenAppSettings(this, activeScanningEnabled)) {
         DebugLog.log("Permissions blocked; directing user to app settings", level = android.util.Log.WARN)
         viewModel.refreshPreflightState()
       } else {
@@ -232,12 +286,27 @@ class MainActivity : AppCompatActivity() {
 
     if (!isBluetoothEnabled()) {
       DebugLog.log("Bluetooth disabled, requesting enable")
-      val enableIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
-      enableBluetoothLauncher.launch(enableIntent)
+      enableBluetoothLauncher.launch(Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE))
       return
     }
 
-    viewModel.startScan()
+    beginScan()
+  }
+
+  private fun beginScan() {
+    if (activeScanningEnabled) {
+      ActiveScanService.start(this)
+    } else {
+      viewModel.startScan()
+    }
+  }
+
+  private fun stopCurrentScan() {
+    if (activeScanningEnabled) {
+      ActiveScanService.stop(this)
+    } else {
+      viewModel.stopScan()
+    }
   }
 
   private fun updateScanState(state: ScanState) {
@@ -246,8 +315,8 @@ class MainActivity : AppCompatActivity() {
     when (state) {
       is ScanState.Scanning -> {
         binding.scanStatus.text = getString(R.string.scan_active)
-        binding.startScanButton.isEnabled = false
-        binding.stopScanButton.isEnabled = true
+        binding.scanToggleButton.isEnabled = true
+        binding.scanToggleButton.text = getString(R.string.scan_stop)
         binding.permissionHint.isVisible = false
       }
       is ScanState.Complete -> {
@@ -258,30 +327,30 @@ class MainActivity : AppCompatActivity() {
         } else {
           getString(R.string.scan_complete_with_devices, state.deviceCount)
         }
-        binding.startScanButton.isEnabled = true
-        binding.stopScanButton.isEnabled = false
+        binding.scanToggleButton.isEnabled = true
+        binding.scanToggleButton.text = getString(R.string.scan_start)
         recoveryAction = RecoveryAction.RETRY_SCAN
         binding.permissionActionButton.text = getString(R.string.retry_scan)
         binding.permissionActionButton.isVisible = true
       }
       is ScanState.Idle -> {
         binding.scanStatus.text = getString(R.string.scan_inactive)
-        binding.startScanButton.isEnabled = true
-        binding.stopScanButton.isEnabled = false
+        binding.scanToggleButton.isEnabled = true
+        binding.scanToggleButton.text = getString(R.string.scan_start)
         binding.permissionHint.isVisible = false
       }
       is ScanState.MissingPermission -> {
         binding.scanStatus.text = getString(R.string.scan_inactive)
         binding.permissionHint.isVisible = true
-        val missing = PermissionsHelper.missingPermissionLabels(this).joinToString()
-        val blocked = PermissionsHelper.shouldOpenAppSettings(this)
+        val missing = PermissionsHelper.missingPermissionLabels(this, activeScanningEnabled).joinToString()
+        val blocked = PermissionsHelper.shouldOpenAppSettings(this, activeScanningEnabled)
         binding.permissionHint.text = if (blocked) {
           getString(R.string.permissions_blocked_detail, missing)
         } else {
           getString(R.string.permissions_required_detail, missing)
         }
-        binding.startScanButton.isEnabled = true
-        binding.stopScanButton.isEnabled = false
+        binding.scanToggleButton.isEnabled = true
+        binding.scanToggleButton.text = getString(R.string.scan_start)
         recoveryAction = if (blocked) {
           RecoveryAction.OPEN_APP_SETTINGS
         } else {
@@ -298,8 +367,8 @@ class MainActivity : AppCompatActivity() {
         binding.scanStatus.text = getString(R.string.scan_inactive)
         binding.permissionHint.isVisible = true
         binding.permissionHint.text = getString(R.string.location_services_required_detail)
-        binding.startScanButton.isEnabled = true
-        binding.stopScanButton.isEnabled = false
+        binding.scanToggleButton.isEnabled = true
+        binding.scanToggleButton.text = getString(R.string.scan_start)
         recoveryAction = RecoveryAction.OPEN_LOCATION_SETTINGS
         binding.permissionActionButton.text = getString(R.string.open_location_settings)
         binding.permissionActionButton.isVisible = true
@@ -308,8 +377,8 @@ class MainActivity : AppCompatActivity() {
         binding.scanStatus.text = getString(R.string.scan_inactive)
         binding.permissionHint.isVisible = true
         binding.permissionHint.text = getString(R.string.enable_bluetooth)
-        binding.startScanButton.isEnabled = true
-        binding.stopScanButton.isEnabled = false
+        binding.scanToggleButton.isEnabled = true
+        binding.scanToggleButton.text = getString(R.string.scan_start)
         recoveryAction = RecoveryAction.ENABLE_BLUETOOTH
         binding.permissionActionButton.text = getString(R.string.enable_bluetooth_action)
         binding.permissionActionButton.isVisible = true
@@ -318,15 +387,15 @@ class MainActivity : AppCompatActivity() {
         binding.scanStatus.text = getString(R.string.bluetooth_unsupported)
         binding.permissionHint.isVisible = true
         binding.permissionHint.text = getString(R.string.bluetooth_unsupported_detail)
-        binding.startScanButton.isEnabled = false
-        binding.stopScanButton.isEnabled = false
+        binding.scanToggleButton.isEnabled = false
+        binding.scanToggleButton.text = getString(R.string.scan_start)
       }
       is ScanState.Error -> {
         binding.scanStatus.text = getString(R.string.scan_error)
         binding.permissionHint.isVisible = true
         binding.permissionHint.text = state.message
-        binding.startScanButton.isEnabled = true
-        binding.stopScanButton.isEnabled = false
+        binding.scanToggleButton.isEnabled = true
+        binding.scanToggleButton.text = getString(R.string.scan_start)
         recoveryAction = RecoveryAction.RETRY_SCAN
         binding.permissionActionButton.text = getString(R.string.retry_scan)
         binding.permissionActionButton.isVisible = true
@@ -335,8 +404,7 @@ class MainActivity : AppCompatActivity() {
   }
 
   private fun isBluetoothEnabled(): Boolean {
-    val manager = getSystemService(BluetoothManager::class.java)
-    val adapter = manager?.adapter
+    val adapter = getSystemService(BluetoothManager::class.java)?.adapter
     return try {
       adapter?.isEnabled == true
     } catch (_: SecurityException) {
@@ -345,17 +413,33 @@ class MainActivity : AppCompatActivity() {
   }
 
   private fun requestScanPermissions() {
-    DebugLog.log("Requesting permissions: ${PermissionsHelper.requiredPermissions()}")
+    val permissions = PermissionsHelper.foregroundPermissions(activeScanningEnabled)
+    DebugLog.log("Requesting permissions: $permissions")
     PermissionsHelper.markPermissionRequestAttempted(this)
-    permissionLauncher.launch(PermissionsHelper.requiredPermissions().toTypedArray())
+    if (permissions.isEmpty()) {
+      handleStartScan()
+      return
+    }
+    permissionLauncher.launch(permissions.toTypedArray())
+  }
+
+  private fun requestBackgroundLocationPermission() {
+    if (!PermissionsHelper.requiresBackgroundLocationForActiveScan()) {
+      handleStartScan()
+      return
+    }
+    DebugLog.log("Requesting background location permission for active scanning")
+    PermissionsHelper.markBackgroundLocationRequestAttempted(this)
+    backgroundLocationPermissionLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
   }
 
   private fun openAppSettings() {
-    val intent = Intent(
-      Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-      Uri.fromParts("package", packageName, null)
+    startActivity(
+      Intent(
+        Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+        Uri.fromParts("package", packageName, null)
+      )
     )
-    startActivity(intent)
   }
 
   private fun openLocationSettings() {
@@ -368,8 +452,7 @@ class MainActivity : AppCompatActivity() {
       RecoveryAction.REQUEST_PERMISSIONS -> requestScanPermissions()
       RecoveryAction.OPEN_APP_SETTINGS -> openAppSettings()
       RecoveryAction.ENABLE_BLUETOOTH -> {
-        val enableIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
-        enableBluetoothLauncher.launch(enableIntent)
+        enableBluetoothLauncher.launch(Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE))
       }
       RecoveryAction.OPEN_LOCATION_SETTINGS -> openLocationSettings()
       RecoveryAction.RETRY_SCAN -> handleStartScan()

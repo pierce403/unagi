@@ -567,7 +567,7 @@
             and making scan state obvious when Bluetooth is off or permissions are denied. No cloud. No remote logging by default.
           </p>
           <div class="cta-row">
-            <a class="button button-primary" id="download" href="downloads/unagi-v0.2.1-debug.apk" download>
+            <a class="button button-primary" id="download" href="downloads/unagi-v0.2.2-debug.apk" download>
               Download APK
             </a>
             <a class="button button-secondary" href="https://github.com/pierce403/unagi">
@@ -597,7 +597,7 @@
           <h2>Total Awareness, Not Total Noise</h2>
           <p class="section-copy">
             Observed device identifiers are treated as observations, not ground truth identity. Addresses can rotate. Names can drift.
-            unagi keeps the MVP intentionally pragmatic: short scans, clear permission states, local history, and no background battery drain.
+            unagi keeps the MVP intentionally pragmatic: clear permission states, local history, and opt-in active scanning instead of silent always-on background work.
           </p>
         </div>
 
@@ -622,7 +622,7 @@
               <h3>What the app avoids</h3>
               <ul class="feature-list">
                 <li>No cloud backend and no remote logging by default.</li>
-                <li>No constant background scanning in the MVP.</li>
+                <li>No hidden background scanning; continuous scans require the user to enable Active scanning and keep a foreground notification running.</li>
                 <li>No crashes when Bluetooth is disabled or runtime permissions are denied.</li>
               </ul>
             </article>
@@ -678,7 +678,7 @@
           The site is ready to live at <code>unagi.ninja</code>, and the current download link targets the staged Android debug build.
         </div>
         <div class="toplinks">
-          <a class="chip-link" href="downloads/unagi-v0.2.1-debug.apk" download>APK</a>
+          <a class="chip-link" href="downloads/unagi-v0.2.2-debug.apk" download>APK</a>
           <a class="chip-link" href="README.md">README</a>
           <a class="chip-link" href="PRIVACY.md">Privacy</a>
         </div>
