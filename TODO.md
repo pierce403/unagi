@@ -12,10 +12,6 @@
 
 ### Alerts
 
-### Device intelligence
-
-- [ ] Add passive vendor decoders and tests around randomized-address behavior, confidence downgrade, classification scoring, and DeviceKey collision cases
-
 ### Scan robustness
 
 - [ ] Add raw BLE/classic callback samples to diagnostics, not just counters

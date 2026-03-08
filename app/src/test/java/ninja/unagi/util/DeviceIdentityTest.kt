@@ -71,6 +71,7 @@ class DeviceIdentityTest {
         "locallyAdministeredAddress": true,
         "normalizedAddress": "001122334455",
         "addressType": "public",
+        "passiveDecoderHints": ["iBeacon-format manufacturer data"],
         "classificationCategory": "tracker",
         "classificationLabel": "tracker / tag",
         "classificationConfidence": "medium",
@@ -90,6 +91,7 @@ class DeviceIdentityTest {
     assertEquals(VendorConfidence.HIGH, metadata.vendorConfidence)
     assertTrue(metadata.locallyAdministeredAddress == true)
     assertEquals(PassiveAddressType.PUBLIC, metadata.addressType)
+    assertEquals(listOf("iBeacon-format manufacturer data"), metadata.passiveDecoderHints)
     assertEquals("tracker", metadata.classificationCategory)
     assertEquals("tracker / tag", metadata.classificationLabel)
     assertEquals(ClassificationConfidence.MEDIUM, metadata.classificationConfidence)
@@ -118,6 +120,7 @@ class DeviceIdentityTest {
 
     assertEquals("Apple device", presentation.title)
     assertTrue(presentation.metadataSummary.listLabels.contains("Mfr: Apple"))
+    assertTrue(presentation.metadataSummary.listLabels.any { it.contains("Hint:") })
     assertTrue(presentation.metadataSummary.listLabels.contains("Svc: Battery Service"))
     assertEquals("Manufacturer company ID", presentation.vendorSource)
     assertEquals("medium", presentation.vendorConfidenceLabel)

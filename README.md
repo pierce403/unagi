@@ -76,6 +76,7 @@ Foreground alerts for "let me know when X is nearby."
 - Classic discoveries now keep public-address vendor confidence, while BLE discoveries downgrade OUI trust when the address is randomized or uncertain
 - Device Details now includes an opt-in `Query device info (BLE)` action that stops the app scan first, opens a short-lived GATT connection, reads safe Device Information Service fields, and stores the result separately from passive observations
 - Active BLE query results are local-only and feed both the detail screen and the copyable Diagnostics report with DIS availability, service discovery, read counts, GATT status, and any returned manufacturer/model/PnP fields
+- Passive vendor decoders now attach human-readable hints for Apple, Google/Fast Pair, Microsoft, Samsung, Nordic, and Tile-style payloads so randomized or unnamed devices expose better context without being treated as stable identities
 - The main search field now matches normalized MAC and OUI fragments, so `001122` and `00:11:22` both work as live filters
 - The Alerts screen lets you match devices by OUI, full MAC, or Bluetooth name, choose an emoji and sound preset, and receive a detail notification when a rule fires
 - On Android 13+, grant notification permission from the Alerts screen if you want system notifications in addition to the audible alert

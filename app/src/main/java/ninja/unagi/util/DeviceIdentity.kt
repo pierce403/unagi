@@ -60,6 +60,7 @@ data class ObservationMetadata(
   val classicMajorClassLabel: String? = null,
   val classicDeviceClass: Int? = null,
   val classicDeviceClassLabel: String? = null,
+  val passiveDecoderHints: List<String> = emptyList(),
   val classificationFingerprint: String? = null,
   val classificationCategory: String? = null,
   val classificationLabel: String? = null,
@@ -177,6 +178,7 @@ object ObservationMetadataParser {
         classicMajorClassLabel = json.optStringOrNull("classicMajorClassLabel"),
         classicDeviceClass = json.optIntOrNull("classicDeviceClass"),
         classicDeviceClassLabel = json.optStringOrNull("classicDeviceClassLabel"),
+        passiveDecoderHints = json.optStringList("passiveDecoderHints"),
         classificationFingerprint = json.optStringOrNull("classificationFingerprint"),
         classificationCategory = json.optStringOrNull("classificationCategory"),
         classificationLabel = json.optStringOrNull("classificationLabel"),
@@ -304,6 +306,9 @@ object PassiveMetadataInterpreter {
         val label = first.companyName ?: first.companyCode
         add(if (manufacturerEntries.size == 1) "Mfr: $label" else "Mfr: $label +${manufacturerEntries.size - 1}")
       }
+      metadata.passiveDecoderHints.firstOrNull()?.let { hint ->
+        add("Hint: $hint")
+      }
       serviceEntries.firstOrNull()?.let { first ->
         val label = first.serviceName ?: first.serviceCode
         add(if (serviceEntries.size == 1) "Svc: $label" else "Svc: $label +${serviceEntries.size - 1}")
@@ -332,6 +337,9 @@ object PassiveMetadataInterpreter {
           ?.let { " ($it)" }
           .orEmpty()
         add("Likely classification: $label$confidence")
+      }
+      if (metadata.passiveDecoderHints.isNotEmpty()) {
+        add("Passive hints: ${metadata.passiveDecoderHints.joinToString("; ")}")
       }
       if (metadata.classificationEvidence.isNotEmpty()) {
         add("Classification evidence: ${metadata.classificationEvidence.joinToString(", ")}")
@@ -389,6 +397,7 @@ object PassiveMetadataInterpreter {
       metadata.vendorSource?.let(::add)
       metadata.classificationLabel?.let(::add)
       metadata.classificationEvidence.forEach(::add)
+      metadata.passiveDecoderHints.forEach(::add)
       manufacturerEntries.forEach { entry ->
         add(entry.companyCode)
         entry.companyName?.let(::add)
@@ -518,6 +527,21 @@ object DeviceIdentityPresenter {
         assignedNumbers = assignedNumbers
       )
     }
+    val passiveDecoderHints = if (metadata.passiveDecoderHints.isNotEmpty()) {
+      metadata.passiveDecoderHints
+    } else {
+      PassiveVendorDecoderRegistry.decode(
+        PassiveDecoderContext(
+          displayName = displayName ?: metadata.advertisedName ?: metadata.systemName,
+          vendorName = vendorHint.vendorName ?: metadata.vendorName,
+          manufacturerData = metadata.manufacturerData,
+          serviceUuids = metadata.serviceUuids,
+          serviceData = metadata.serviceData,
+          addressType = metadata.addressType.takeIf { it != PassiveAddressType.UNKNOWN }
+            ?: addressInsight.addressType
+        )
+      )
+    }
     val metadataSummary = PassiveMetadataInterpreter.summarize(
       metadata = metadata.copy(
         vendorName = vendorHint.vendorName ?: metadata.vendorName,
@@ -527,6 +551,7 @@ object DeviceIdentityPresenter {
         } else {
           metadata.vendorConfidence
         },
+        passiveDecoderHints = passiveDecoderHints,
         classificationCategory = metadata.classificationCategory
           ?: classification.category.metadataValue.takeIf { classification.category != DeviceCategory.UNKNOWN },
         classificationLabel = metadata.classificationLabel

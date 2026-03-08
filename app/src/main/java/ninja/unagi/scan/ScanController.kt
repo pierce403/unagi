@@ -30,7 +30,9 @@ import ninja.unagi.util.DeviceClassificationEngine
 import ninja.unagi.util.ObservedTransport
 import ninja.unagi.util.ObservedIdentityResolver
 import ninja.unagi.util.PassiveAddressResolver
+import ninja.unagi.util.PassiveDecoderContext
 import ninja.unagi.util.PassiveVendorResolver
+import ninja.unagi.util.PassiveVendorDecoderRegistry
 import ninja.unagi.util.PermissionsHelper
 import ninja.unagi.util.VendorPrefixRegistryProvider
 import kotlinx.coroutines.CoroutineScope
@@ -507,6 +509,16 @@ class ScanController(
       ),
       assignedNumbers = assignedNumbers
     )
+    val passiveDecoderHints = PassiveVendorDecoderRegistry.decode(
+      PassiveDecoderContext(
+        displayName = identity.displayName,
+        vendorName = vendorHint.vendorName,
+        manufacturerData = manufacturerData,
+        serviceUuids = serviceUuids,
+        serviceData = serviceData,
+        addressType = addressInsight.addressType
+      )
+    )
     val deviceType = safeDeviceType(device)
     val bondState = safeBondState(device)
 
@@ -583,6 +595,7 @@ class ScanController(
       classicMajorClassLabel = formatClassicMajorClass(bluetoothClass?.majorDeviceClass),
       classicDeviceClass = bluetoothClass?.deviceClass,
       classicDeviceClassLabel = formatClassicDeviceClass(bluetoothClass?.deviceClass),
+      passiveDecoderHints = passiveDecoderHints,
       classificationFingerprint = classificationFingerprint,
       classificationCategory = classification.category.metadataValue
         .takeIf { classification.category.metadataValue != "unknown" },
@@ -639,6 +652,16 @@ class ScanController(
       ),
       assignedNumbers = assignedNumbers
     )
+    val passiveDecoderHints = PassiveVendorDecoderRegistry.decode(
+      PassiveDecoderContext(
+        displayName = identity.displayName,
+        vendorName = vendorHint.vendorName,
+        manufacturerData = emptyMap(),
+        serviceUuids = emptyList(),
+        serviceData = emptyMap(),
+        addressType = addressInsight.addressType
+      )
+    )
     val input = ObservationInput(
       name = identity.displayName,
       address = address,
@@ -666,6 +689,7 @@ class ScanController(
       classicMajorClassLabel = formatClassicMajorClass(bluetoothClass?.majorDeviceClass),
       classicDeviceClass = bluetoothClass?.deviceClass,
       classicDeviceClassLabel = formatClassicDeviceClass(bluetoothClass?.deviceClass),
+      passiveDecoderHints = passiveDecoderHints,
       classificationFingerprint = classificationFingerprint,
       classificationCategory = classification.category.metadataValue
         .takeIf { classification.category.metadataValue != "unknown" },
@@ -880,6 +904,11 @@ class ScanController(
     json.putIfNotNull("classicMajorClassLabel", input.classicMajorClassLabel)
     json.putIfNotNull("classicDeviceClass", input.classicDeviceClass)
     json.putIfNotNull("classicDeviceClassLabel", input.classicDeviceClassLabel)
+
+    val passiveDecoderHints = JSONArray()
+    input.passiveDecoderHints.forEach { passiveDecoderHints.put(it) }
+    json.put("passiveDecoderHints", passiveDecoderHints)
+
     json.putIfNotNull("classificationFingerprint", input.classificationFingerprint)
     json.putIfNotNull("classificationCategory", input.classificationCategory)
     json.putIfNotNull("classificationLabel", input.classificationLabel)

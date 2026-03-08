@@ -27,3 +27,4 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 - Make the top controls banner collapsible and add a persisted compact-device-card option from the main menu
 - Split device identity keys from passive classification fingerprints, add BLE address-type/vendor-confidence handling, and surface classification evidence in the list/detail UI
 - Add opt-in BLE Device Information Service querying from Device Details, store active enrichment results in Room, and include those diagnostics in the copyable debug report
+- Add passive vendor decoders for Apple, Google, Microsoft, Samsung, Nordic, and Tile-style payloads so unknown/randomized devices surface softer human-readable hints

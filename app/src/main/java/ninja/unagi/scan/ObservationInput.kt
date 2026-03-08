@@ -41,6 +41,7 @@ data class ObservationInput(
   val classicMajorClassLabel: String? = null,
   val classicDeviceClass: Int? = null,
   val classicDeviceClassLabel: String? = null,
+  val passiveDecoderHints: List<String> = emptyList(),
   val classificationFingerprint: String? = null,
   val classificationCategory: String? = null,
   val classificationLabel: String? = null,
