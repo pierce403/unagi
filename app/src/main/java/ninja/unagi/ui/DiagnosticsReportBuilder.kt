@@ -45,7 +45,7 @@ object DiagnosticsReportBuilder {
     generatedAtMs: Long = System.currentTimeMillis()
   ): String {
     val builder = StringBuilder()
-    builder.appendLine("unagi scan debug report")
+    builder.appendLine("UNAGI scan debug report")
     builder.appendLine()
     builder.appendLine("Generated: ${Formatters.formatTimestamp(generatedAtMs)}")
     builder.appendLine("App version: ${platformInfo.appVersionName} (${platformInfo.appVersionCode})")

@@ -1,5 +1,5 @@
 <resources>
-  <string name="app_name">unagi</string>
+  <string name="app_name">UNAGI</string>
   <string name="app_name_header">UNAGI</string>
   <string name="scan_start">Start scan</string>
   <string name="scan_stop">Stop scan</string>
@@ -98,7 +98,7 @@
   <string name="rssi_range">RSSI range</string>
   <string name="rssi_avg">RSSI average</string>
   <string name="permissions_required">Permissions required to scan nearby devices.</string>
-  <string name="permissions_required_detail">%1$s access is required before unagi can scan. Requests stay foreground-only and observations stay on-device.</string>
+  <string name="permissions_required_detail">%1$s access is required before UNAGI can scan. Requests stay foreground-only and observations stay on-device.</string>
   <string name="permissions_blocked_detail">%1$s access is currently blocked. Open app settings, allow it, then return to scan.</string>
   <string name="enable_bluetooth">Bluetooth is off. Enable to scan.</string>
   <string name="enable_bluetooth_action">Enable Bluetooth</string>

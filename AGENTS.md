@@ -87,6 +87,7 @@ Build the MVP: scan -> list -> tap -> history.
 - Star state now lives on `DeviceEntity`; keep starred filters wired off persisted state instead of transient UI-only flags
 - The main toolbar now owns the scan start/stop action and live-device count; keep filter/recovery UI in the left-edge drawer instead of spending vertical space on a top banner again
 - Installed version info no longer lives in the main banner; keep it in the overflow menu and Diagnostics so the header stays compact
+- User-facing brand text in the Android app should use `UNAGI`, not lowercase `unagi`, including the app label and diagnostics/export headings
 - The Alerts screen now uses a FAB + modal editor flow; keep add and edit behavior on the same validated dialog instead of growing a permanent inline form again
 - Passive vendor decoders now live in `PassiveVendorDecoderRegistry`; they should add soft hints (ecosystem, beacon/tracker/dev-board style) without claiming stable product identity
 - Default alert rules are seeded once from `DefaultAlertSeeder`; use versioned seed keys so new defaults can ship without duplicating or constantly re-adding deleted user rules
