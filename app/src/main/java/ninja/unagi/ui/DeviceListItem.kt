@@ -6,7 +6,7 @@ data class DeviceListItem(
   val displayTitle: String,
   val metaLine: String,
   val searchText: String,
-  val lastSeen: Long,
+  val sortTimestamp: Long,
   val lastRssi: Int,
   val sightingsCount: Int,
   val starred: Boolean,

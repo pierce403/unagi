@@ -24,5 +24,3 @@
 - [ ] Add a manual scan QA checklist for stock Android and GrapheneOS scenarios
 
 ### Main screen and releases
-
-- [ ] Reduce list flashing while scans are updating

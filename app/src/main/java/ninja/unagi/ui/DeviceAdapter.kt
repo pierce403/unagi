@@ -19,9 +19,17 @@ class DeviceAdapter(
 ) : ListAdapter<DeviceListItem, DeviceAdapter.DeviceViewHolder>(DiffCallback) {
   private var compactMode = false
 
+  init {
+    setHasStableIds(true)
+  }
+
   override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): DeviceViewHolder {
     val binding = ItemDeviceBinding.inflate(LayoutInflater.from(parent.context), parent, false)
     return DeviceViewHolder(binding, onClick, onStarToggle)
+  }
+
+  override fun getItemId(position: Int): Long {
+    return getItem(position).deviceKey.hashCode().toLong()
   }
 
   override fun onBindViewHolder(holder: DeviceViewHolder, position: Int) {
@@ -107,13 +115,25 @@ class DeviceAdapter(
   }
 
   companion object {
+    private const val RSSI_CHANGE_THRESHOLD_DBM = 4
+
     private val DiffCallback = object : DiffUtil.ItemCallback<DeviceListItem>() {
       override fun areItemsTheSame(oldItem: DeviceListItem, newItem: DeviceListItem): Boolean {
         return oldItem.deviceKey == newItem.deviceKey
       }
 
       override fun areContentsTheSame(oldItem: DeviceListItem, newItem: DeviceListItem): Boolean {
-        return oldItem == newItem
+        return oldItem.deviceKey == newItem.deviceKey &&
+          oldItem.displayName == newItem.displayName &&
+          oldItem.displayTitle == newItem.displayTitle &&
+          oldItem.metaLine == newItem.metaLine &&
+          oldItem.searchText == newItem.searchText &&
+          oldItem.sortTimestamp == newItem.sortTimestamp &&
+          oldItem.sightingsCount == newItem.sightingsCount &&
+          oldItem.starred == newItem.starred &&
+          oldItem.lastAddress == newItem.lastAddress &&
+          oldItem.vendorName == newItem.vendorName &&
+          kotlin.math.abs(oldItem.lastRssi - newItem.lastRssi) < RSSI_CHANGE_THRESHOLD_DBM
       }
     }
   }

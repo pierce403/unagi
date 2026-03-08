@@ -72,7 +72,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
           metaParts += identity.metadataSummary.listLabels
             .filterNot { label -> metaParts.any { it.equals(label, ignoreCase = true) } }
             .take(2)
-          metaParts += "Last seen: ${Formatters.formatTimestamp(it.lastSeen)}"
+          metaParts += "Nearby since: ${Formatters.formatTimestamp(it.lastSightingAt)}"
           metaParts += Formatters.formatSightingsCount(it.sightingsCount)
           val searchParts = buildList {
             add(identity.title)
@@ -90,7 +90,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             displayTitle = identity.title,
             metaLine = metaParts.joinToString(" • "),
             searchText = searchParts.joinToString("\n"),
-            lastSeen = it.lastSeen,
+            sortTimestamp = it.lastSightingAt,
             lastRssi = it.lastRssi,
             sightingsCount = it.sightingsCount,
             starred = it.starred,
@@ -128,7 +128,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
   val devices: StateFlow<List<DeviceListItem>> = filteredFlow
     .combine(sortMode) { list, sort ->
       when (sort) {
-        SortMode.RECENT -> list.sortedByDescending { it.lastSeen }
+        SortMode.RECENT -> list.sortedByDescending { it.sortTimestamp }
         SortMode.STRONGEST -> list.sortedByDescending { it.lastRssi }
         SortMode.NAME -> list.sortedBy { it.displayTitle.lowercase() }
       }
