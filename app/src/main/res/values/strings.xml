@@ -21,7 +21,7 @@
   <string name="compact_cards">Compact device cards</string>
   <string name="alerts">Alerts</string>
   <string name="alerts_section_title">Alert rules</string>
-  <string name="alerts_section_detail">Create audible alerts with a chosen emoji and sound preset. Rules can match an OUI prefix, a full MAC address, or a Bluetooth name.</string>
+  <string name="alerts_section_detail">Create audible alerts with a chosen emoji and sound preset. Rules can match an OUI prefix, a full MAC address, or a Bluetooth name. New installs also seed defaults for Flipper, Axon/TASER, and Ray-Ban Meta-style devices.</string>
   <string name="alert_type_label">Match by</string>
   <string name="alert_emoji_label">Emoji</string>
   <string name="alert_sound_label">Sound</string>

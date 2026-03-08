@@ -5,6 +5,8 @@ import kotlinx.coroutines.flow.Flow
 class AlertRuleRepository(
   private val alertRuleDao: AlertRuleDao
 ) {
+  suspend fun getRules(): List<AlertRuleEntity> = alertRuleDao.getRules()
+
   fun observeRules(): Flow<List<AlertRuleEntity>> = alertRuleDao.observeRules()
 
   fun observeEnabledRules(): Flow<List<AlertRuleEntity>> = alertRuleDao.observeEnabledRules()
