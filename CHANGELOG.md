@@ -48,6 +48,7 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 - Request notification permission when starting continuous scanning and move the foreground-service notification onto a status-bar-visible channel
 - Rename the background-capable passive scan mode to `Continuous scanning` so `active` stays reserved for explicit BLE info queries
 - Steady the device list during scans by sorting `Recent` on deduped sighting sessions, ignoring tiny RSSI changes in row diffs, and disabling RecyclerView change animations
+- Move the main-screen filters and recovery controls into a right-side drawer so the list can use the full vertical viewport
 - Bump the Android app to `0.2.9` / version code `19` for the continuous-scanning terminology split and list-stability release
 - Move scan start/stop into the main toolbar, keep the live device count in the header, and move the installed version label into the overflow menu
 - Bump the Android app to `0.2.8` / version code `18` for the scan-performance and header-control release

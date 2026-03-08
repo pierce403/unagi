@@ -24,6 +24,9 @@
   <string name="unstar_device">Remove star</string>
   <string name="show_controls">Show controls</string>
   <string name="hide_controls">Hide controls</string>
+  <string name="filters">Filters</string>
+  <string name="filters_panel_title">Filters</string>
+  <string name="filters_panel_subtitle">Adjust list filters, sorting, and recovery actions.</string>
   <string name="continuous_scanning">Continuous scanning</string>
   <string name="compact_cards">Compact device cards</string>
   <string name="alerts">Alerts</string>

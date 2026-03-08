@@ -61,7 +61,7 @@ Foreground alerts for "let me know when X is nearby."
 - Device cards can now be starred directly from the list, and the main filters include a `Starred only` toggle for focused sweeps
 - Because the app targets SDK 35, system-bar insets must be handled explicitly; the main, diagnostics, and detail toolbars now pad below the status bar on Android 15+
 - The Android package identity is now `ninja.unagi`; older `com.thingalert` installs will not upgrade in place and should be uninstalled manually before testing the new build
-- The main controls banner can be collapsed by tapping its header, and the overflow menu now includes a persisted `Compact device cards` toggle for denser scanning sessions
+- Filter and recovery controls now live in a right-side drawer, so the main screen can stay almost entirely dedicated to device listings while the overflow menu still keeps the persisted `Compact device cards` toggle
 - The device list now stays steadier during scans: `Recent` ordering follows deduped sighting sessions instead of every packet, tiny RSSI swings do not trigger a full row refresh, and RecyclerView change animations are disabled
 
 ## Permissions notes (MVP)

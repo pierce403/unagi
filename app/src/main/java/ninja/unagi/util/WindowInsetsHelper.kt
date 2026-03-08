@@ -24,6 +24,19 @@ object WindowInsetsHelper {
     }
   }
 
+  fun applyVerticalInsets(view: View) {
+    val initialTop = view.paddingTop
+    val initialBottom = view.paddingBottom
+    ViewCompat.setOnApplyWindowInsetsListener(view) { target, insets ->
+      val systemInsets = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+      target.updatePadding(
+        top = initialTop + systemInsets.top,
+        bottom = initialBottom + systemInsets.bottom
+      )
+      insets
+    }
+  }
+
   fun requestApplyInsets(view: View) {
     ViewCompat.requestApplyInsets(view)
   }

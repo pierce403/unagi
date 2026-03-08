@@ -11,8 +11,10 @@ import android.widget.ArrayAdapter
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.GravityCompat
 import androidx.core.view.isVisible
 import androidx.core.widget.doAfterTextChanged
+import androidx.drawerlayout.widget.DrawerLayout
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
@@ -47,7 +49,6 @@ class MainActivity : AppCompatActivity() {
   private lateinit var viewModel: MainViewModel
   private lateinit var adapter: DeviceAdapter
   private var recoveryAction = RecoveryAction.NONE
-  private var bannerCollapsed = false
   private var compactCards = false
   private var continuousScanningEnabled = false
   private var continueContinuousScanAfterNotificationPrompt = false
@@ -110,6 +111,7 @@ class MainActivity : AppCompatActivity() {
       DebugLog.log("Bluetooth enable declined")
       binding.permissionHint.isVisible = true
       binding.permissionHint.text = getString(R.string.enable_bluetooth)
+      openFiltersDrawer()
     }
   }
 
@@ -126,9 +128,9 @@ class MainActivity : AppCompatActivity() {
 
     WindowInsetsHelper.applyToolbarInsets(binding.toolbar)
     WindowInsetsHelper.applyBottomInsets(binding.deviceList)
+    WindowInsetsHelper.applyVerticalInsets(binding.filterDrawerContent)
     WindowInsetsHelper.requestApplyInsets(binding.root)
 
-    bannerCollapsed = MainDisplayPreferences.isTopBannerCollapsed(this)
     compactCards = MainDisplayPreferences.isCompactDeviceCards(this)
     continuousScanningEnabled = ContinuousScanPreferences.isEnabled(this)
 
@@ -171,7 +173,6 @@ class MainActivity : AppCompatActivity() {
     binding.filterInput.doAfterTextChanged { text ->
       viewModel.updateQuery(text?.toString().orEmpty())
     }
-    binding.topBannerHeader.setOnClickListener { setBannerCollapsed(!bannerCollapsed) }
     binding.unknownOnly.setOnCheckedChangeListener { _, isChecked ->
       viewModel.setUnknownOnly(isChecked)
     }
@@ -179,7 +180,6 @@ class MainActivity : AppCompatActivity() {
       viewModel.setStarredOnly(isChecked)
     }
     binding.permissionActionButton.setOnClickListener { runRecoveryAction() }
-    setBannerCollapsed(bannerCollapsed, persist = false)
 
     DebugLog.log("MainActivity created")
     viewModel.refreshPreflightState()
@@ -250,6 +250,10 @@ class MainActivity : AppCompatActivity() {
         }
         true
       }
+      R.id.menu_filters -> {
+        toggleFiltersDrawer()
+        true
+      }
       R.id.menu_diagnostics -> {
         startActivity(Intent(this, DiagnosticsActivity::class.java))
         true
@@ -267,6 +271,20 @@ class MainActivity : AppCompatActivity() {
         true
       }
       else -> super.onOptionsItemSelected(item)
+    }
+  }
+
+  private fun toggleFiltersDrawer() {
+    if (binding.drawerLayout.isDrawerOpen(GravityCompat.END)) {
+      binding.drawerLayout.closeDrawer(GravityCompat.END)
+    } else {
+      binding.drawerLayout.openDrawer(GravityCompat.END)
+    }
+  }
+
+  private fun openFiltersDrawer() {
+    if (!binding.drawerLayout.isDrawerOpen(GravityCompat.END)) {
+      binding.drawerLayout.openDrawer(GravityCompat.END)
     }
   }
 
@@ -289,18 +307,6 @@ class MainActivity : AppCompatActivity() {
         scanToggle?.title = getString(R.string.scan_start)
         scanToggle?.isEnabled = true
       }
-    }
-  }
-
-  private fun setBannerCollapsed(collapsed: Boolean, persist: Boolean = true) {
-    bannerCollapsed = collapsed
-    binding.topBannerContent.isVisible = !collapsed
-    binding.topBannerDivider.isVisible = !collapsed
-    binding.bannerToggleLabel.text = getString(
-      if (collapsed) R.string.show_controls else R.string.hide_controls
-    )
-    if (persist) {
-      MainDisplayPreferences.setTopBannerCollapsed(this, collapsed)
     }
   }
 
@@ -392,6 +398,7 @@ class MainActivity : AppCompatActivity() {
         recoveryAction = RecoveryAction.RETRY_SCAN
         binding.permissionActionButton.text = getString(R.string.retry_scan)
         binding.permissionActionButton.isVisible = true
+        openFiltersDrawer()
       }
       is ScanState.Idle -> {
         binding.scanStatus.text = getString(R.string.scan_inactive)
@@ -418,6 +425,7 @@ class MainActivity : AppCompatActivity() {
           getString(R.string.grant_access)
         }
         binding.permissionActionButton.isVisible = true
+        openFiltersDrawer()
       }
       is ScanState.LocationServicesOff -> {
         binding.scanStatus.text = getString(R.string.scan_inactive)
@@ -426,6 +434,7 @@ class MainActivity : AppCompatActivity() {
         recoveryAction = RecoveryAction.OPEN_LOCATION_SETTINGS
         binding.permissionActionButton.text = getString(R.string.open_location_settings)
         binding.permissionActionButton.isVisible = true
+        openFiltersDrawer()
       }
       is ScanState.BluetoothOff -> {
         binding.scanStatus.text = getString(R.string.scan_inactive)
@@ -434,11 +443,13 @@ class MainActivity : AppCompatActivity() {
         recoveryAction = RecoveryAction.ENABLE_BLUETOOTH
         binding.permissionActionButton.text = getString(R.string.enable_bluetooth_action)
         binding.permissionActionButton.isVisible = true
+        openFiltersDrawer()
       }
       is ScanState.Unsupported -> {
         binding.scanStatus.text = getString(R.string.bluetooth_unsupported)
         binding.permissionHint.isVisible = true
         binding.permissionHint.text = getString(R.string.bluetooth_unsupported_detail)
+        openFiltersDrawer()
       }
       is ScanState.Error -> {
         binding.scanStatus.text = getString(R.string.scan_error)
@@ -447,6 +458,7 @@ class MainActivity : AppCompatActivity() {
         recoveryAction = RecoveryAction.RETRY_SCAN
         binding.permissionActionButton.text = getString(R.string.retry_scan)
         binding.permissionActionButton.isVisible = true
+        openFiltersDrawer()
       }
     }
   }
