@@ -27,6 +27,7 @@
   <string name="filters">Filters</string>
   <string name="filters_panel_title">Filters</string>
   <string name="filters_panel_subtitle">Adjust list filters, sorting, and recovery actions.</string>
+  <string name="active_ble_queries_menu">Active BLE queries</string>
   <string name="continuous_scanning">Continuous scanning</string>
   <string name="compact_cards">Compact device cards</string>
   <string name="alerts">Alerts</string>
@@ -82,6 +83,7 @@
   <string name="query_device_info_finished">BLE query finished.</string>
   <string name="query_device_info_failed">BLE query finished with an issue: %1$s</string>
   <string name="query_device_info_note">Connects briefly to read public device information. May fail on some devices. No pairing required. Some devices allow only one connection at a time.</string>
+  <string name="query_device_info_toggle_disabled">Enable Active BLE queries from the main menu before running manual GATT reads from this screen.</string>
   <string name="query_device_info_unavailable_address">No Bluetooth address is recorded for this device yet.</string>
   <string name="query_device_info_unavailable_permission">Grant Nearby devices access before running a BLE query.</string>
   <string name="query_device_info_unavailable_classic">This action is only available for BLE or dual-mode devices with a recent BLE sighting.</string>

@@ -23,6 +23,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import kotlinx.coroutines.launch
 import ninja.unagi.R
 import ninja.unagi.databinding.ActivityMainBinding
+import ninja.unagi.enrichment.ActiveBleQueryPreferences
 import ninja.unagi.scan.ContinuousScanPreferences
 import ninja.unagi.scan.ContinuousScanService
 import ninja.unagi.scan.ScanState
@@ -50,6 +51,7 @@ class MainActivity : AppCompatActivity() {
   private lateinit var adapter: DeviceAdapter
   private var recoveryAction = RecoveryAction.NONE
   private var compactCards = false
+  private var activeBleQueriesEnabled = false
   private var continuousScanningEnabled = false
   private var continueContinuousScanAfterNotificationPrompt = false
   private lateinit var appVersionInfo: AppVersionInfo
@@ -132,6 +134,7 @@ class MainActivity : AppCompatActivity() {
     WindowInsetsHelper.requestApplyInsets(binding.root)
 
     compactCards = MainDisplayPreferences.isCompactDeviceCards(this)
+    activeBleQueriesEnabled = ActiveBleQueryPreferences.isEnabled(this)
     continuousScanningEnabled = ContinuousScanPreferences.isEnabled(this)
 
     adapter = DeviceAdapter(
@@ -213,6 +216,7 @@ class MainActivity : AppCompatActivity() {
 
   override fun onResume() {
     super.onResume()
+    activeBleQueriesEnabled = ActiveBleQueryPreferences.isEnabled(this)
     continuousScanningEnabled = ContinuousScanPreferences.isEnabled(this)
     viewModel.refreshPreflightState()
     invalidateOptionsMenu()
@@ -258,6 +262,12 @@ class MainActivity : AppCompatActivity() {
         startActivity(Intent(this, DiagnosticsActivity::class.java))
         true
       }
+      R.id.menu_active_ble_queries -> {
+        val enabled = !item.isChecked
+        item.isChecked = enabled
+        setActiveBleQueriesEnabled(enabled)
+        true
+      }
       R.id.menu_continuous_scanning -> {
         val enabled = !item.isChecked
         item.isChecked = enabled
@@ -290,6 +300,7 @@ class MainActivity : AppCompatActivity() {
 
   private fun syncMenuState(menu: android.view.Menu?) {
     menu ?: return
+    menu.findItem(R.id.menu_active_ble_queries)?.isChecked = activeBleQueriesEnabled
     menu.findItem(R.id.menu_continuous_scanning)?.isChecked = continuousScanningEnabled
     menu.findItem(R.id.menu_compact_cards)?.isChecked = compactCards
     menu.findItem(R.id.menu_version)?.title = appVersionInfo.menuLabel
@@ -316,6 +327,15 @@ class MainActivity : AppCompatActivity() {
     if (persist) {
       MainDisplayPreferences.setCompactDeviceCards(this, enabled)
     }
+  }
+
+  private fun setActiveBleQueriesEnabled(enabled: Boolean) {
+    if (activeBleQueriesEnabled == enabled) {
+      return
+    }
+    activeBleQueriesEnabled = enabled
+    ActiveBleQueryPreferences.setEnabled(this, enabled)
+    invalidateOptionsMenu()
   }
 
   private fun setContinuousScanningEnabled(enabled: Boolean) {

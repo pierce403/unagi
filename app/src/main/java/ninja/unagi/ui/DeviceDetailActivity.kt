@@ -16,6 +16,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import ninja.unagi.ThingAlertApp
 import ninja.unagi.databinding.ActivityDeviceDetailBinding
+import ninja.unagi.enrichment.ActiveBleQueryPreferences
 import ninja.unagi.enrichment.BleDeviceInfoQueryClient
 import ninja.unagi.enrichment.DeviceEnrichmentFormatter
 import ninja.unagi.data.DeviceEntity
@@ -176,6 +177,10 @@ class DeviceDetailActivity : AppCompatActivity() {
   }
 
   private fun runBleQuery(device: DeviceEntity, metadata: ObservationMetadata) {
+    if (!ActiveBleQueryPreferences.isEnabled(this)) {
+      renderQueryControls(device, metadata)
+      return
+    }
     val address = device.lastAddress ?: return
     queryInProgress = true
     renderQueryControls(device, metadata)
@@ -197,6 +202,13 @@ class DeviceDetailActivity : AppCompatActivity() {
   }
 
   private fun renderQueryControls(device: DeviceEntity, metadata: ObservationMetadata) {
+    if (!ActiveBleQueryPreferences.isEnabled(this)) {
+      binding.queryDeviceInfoButton.isEnabled = false
+      binding.queryDeviceInfoButton.text = getString(ninja.unagi.R.string.query_device_info)
+      binding.queryDeviceInfoNote.isVisible = true
+      binding.queryDeviceInfoNote.text = getString(ninja.unagi.R.string.query_device_info_toggle_disabled)
+      return
+    }
     val eligibility = queryEligibility(device, metadata)
     binding.queryDeviceInfoButton.isEnabled = !queryInProgress && eligibility.enabled
     binding.queryDeviceInfoButton.text = getString(

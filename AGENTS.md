@@ -92,5 +92,6 @@ Build the MVP: scan -> list -> tap -> history.
 - Default alert rules are seeded once from `DefaultAlertSeeder`; use versioned seed keys so new defaults can ship without duplicating or constantly re-adding deleted user rules
 - Continuous scanning can flood Room with callbacks if maintenance work runs on every observation; keep pruning throttled and heavy list-presentation work off the main thread
 - Keep the term `active` reserved for explicit per-device BLE enrichment/query actions; the passive background-capable mode is `continuous scanning`
+- The overflow menu now has a separate `Active BLE queries` toggle; keep it distinct from `Continuous scanning`, default it off, and use it only to gate manual detail-page GATT reads
 - To keep the device list readable during scans, prefer session-level recency (`lastSightingAt`) over packet-level `lastSeen` for list ordering, suppress tiny RSSI-only row diffs, and avoid RecyclerView change animations
 - Reflection: before handoff, record any new command, pitfall, deploy detail, or collaborator preference discovered during the task
