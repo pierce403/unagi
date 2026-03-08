@@ -109,9 +109,14 @@ class MainActivity : AppCompatActivity() {
     compactCards = MainDisplayPreferences.isCompactDeviceCards(this)
     activeScanningEnabled = ActiveScanPreferences.isEnabled(this)
 
-    adapter = DeviceAdapter { item ->
-      startActivity(DeviceDetailActivity.intent(this, item.deviceKey))
-    }
+    adapter = DeviceAdapter(
+      onClick = { item ->
+        startActivity(DeviceDetailActivity.intent(this, item.deviceKey))
+      },
+      onStarToggle = { item, starred ->
+        viewModel.setStarred(item.deviceKey, starred)
+      }
+    )
     setCompactCards(compactCards, persist = false)
 
     binding.deviceList.layoutManager = LinearLayoutManager(this)
@@ -145,6 +150,9 @@ class MainActivity : AppCompatActivity() {
     binding.topBannerHeader.setOnClickListener { setBannerCollapsed(!bannerCollapsed) }
     binding.unknownOnly.setOnCheckedChangeListener { _, isChecked ->
       viewModel.setUnknownOnly(isChecked)
+    }
+    binding.starredOnly.setOnCheckedChangeListener { _, isChecked ->
+      viewModel.setStarredOnly(isChecked)
     }
     binding.scanToggleButton.setOnClickListener {
       if (viewModel.scanState.value is ScanState.Scanning) {

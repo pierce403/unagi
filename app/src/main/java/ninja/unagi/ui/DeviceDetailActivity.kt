@@ -140,7 +140,7 @@ class DeviceDetailActivity : AppCompatActivity() {
             binding.detailFirstSeen.text = "First seen: ${Formatters.formatTimestamp(device.firstSeen)}"
             binding.detailLastSeen.text = "Last seen: ${Formatters.formatTimestamp(device.lastSeen)}"
             binding.detailStats.text =
-              "RSSI range: ${device.rssiMin}..${device.rssiMax} dBm • Avg: ${"%.1f".format(device.rssiAvg)} • Count: ${device.sightingsCount}"
+              "RSSI range: ${device.rssiMin}..${device.rssiMax} dBm • Avg: ${"%.1f".format(device.rssiAvg)} • Sightings: ${device.sightingsCount} • Samples: ${device.observationCount}"
             binding.detailMetadata.text = device.lastMetadataJson ?: "No metadata recorded yet."
             renderQueryControls(device, currentMetadata)
           }

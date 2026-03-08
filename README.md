@@ -55,6 +55,7 @@ Foreground alerts for "let me know when X is nearby."
 - The main screen shows the installed app version prominently in the toolbar and a dedicated build banner so testers can confirm which APK is running
 - The main header now keeps the scan toggle, an all-caps `UNAGI` title, the installed build badge, and a `Live now` device count together at the top of the screen
 - Optional `Active scanning` mode keeps scans cycling in a foreground service so scanning can continue after the activity closes
+- Device cards can now be starred directly from the list, and the main filters include a `Starred only` toggle for focused sweeps
 - Because the app targets SDK 35, system-bar insets must be handled explicitly; the main, diagnostics, and detail toolbars now pad below the status bar on Android 15+
 - The Android package identity is now `ninja.unagi`; older `com.thingalert` installs will not upgrade in place and should be uninstalled manually before testing the new build
 - The main controls banner can be collapsed by tapping its header, and the overflow menu now includes a persisted `Compact device cards` toggle for denser scanning sessions
@@ -83,6 +84,7 @@ Foreground alerts for "let me know when X is nearby."
 - Active BLE query results are local-only and feed both the detail screen and the copyable Diagnostics report with DIS availability, service discovery, read counts, GATT status, and any returned manufacturer/model/PnP fields
 - Passive vendor decoders now attach human-readable hints for Apple, Google/Fast Pair, Microsoft, Samsung, Nordic, and Tile-style payloads so randomized or unnamed devices expose better context without being treated as stable identities
 - The main search field now matches normalized MAC and OUI fragments, so `001122` and `00:11:22` both work as live filters
+- Sightings are now deduped across continuous presence, so a device that stays nearby updates `last seen` and signal stats without endlessly inflating the sightings counter or history timeline
 - The Alerts screen lets you match devices by OUI, full MAC, or Bluetooth name, choose an emoji and sound preset, and receive a detail notification when a rule fires
 - New installs now seed editable default alert rules for `Flipper`, `Axon Body`, `TASER`, and `Ray-Ban` name matches so common high-interest devices alert immediately without manual setup
 - On Android 13+, grant notification permission from the Alerts screen if you want system notifications in addition to the audible alert

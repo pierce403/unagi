@@ -115,7 +115,7 @@ object DiagnosticsReportBuilder {
       persistedDevices.take(MAX_DEVICE_LINES).forEachIndexed { index, device ->
         builder.appendLine(
           "  ${index + 1}. name=${device.displayName ?: "Unknown device"} " +
-            "address=${device.lastAddress ?: "n/a"} sightings=${device.sightingsCount} " +
+            "address=${device.lastAddress ?: "n/a"} sightings=${device.sightingsCount} samples=${device.observationCount} " +
             "lastSeen=${Formatters.formatTimestamp(device.lastSeen)} " +
             "rssi=${device.lastRssi} key=${device.deviceKey.take(12)}"
         )

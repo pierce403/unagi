@@ -31,12 +31,15 @@ class DiagnosticsReportBuilderTest {
           lastAddress = "AA:BB:CC:DD:EE:FF",
           firstSeen = 1L,
           lastSeen = 2L,
+          lastSightingAt = 2L,
           sightingsCount = 3,
+          observationCount = 5,
           lastRssi = -55,
           rssiMin = -70,
           rssiMax = -40,
           rssiAvg = -52.0,
-          lastMetadataJson = null
+          lastMetadataJson = null,
+          starred = false
         )
       ),
       persistedEnrichments = listOf(

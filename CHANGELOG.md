@@ -34,3 +34,5 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 - Stage website APKs under versioned filenames and update the site download links during each release
 - Move scan controls into the main header, switch the title treatment to `UNAGI`, show a live device count, and add optional background-capable active scanning via a foreground service
 - Bump the Android app to `0.2.2` / version code `12` for the active-scanning release
+- Add direct starring from device cards, a starred-only filter, and continuous-sighting dedup so long-lived scans stop inflating the history count
+- Bump the Android app to `0.2.3` / version code `13` for the starring and dedup release

@@ -9,6 +9,7 @@ data class DeviceListItem(
   val lastSeen: Long,
   val lastRssi: Int,
   val sightingsCount: Int,
+  val starred: Boolean,
   val lastAddress: String?,
   val vendorName: String?
 )

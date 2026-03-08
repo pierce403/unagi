@@ -20,6 +20,9 @@ interface DeviceDao {
   @Insert(onConflict = OnConflictStrategy.REPLACE)
   suspend fun upsertDevice(device: DeviceEntity)
 
+  @Query("UPDATE devices SET starred = :starred WHERE deviceKey = :deviceKey")
+  suspend fun setStarred(deviceKey: String, starred: Boolean)
+
   @Query("DELETE FROM devices WHERE lastSeen < :threshold")
   suspend fun deleteOlderThan(threshold: Long)
 }

@@ -13,6 +13,7 @@ import ninja.unagi.util.DeviceIdentityPresenter
 import ninja.unagi.util.Formatters
 import ninja.unagi.util.VendorPrefixRegistryProvider
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -37,6 +38,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
   private val filterQuery = MutableStateFlow("")
   private val sortMode = MutableStateFlow(SortMode.RECENT)
   private val unknownOnly = MutableStateFlow(false)
+  private val starredOnly = MutableStateFlow(false)
 
   val scanState: StateFlow<ScanState> = scanner.scanState
 
@@ -85,6 +87,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
           lastSeen = it.lastSeen,
           lastRssi = it.lastRssi,
           sightingsCount = it.sightingsCount,
+          starred = it.starred,
           lastAddress = it.lastAddress,
           vendorName = identity.vendorName
         )
@@ -110,6 +113,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
     .combine(unknownOnly) { list, unknown ->
       if (unknown) list.filter { it.displayName.isNullOrBlank() } else list
+    }
+    .combine(starredOnly) { list, starred ->
+      if (starred) list.filter { it.starred } else list
     }
 
   val devices: StateFlow<List<DeviceListItem>> = filteredFlow
@@ -145,6 +151,16 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
   fun setUnknownOnly(unknown: Boolean) {
     unknownOnly.value = unknown
+  }
+
+  fun setStarredOnly(starred: Boolean) {
+    starredOnly.value = starred
+  }
+
+  fun setStarred(deviceKey: String, starred: Boolean) {
+    viewModelScope.launch {
+      repository.setStarred(deviceKey, starred)
+    }
   }
 
   fun startScan() {

@@ -27,6 +27,3 @@
 - [ ] Add a manual scan QA checklist for stock Android and GrapheneOS scenarios
 
 ### Main screen and releases
-
-- [ ] Keep continuous sightings from inflating the sightings count
-- [ ] Add starred devices and a starred-only filter

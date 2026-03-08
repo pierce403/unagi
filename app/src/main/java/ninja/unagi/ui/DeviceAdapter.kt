@@ -14,13 +14,14 @@ import ninja.unagi.databinding.ItemDeviceBinding
 import ninja.unagi.util.Formatters
 
 class DeviceAdapter(
-  private val onClick: (DeviceListItem) -> Unit
+  private val onClick: (DeviceListItem) -> Unit,
+  private val onStarToggle: (DeviceListItem, Boolean) -> Unit
 ) : ListAdapter<DeviceListItem, DeviceAdapter.DeviceViewHolder>(DiffCallback) {
   private var compactMode = false
 
   override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): DeviceViewHolder {
     val binding = ItemDeviceBinding.inflate(LayoutInflater.from(parent.context), parent, false)
-    return DeviceViewHolder(binding, onClick)
+    return DeviceViewHolder(binding, onClick, onStarToggle)
   }
 
   override fun onBindViewHolder(holder: DeviceViewHolder, position: Int) {
@@ -37,13 +38,23 @@ class DeviceAdapter(
 
   class DeviceViewHolder(
     private val binding: ItemDeviceBinding,
-    private val onClick: (DeviceListItem) -> Unit
+    private val onClick: (DeviceListItem) -> Unit,
+    private val onStarToggle: (DeviceListItem, Boolean) -> Unit
   ) : RecyclerView.ViewHolder(binding.root) {
     fun bind(item: DeviceListItem, compactMode: Boolean) {
       applyCardDensity(compactMode)
       binding.deviceName.text = item.displayTitle
       binding.deviceName.maxLines = if (compactMode) 1 else 2
       binding.deviceName.ellipsize = TextUtils.TruncateAt.END
+      binding.deviceStar.text = if (item.starred) "★" else "☆"
+      binding.deviceStar.contentDescription = itemView.context.getString(
+        if (item.starred) {
+          ninja.unagi.R.string.unstar_device
+        } else {
+          ninja.unagi.R.string.star_device
+        }
+      )
+      binding.deviceStar.setOnClickListener { onStarToggle(item, !item.starred) }
       binding.deviceMeta.text = item.metaLine
       binding.deviceMeta.isVisible = item.metaLine.isNotBlank()
       binding.deviceMeta.maxLines = if (compactMode) 2 else 4
@@ -69,6 +80,10 @@ class DeviceAdapter(
       binding.deviceName.setTextSize(
         TypedValue.COMPLEX_UNIT_SP,
         if (compactMode) 14f else 16f
+      )
+      binding.deviceStar.setTextSize(
+        TypedValue.COMPLEX_UNIT_SP,
+        if (compactMode) 18f else 22f
       )
       binding.deviceMeta.setTextSize(
         TypedValue.COMPLEX_UNIT_SP,

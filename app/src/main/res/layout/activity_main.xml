@@ -187,13 +187,27 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
             android:layout_weight="1" />
+        </LinearLayout>
+
+        <LinearLayout
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="8dp"
+          android:orientation="horizontal">
 
           <CheckBox
             android:id="@+id/unknownOnly"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
             android:text="@string/unknown_only"
+            android:textColor="@color/thingalert_on_background" />
+
+          <CheckBox
+            android:id="@+id/starredOnly"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:text="@string/starred_only"
             android:textColor="@color/thingalert_on_background" />
         </LinearLayout>
       </LinearLayout>

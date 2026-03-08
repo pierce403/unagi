@@ -17,6 +17,10 @@ class DeviceRepository(
   fun observeSightings(deviceKey: String): Flow<List<SightingEntity>> =
     sightingDao.observeSightings(deviceKey)
 
+  suspend fun setStarred(deviceKey: String, starred: Boolean) {
+    deviceDao.setStarred(deviceKey, starred)
+  }
+
   suspend fun recordObservation(observation: DeviceObservation) {
     database.withTransaction {
       ninja.unagi.util.DebugLog.log(
@@ -31,42 +35,59 @@ class DeviceRepository(
           lastAddress = observation.address,
           firstSeen = observation.timestamp,
           lastSeen = observation.timestamp,
+          lastSightingAt = observation.timestamp,
           sightingsCount = 1,
+          observationCount = 1,
           lastRssi = observation.rssi,
           rssiMin = observation.rssi,
           rssiMax = observation.rssi,
           rssiAvg = observation.rssi.toDouble(),
-          lastMetadataJson = observation.metadataJson
+          lastMetadataJson = observation.metadataJson,
+          starred = false
         )
       } else {
-        val count = existing.sightingsCount + 1
-        val avg = ((existing.rssiAvg * existing.sightingsCount) + observation.rssi) / count
+        val isNewSighting = ContinuousSightingPolicy.isNewSighting(
+          existing.lastSightingAt,
+          observation.timestamp
+        )
+        val observationCount = existing.observationCount + 1
+        val sightingsCount = if (isNewSighting) {
+          existing.sightingsCount + 1
+        } else {
+          existing.sightingsCount
+        }
+        val avg = ((existing.rssiAvg * existing.observationCount) + observation.rssi) / observationCount
         DeviceEntity(
           deviceKey = existing.deviceKey,
           displayName = observation.name ?: existing.displayName,
           lastAddress = observation.address ?: existing.lastAddress,
           firstSeen = minOf(existing.firstSeen, observation.timestamp),
           lastSeen = maxOf(existing.lastSeen, observation.timestamp),
-          sightingsCount = count,
+          lastSightingAt = if (isNewSighting) observation.timestamp else existing.lastSightingAt,
+          sightingsCount = sightingsCount,
+          observationCount = observationCount,
           lastRssi = observation.rssi,
           rssiMin = minOf(existing.rssiMin, observation.rssi),
           rssiMax = maxOf(existing.rssiMax, observation.rssi),
           rssiAvg = avg,
-          lastMetadataJson = observation.metadataJson ?: existing.lastMetadataJson
+          lastMetadataJson = observation.metadataJson ?: existing.lastMetadataJson,
+          starred = existing.starred
         )
       }
 
       deviceDao.upsertDevice(updated)
-      sightingDao.insertSighting(
-        SightingEntity(
-          deviceKey = observation.deviceKey,
-          timestamp = observation.timestamp,
-          rssi = observation.rssi,
-          name = observation.name,
-          address = observation.address,
-          metadataJson = observation.metadataJson
+      if (existing == null || updated.lastSightingAt == observation.timestamp) {
+        sightingDao.insertSighting(
+          SightingEntity(
+            deviceKey = observation.deviceKey,
+            timestamp = observation.timestamp,
+            rssi = observation.rssi,
+            name = observation.name,
+            address = observation.address,
+            metadataJson = observation.metadataJson
+          )
         )
-      )
+      }
 
       pruneIfNeeded(observation.timestamp)
     }
