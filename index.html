@@ -5,8 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#05070d">
   <meta
-    name="description"
     content="unagi is a local-first Android Bluetooth scanner with a black-and-electric-blue ninja aesthetic: scan nearby devices, inspect the list, tap into history, and keep observations on-device.">
+  <meta property="og:title" content="unagi.ninja: Stealth Bluetooth Recon">
+  <meta property="og:description" content="Local-first Android app for spotting nearby Bluetooth devices, keeping a durable history, and avoiding silent background scanning runs.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="https://unagi.ninja/emulator_screenshot.png">
+  <meta property="og:url" content="https://unagi.ninja/">
+  <meta name="twitter:card" content="summary_large_image">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <title>unagi.ninja</title>
   <style>
@@ -625,7 +630,7 @@
               <h3>What the app avoids</h3>
               <ul class="feature-list">
                 <li>No cloud backend and no remote logging by default.</li>
-                <li>No hidden background scanning; continuous scans require the user to enable Active scanning and keep a foreground notification running.</li>
+                <li>No hidden background scanning; continuous scanning requires the user to enable it manually and keep a foreground notification running.</li>
                 <li>No crashes when Bluetooth is disabled or runtime permissions are denied.</li>
               </ul>
             </article>

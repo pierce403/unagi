@@ -29,23 +29,26 @@
 
   <!-- Device Cards -->
   <g transform="translate(18 114)">
-    <rect width="324" height="94" rx="20" fill="#141C2C" stroke="#1F53E1FF"/>
-    <text x="18" y="28" fill="#53E1FF" font-family="Avenir Next, Arial, sans-serif" font-size="17" font-weight="700">Pixel Buds Pro</text>
-    <text x="18" y="52" fill="#EAF2FF" font-family="Avenir Next, Arial, sans-serif" font-size="13">Last seen: 9:29 PM • 12 sightings</text>
-    <text x="18" y="74" fill="#1594FF" font-family="Avenir Next, Arial, sans-serif" font-size="13" font-weight="700">RSSI -54 dBm</text>
+    <rect width="324" height="98" rx="20" fill="#141C2C" stroke="#1F53E1FF"/>
+    <text x="18" y="32" fill="#53E1FF" font-family="Avenir Next, Arial, sans-serif" font-size="16" font-weight="700">Pixel Buds Pro</text>
+    <text x="306" y="34" fill="#1594FF" font-family="Avenir Next, Arial, sans-serif" font-size="22" font-weight="700" text-anchor="end">☆</text>
+    <text x="18" y="58" fill="#EAF2FF" font-family="Avenir Next, Arial, sans-serif" font-size="13">Last seen: 9:29 PM • 12 sightings</text>
+    <text x="18" y="80" fill="#1594FF" font-family="Avenir Next, Arial, sans-serif" font-size="13" font-weight="700">RSSI -54 dBm</text>
   </g>
 
-  <g transform="translate(18 222)">
-    <rect width="324" height="94" rx="20" fill="#141C2C" stroke="#1F53E1FF"/>
-    <text x="18" y="28" fill="#53E1FF" font-family="Avenir Next, Arial, sans-serif" font-size="17" font-weight="700">Nintendo Switch</text>
-    <text x="18" y="52" fill="#EAF2FF" font-family="Avenir Next, Arial, sans-serif" font-size="13">Last seen: 9:28 PM • 4 sightings</text>
-    <text x="18" y="74" fill="#1594FF" font-family="Avenir Next, Arial, sans-serif" font-size="13" font-weight="700">RSSI -71 dBm</text>
+  <g transform="translate(18 228)">
+    <rect width="324" height="98" rx="20" fill="#141C2C" stroke="#1F53E1FF"/>
+    <text x="18" y="32" fill="#53E1FF" font-family="Avenir Next, Arial, sans-serif" font-size="16" font-weight="700">Nintendo Switch</text>
+    <text x="306" y="34" fill="#1594FF" font-family="Avenir Next, Arial, sans-serif" font-size="22" font-weight="700" text-anchor="end">☆</text>
+    <text x="18" y="58" fill="#EAF2FF" font-family="Avenir Next, Arial, sans-serif" font-size="13">Last seen: 9:28 PM • 4 sightings</text>
+    <text x="18" y="80" fill="#1594FF" font-family="Avenir Next, Arial, sans-serif" font-size="13" font-weight="700">RSSI -71 dBm</text>
   </g>
 
-  <g transform="translate(18 330)">
-    <rect width="324" height="118" rx="20" fill="#0C1220" stroke="#3353E1FF"/>
-    <text x="18" y="28" fill="#53E1FF" font-family="Avenir Next, Arial, sans-serif" font-size="15" font-weight="700">LOCAL HISTORY</text>
-    <text x="18" y="54" fill="#F4F8FF" font-family="Avenir Next, Arial, sans-serif" font-size="13">Tap any device to inspect sightings after relaunch.</text>
-    <text x="18" y="80" fill="#7FA7D3" font-family="Avenir Next, Arial, sans-serif" font-size="12">Observed identifiers stay local. No cloud sync. No remote logging.</text>
+  <g transform="translate(18 342)">
+    <rect width="324" height="126" rx="20" fill="#0C1220" stroke="#3353E1FF" stroke-dasharray="4 4"/>
+    <text x="18" y="32" fill="#53E1FF" font-family="Avenir Next, Arial, sans-serif" font-size="15" font-weight="700">LOCAL HISTORY</text>
+    <text x="18" y="60" fill="#F4F8FF" font-family="Avenir Next, Arial, sans-serif" font-size="13">Tap any device to inspect sightings.</text>
+    <text x="18" y="86" fill="#7FA7D3" font-family="Avenir Next, Arial, sans-serif" font-size="12">Observed identifiers stay local.</text>
+    <text x="18" y="106" fill="#7FA7D3" font-family="Avenir Next, Arial, sans-serif" font-size="12">No cloud sync. No remote logging.</text>
   </g>
 </svg>
