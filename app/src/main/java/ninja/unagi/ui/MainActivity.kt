@@ -21,8 +21,8 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import kotlinx.coroutines.launch
 import ninja.unagi.R
 import ninja.unagi.databinding.ActivityMainBinding
-import ninja.unagi.scan.ActiveScanPreferences
-import ninja.unagi.scan.ActiveScanService
+import ninja.unagi.scan.ContinuousScanPreferences
+import ninja.unagi.scan.ContinuousScanService
 import ninja.unagi.scan.ScanState
 import ninja.unagi.scan.StartOnBootPreferences
 import ninja.unagi.util.AppVersion
@@ -49,8 +49,8 @@ class MainActivity : AppCompatActivity() {
   private var recoveryAction = RecoveryAction.NONE
   private var bannerCollapsed = false
   private var compactCards = false
-  private var activeScanningEnabled = false
-  private var continueActiveScanAfterNotificationPrompt = false
+  private var continuousScanningEnabled = false
+  private var continueContinuousScanAfterNotificationPrompt = false
   private lateinit var appVersionInfo: AppVersionInfo
 
   private val permissionLauncher = registerForActivityResult(
@@ -60,8 +60,8 @@ class MainActivity : AppCompatActivity() {
     DebugLog.log("Permission results: $result")
     if (granted) {
       if (
-        activeScanningEnabled &&
-        PermissionsHelper.requiresBackgroundLocationForActiveScan() &&
+        continuousScanningEnabled &&
+        PermissionsHelper.requiresBackgroundLocationForContinuousScan() &&
         !PermissionsHelper.hasBackgroundLocationPermission(this)
       ) {
         requestBackgroundLocationPermission()
@@ -87,10 +87,10 @@ class MainActivity : AppCompatActivity() {
   private val notificationPermissionLauncher = registerForActivityResult(
     ActivityResultContracts.RequestPermission()
   ) {
-    val shouldContinue = continueActiveScanAfterNotificationPrompt
-    continueActiveScanAfterNotificationPrompt = false
+    val shouldContinue = continueContinuousScanAfterNotificationPrompt
+    continueContinuousScanAfterNotificationPrompt = false
     if (shouldContinue) {
-      startActiveScanService()
+      startContinuousScanService()
     }
   }
 
@@ -130,7 +130,7 @@ class MainActivity : AppCompatActivity() {
 
     bannerCollapsed = MainDisplayPreferences.isTopBannerCollapsed(this)
     compactCards = MainDisplayPreferences.isCompactDeviceCards(this)
-    activeScanningEnabled = ActiveScanPreferences.isEnabled(this)
+    continuousScanningEnabled = ContinuousScanPreferences.isEnabled(this)
 
     adapter = DeviceAdapter(
       onClick = { item ->
@@ -212,14 +212,14 @@ class MainActivity : AppCompatActivity() {
 
   override fun onResume() {
     super.onResume()
-    activeScanningEnabled = ActiveScanPreferences.isEnabled(this)
+    continuousScanningEnabled = ContinuousScanPreferences.isEnabled(this)
     viewModel.refreshPreflightState()
     invalidateOptionsMenu()
   }
 
   override fun onStop() {
     super.onStop()
-    if (!activeScanningEnabled) {
+    if (!continuousScanningEnabled) {
       viewModel.stopScan()
     }
   }
@@ -253,10 +253,10 @@ class MainActivity : AppCompatActivity() {
         startActivity(Intent(this, DiagnosticsActivity::class.java))
         true
       }
-      R.id.menu_active_scanning -> {
+      R.id.menu_continuous_scanning -> {
         val enabled = !item.isChecked
         item.isChecked = enabled
-        setActiveScanningEnabled(enabled)
+        setContinuousScanningEnabled(enabled)
         true
       }
       R.id.menu_compact_cards -> {
@@ -271,7 +271,7 @@ class MainActivity : AppCompatActivity() {
 
   private fun syncMenuState(menu: android.view.Menu?) {
     menu ?: return
-    menu.findItem(R.id.menu_active_scanning)?.isChecked = activeScanningEnabled
+    menu.findItem(R.id.menu_continuous_scanning)?.isChecked = continuousScanningEnabled
     menu.findItem(R.id.menu_compact_cards)?.isChecked = compactCards
     menu.findItem(R.id.menu_version)?.title = appVersionInfo.menuLabel
     val scanToggle = menu.findItem(R.id.menu_scan_toggle)
@@ -311,16 +311,16 @@ class MainActivity : AppCompatActivity() {
     }
   }
 
-  private fun setActiveScanningEnabled(enabled: Boolean) {
-    if (activeScanningEnabled == enabled) {
+  private fun setContinuousScanningEnabled(enabled: Boolean) {
+    if (continuousScanningEnabled == enabled) {
       return
     }
-    activeScanningEnabled = enabled
-    ActiveScanPreferences.setEnabled(this, enabled)
+    continuousScanningEnabled = enabled
+    ContinuousScanPreferences.setEnabled(this, enabled)
     if (!enabled) {
-      ActiveScanService.stop(this)
+      ContinuousScanService.stop(this)
     } else if (viewModel.scanState.value is ScanState.Scanning) {
-      ActiveScanService.start(this)
+      ContinuousScanService.start(this)
     }
     if (enabled) {
       maybePromptForStartOnBoot()
@@ -331,8 +331,8 @@ class MainActivity : AppCompatActivity() {
   }
 
   private fun handleStartScan() {
-    if (!PermissionsHelper.hasPermissions(this, activeScanningEnabled)) {
-      if (PermissionsHelper.shouldOpenAppSettings(this, activeScanningEnabled)) {
+    if (!PermissionsHelper.hasPermissions(this, continuousScanningEnabled)) {
+      if (PermissionsHelper.shouldOpenAppSettings(this, continuousScanningEnabled)) {
         DebugLog.log("Permissions blocked; directing user to app settings", level = android.util.Log.WARN)
         viewModel.refreshPreflightState()
       } else {
@@ -357,16 +357,16 @@ class MainActivity : AppCompatActivity() {
   }
 
   private fun beginScan() {
-    if (activeScanningEnabled) {
-      maybeRequestNotificationPermissionForActiveScan()
+    if (continuousScanningEnabled) {
+      maybeRequestNotificationPermissionForContinuousScan()
     } else {
       viewModel.startScan()
     }
   }
 
   private fun stopCurrentScan() {
-    if (activeScanningEnabled) {
-      ActiveScanService.stop(this)
+    if (continuousScanningEnabled) {
+      ContinuousScanService.stop(this)
     } else {
       viewModel.stopScan()
     }
@@ -399,8 +399,8 @@ class MainActivity : AppCompatActivity() {
       is ScanState.MissingPermission -> {
         binding.scanStatus.text = getString(R.string.scan_inactive)
         binding.permissionHint.isVisible = true
-        val missing = PermissionsHelper.missingPermissionLabels(this, activeScanningEnabled).joinToString()
-        val blocked = PermissionsHelper.shouldOpenAppSettings(this, activeScanningEnabled)
+        val missing = PermissionsHelper.missingPermissionLabels(this, continuousScanningEnabled).joinToString()
+        val blocked = PermissionsHelper.shouldOpenAppSettings(this, continuousScanningEnabled)
         binding.permissionHint.text = if (blocked) {
           getString(R.string.permissions_blocked_detail, missing)
         } else {
@@ -460,7 +460,7 @@ class MainActivity : AppCompatActivity() {
   }
 
   private fun requestScanPermissions() {
-    val permissions = PermissionsHelper.foregroundPermissions(activeScanningEnabled)
+    val permissions = PermissionsHelper.foregroundPermissions(continuousScanningEnabled)
     DebugLog.log("Requesting permissions: $permissions")
     PermissionsHelper.markPermissionRequestAttempted(this)
     if (permissions.isEmpty()) {
@@ -471,11 +471,11 @@ class MainActivity : AppCompatActivity() {
   }
 
   private fun requestBackgroundLocationPermission() {
-    if (!PermissionsHelper.requiresBackgroundLocationForActiveScan()) {
+    if (!PermissionsHelper.requiresBackgroundLocationForContinuousScan()) {
       handleStartScan()
       return
     }
-    DebugLog.log("Requesting background location permission for active scanning")
+    DebugLog.log("Requesting background location permission for continuous scanning")
     PermissionsHelper.markBackgroundLocationRequestAttempted(this)
     backgroundLocationPermissionLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
   }
@@ -495,22 +495,22 @@ class MainActivity : AppCompatActivity() {
       .show()
   }
 
-  private fun maybeRequestNotificationPermissionForActiveScan() {
+  private fun maybeRequestNotificationPermissionForContinuousScan() {
     if (!NotificationPermissionHelper.requiresRuntimePermission()) {
-      startActiveScanService()
+      startContinuousScanService()
       return
     }
     if (NotificationPermissionHelper.canPostNotifications(this)) {
-      startActiveScanService()
+      startContinuousScanService()
       return
     }
 
-    continueActiveScanAfterNotificationPrompt = true
+    continueContinuousScanAfterNotificationPrompt = true
     AlertDialog.Builder(this)
       .setTitle(R.string.notification_permission_title)
       .setMessage(R.string.notification_permission_detail)
       .setNegativeButton(android.R.string.cancel) { _, _ ->
-        startActiveScanService()
+        startContinuousScanService()
       }
       .setPositiveButton(R.string.allow_notifications) { _, _ ->
         notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
@@ -518,9 +518,9 @@ class MainActivity : AppCompatActivity() {
       .show()
   }
 
-  private fun startActiveScanService() {
+  private fun startContinuousScanService() {
     maybePromptForBatteryOptimization()
-    ActiveScanService.start(this)
+    ContinuousScanService.start(this)
   }
 
   private fun maybePromptForStartOnBoot() {

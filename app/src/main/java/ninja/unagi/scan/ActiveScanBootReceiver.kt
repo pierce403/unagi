@@ -5,16 +5,16 @@ import android.content.Context
 import android.content.Intent
 import ninja.unagi.util.DebugLog
 
-class ActiveScanBootReceiver : BroadcastReceiver() {
+class ContinuousScanBootReceiver : BroadcastReceiver() {
   override fun onReceive(context: Context, intent: Intent) {
     if (intent.action != Intent.ACTION_BOOT_COMPLETED) {
       return
     }
-    if (!ActiveScanPreferences.isEnabled(context) || !StartOnBootPreferences.isEnabled(context)) {
-      DebugLog.log("Boot completed received; active scan autostart disabled")
+    if (!ContinuousScanPreferences.isEnabled(context) || !StartOnBootPreferences.isEnabled(context)) {
+      DebugLog.log("Boot completed received; continuous scan autostart disabled")
       return
     }
-    DebugLog.log("Boot completed received; starting active scan service")
-    ActiveScanService.start(context)
+    DebugLog.log("Boot completed received; starting continuous scan service")
+    ContinuousScanService.start(context)
   }
 }

@@ -13,9 +13,9 @@
       android:title="@string/diagnostics"
       app:showAsAction="never" />
   <item
-      android:id="@+id/menu_active_scanning"
+      android:id="@+id/menu_continuous_scanning"
       android:checkable="true"
-      android:title="@string/active_scanning"
+      android:title="@string/continuous_scanning"
       app:showAsAction="never" />
   <item
       android:id="@+id/menu_compact_cards"

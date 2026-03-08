@@ -44,11 +44,11 @@
             android:name=".ui.DeviceDetailActivity"
             android:exported="false" />
         <service
-            android:name=".scan.ActiveScanService"
+            android:name=".scan.ContinuousScanService"
             android:exported="false"
             android:foregroundServiceType="connectedDevice" />
         <receiver
-            android:name=".scan.ActiveScanBootReceiver"
+            android:name=".scan.ContinuousScanBootReceiver"
             android:enabled="true"
             android:exported="true">
             <intent-filter>

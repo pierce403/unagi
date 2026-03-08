@@ -23,7 +23,7 @@ import kotlinx.coroutines.launch
 import ninja.unagi.R
 import ninja.unagi.ThingAlertApp
 
-class ActiveScanService : Service() {
+class ContinuousScanService : Service() {
   private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
   private lateinit var app: ThingAlertApp
   private var scanLoopJob: Job? = null
@@ -40,12 +40,12 @@ class ActiveScanService : Service() {
   override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
     when (intent?.action ?: ACTION_START) {
       ACTION_STOP -> {
-        stopActiveScanning()
+        stopContinuousScanning()
         return START_NOT_STICKY
       }
 
       ACTION_START -> {
-        ActiveScanPreferences.setEnabled(this, true)
+        ContinuousScanPreferences.setEnabled(this, true)
         startForegroundNotification()
         ensureScanLoop()
       }
@@ -83,7 +83,7 @@ class ActiveScanService : Service() {
     }
 
     scanLoopJob = serviceScope.launch {
-      while (ActiveScanPreferences.isEnabled(this@ActiveScanService)) {
+      while (ContinuousScanPreferences.isEnabled(this@ContinuousScanService)) {
         app.scanController.refreshState()
         when (val state = app.scanController.scanState.value) {
           is ScanState.Scanning -> delay(SCAN_LOOP_POLL_MS)
@@ -108,8 +108,8 @@ class ActiveScanService : Service() {
     }
   }
 
-  private fun stopActiveScanning() {
-    ActiveScanPreferences.setEnabled(this, false)
+  private fun stopContinuousScanning() {
+    ContinuousScanPreferences.setEnabled(this, false)
     scanLoopJob?.cancel()
     scanLoopJob = null
     app.scanController.stopScan()
@@ -196,7 +196,7 @@ class ActiveScanService : Service() {
   }
 
   private fun stopServicePendingIntent(): PendingIntent {
-    val intent = Intent(this, ActiveScanService::class.java).apply {
+    val intent = Intent(this, ContinuousScanService::class.java).apply {
       action = ACTION_STOP
     }
     return PendingIntent.getService(
@@ -225,8 +225,8 @@ class ActiveScanService : Service() {
   }
 
   companion object {
-    private const val ACTION_START = "ninja.unagi.action.START_ACTIVE_SCAN"
-    private const val ACTION_STOP = "ninja.unagi.action.STOP_ACTIVE_SCAN"
+    private const val ACTION_START = "ninja.unagi.action.START_CONTINUOUS_SCAN"
+    private const val ACTION_STOP = "ninja.unagi.action.STOP_CONTINUOUS_SCAN"
     private const val CHANNEL_ID = "active_scan_service_status"
     private const val NOTIFICATION_ID = 4101
     private const val REQUEST_OPEN_APP = 4102
@@ -237,14 +237,14 @@ class ActiveScanService : Service() {
     private const val SCAN_ERROR_RETRY_MS = 4_000L
 
     fun start(context: Context) {
-      val intent = Intent(context, ActiveScanService::class.java).apply {
+      val intent = Intent(context, ContinuousScanService::class.java).apply {
         action = ACTION_START
       }
       ContextCompat.startForegroundService(context, intent)
     }
 
     fun stop(context: Context) {
-      val intent = Intent(context, ActiveScanService::class.java).apply {
+      val intent = Intent(context, ContinuousScanService::class.java).apply {
         action = ACTION_STOP
       }
       context.startService(intent)

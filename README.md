@@ -54,10 +54,10 @@ Foreground alerts for "let me know when X is nearby."
 - `scripts/update-bluetooth-assigned-numbers` refreshes the bundled Bluetooth SIG company/service registries at `app/src/main/assets/bluetooth_company_identifiers.txt.gz` and `app/src/main/assets/bluetooth_service_uuids.txt.gz`
 - The main toolbar keeps the all-caps `UNAGI` title, a start/stop scan action, and the current `Live now` device count together at the top of the screen
 - Installed version info now lives in the overflow menu and Diagnostics instead of taking space in the main banner
-- Optional `Active scanning` mode keeps scans cycling in a foreground service so scanning can continue after the activity closes
+- Optional `Continuous scanning` mode keeps scans cycling in a foreground service so passive scanning can continue after the activity closes
 - Started scan sessions now stay active until you stop them; BLE no longer auto-times out after ~20–30 seconds, and classic discovery is recycled under the hood during long runs
-- The foreground-service notification now uses a dedicated UNAGI status icon, and enabling active scanning prompts for a battery-optimization exemption so Android is less likely to kill the scan loop
-- Enabling active scanning now also asks whether the scan service should restart after device boot; if enabled, `BOOT_COMPLETED` brings the foreground service back automatically
+- The foreground-service notification now uses a dedicated UNAGI status icon, and enabling continuous scanning prompts for a battery-optimization exemption so Android is less likely to kill the scan loop
+- Enabling continuous scanning now also asks whether the scan service should restart after device boot; if enabled, `BOOT_COMPLETED` brings the foreground service back automatically
 - Device cards can now be starred directly from the list, and the main filters include a `Starred only` toggle for focused sweeps
 - Because the app targets SDK 35, system-bar insets must be handled explicitly; the main, diagnostics, and detail toolbars now pad below the status bar on Android 15+
 - The Android package identity is now `ninja.unagi`; older `com.thingalert` installs will not upgrade in place and should be uninstalled manually before testing the new build
@@ -66,8 +66,8 @@ Foreground alerts for "let me know when X is nearby."
 ## Permissions notes (MVP)
 
 - Bluetooth scanning permission model differs by Android version; unagi now requests WiGLE-style scan permissions: `BLUETOOTH_SCAN`, `BLUETOOTH_CONNECT`, `ACCESS_FINE_LOCATION`, and `ACCESS_COARSE_LOCATION`
-- When `Active scanning` is enabled, Android 10/11 builds also request `ACCESS_BACKGROUND_LOCATION` so the foreground service can keep discovering devices after the activity closes
-- Active scanning runs in a `connectedDevice` foreground service, so the app manifest now declares `FOREGROUND_SERVICE` and `FOREGROUND_SERVICE_CONNECTED_DEVICE`
+- When `Continuous scanning` is enabled, Android 10/11 builds also request `ACCESS_BACKGROUND_LOCATION` so the foreground service can keep discovering devices after the activity closes
+- Continuous scanning runs in a `connectedDevice` foreground service, so the app manifest now declares `FOREGROUND_SERVICE` and `FOREGROUND_SERVICE_CONNECTED_DEVICE`
 - Using `neverForLocation` can filter some BLE beacons; unagi currently does not set this flag to avoid filtering
 - On Android 11 and below, BLE results can still depend on location services being enabled in addition to permission grant
 - GrapheneOS note: the APK manifest does not request sensor-class permissions; Nearby devices is the permission to grant on Android 12+
@@ -75,8 +75,8 @@ Foreground alerts for "let me know when X is nearby."
 ## Troubleshooting scans
 
 - If a scan fails to start, open Diagnostics to inspect BLE/classic startup results, the last BLE error code, and permission/Bluetooth snapshots
-- If you need the app to keep scanning after you leave the activity, enable `Active scanning` from the overflow menu and keep the foreground notification running
-- On Android 13+, grant notification permission when enabling active scanning if you want the foreground-service notice to stay visible in the notification drawer and status bar
+- If you need the app to keep scanning after you leave the activity, enable `Continuous scanning` from the overflow menu and keep the foreground notification running
+- On Android 13+, grant notification permission when enabling continuous scanning if you want the foreground-service notice to stay visible in the notification drawer and status bar
 - Use `Copy scan debug report` in Diagnostics to capture app version, device/build info, persisted device inventory, and recent scan events for bug reports
 - `unagi` now requests the same scan-relevant Bluetooth/location permissions that WiGLE does; if scans still return zero callbacks, the remaining gap is more likely ROM/profile behavior than a missing manifest permission
 - `unagi` now prefers BLE advertised local names over generic Bluetooth device names, so BLE peripherals should surface the short broadcast name they actually expose
@@ -85,6 +85,7 @@ Foreground alerts for "let me know when X is nearby."
 - Device identity and classification are now separated: list/detail views show address type, vendor-source confidence, likely device category, and the evidence used for that classification without treating those hints as stable identity
 - Classic discoveries now keep public-address vendor confidence, while BLE discoveries downgrade OUI trust when the address is randomized or uncertain
 - Device Details now includes an opt-in `Query device info (BLE)` action that stops the app scan first, opens a short-lived GATT connection, reads safe Device Information Service fields, and stores the result separately from passive observations
+- Terminology note: `Continuous scanning` is the background-capable passive scan mode; `Active BLE query` is the explicit per-device enrichment action from Device Details
 - Active BLE query results are local-only and feed both the detail screen and the copyable Diagnostics report with DIS availability, service discovery, read counts, GATT status, and any returned manufacturer/model/PnP fields
 - Passive vendor decoders now attach human-readable hints for Apple, Google/Fast Pair, Microsoft, Samsung, Nordic, and Tile-style payloads so randomized or unnamed devices expose better context without being treated as stable identities
 - The main search field now matches normalized MAC and OUI fragments, so `001122` and `00:11:22` both work as live filters

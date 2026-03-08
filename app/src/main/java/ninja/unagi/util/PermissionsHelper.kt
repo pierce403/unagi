@@ -14,7 +14,7 @@ object PermissionsHelper {
   private const val KEY_SCAN_PERMISSION_REQUESTED = "scan_permission_requested"
   private const val KEY_BACKGROUND_LOCATION_REQUESTED = "background_location_requested"
 
-  fun requiredPermissions(activeScanning: Boolean = false): List<String> {
+  fun requiredPermissions(continuousScanning: Boolean = false): List<String> {
     val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
       mutableListOf(
         Manifest.permission.BLUETOOTH_SCAN,
@@ -28,33 +28,33 @@ object PermissionsHelper {
         Manifest.permission.ACCESS_COARSE_LOCATION
       )
     }
-    if (activeScanning && requiresBackgroundLocationForActiveScan()) {
+    if (continuousScanning && requiresBackgroundLocationForContinuousScan()) {
       permissions += Manifest.permission.ACCESS_BACKGROUND_LOCATION
     }
     return permissions
   }
 
-  fun foregroundPermissions(activeScanning: Boolean = false): List<String> {
-    return requiredPermissions(activeScanning)
+  fun foregroundPermissions(continuousScanning: Boolean = false): List<String> {
+    return requiredPermissions(continuousScanning)
       .filterNot { it == Manifest.permission.ACCESS_BACKGROUND_LOCATION }
   }
 
-  fun missingPermissions(context: Context, activeScanning: Boolean = false): List<String> {
-    return requiredPermissions(activeScanning).filter { permission ->
+  fun missingPermissions(context: Context, continuousScanning: Boolean = false): List<String> {
+    return requiredPermissions(continuousScanning).filter { permission ->
       ContextCompat.checkSelfPermission(context, permission) != PackageManager.PERMISSION_GRANTED
     }
   }
 
-  fun hasPermissions(context: Context, activeScanning: Boolean = false): Boolean {
-    return missingPermissions(context, activeScanning).isEmpty()
+  fun hasPermissions(context: Context, continuousScanning: Boolean = false): Boolean {
+    return missingPermissions(context, continuousScanning).isEmpty()
   }
 
-  fun requiresBackgroundLocationForActiveScan(): Boolean {
+  fun requiresBackgroundLocationForContinuousScan(): Boolean {
     return Build.VERSION.SDK_INT in Build.VERSION_CODES.Q..Build.VERSION_CODES.R
   }
 
   fun hasBackgroundLocationPermission(context: Context): Boolean {
-    if (!requiresBackgroundLocationForActiveScan()) {
+    if (!requiresBackgroundLocationForContinuousScan()) {
       return true
     }
     return ContextCompat.checkSelfPermission(
@@ -77,8 +77,8 @@ object PermissionsHelper {
       .apply()
   }
 
-  fun shouldOpenAppSettings(activity: Activity, activeScanning: Boolean = false): Boolean {
-    val missing = missingPermissions(activity, activeScanning)
+  fun shouldOpenAppSettings(activity: Activity, continuousScanning: Boolean = false): Boolean {
+    val missing = missingPermissions(activity, continuousScanning)
     if (missing.isEmpty()) {
       return false
     }
@@ -96,8 +96,8 @@ object PermissionsHelper {
     }
   }
 
-  fun missingPermissionLabels(context: Context, activeScanning: Boolean = false): List<String> {
-    return missingPermissions(context, activeScanning)
+  fun missingPermissionLabels(context: Context, continuousScanning: Boolean = false): List<String> {
+    return missingPermissions(context, continuousScanning)
       .mapNotNull { permission ->
         when (permission) {
           Manifest.permission.BLUETOOTH_SCAN,

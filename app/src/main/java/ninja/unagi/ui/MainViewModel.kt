@@ -17,7 +17,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import ninja.unagi.ThingAlertApp
-import ninja.unagi.scan.ActiveScanPreferences
+import ninja.unagi.scan.ContinuousScanPreferences
 import ninja.unagi.scan.ScanState
 import ninja.unagi.util.BluetoothAddressTools
 import ninja.unagi.util.BluetoothAssignedNumbersProvider
@@ -183,7 +183,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
   }
 
   override fun onCleared() {
-    if (!ActiveScanPreferences.isEnabled(getApplication())) {
+    if (!ContinuousScanPreferences.isEnabled(getApplication())) {
       scanner.stopScan()
     }
     super.onCleared()

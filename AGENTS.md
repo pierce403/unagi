@@ -76,13 +76,13 @@ Build the MVP: scan -> list -> tap -> history.
 - Treat classic Bluetooth discovery addresses as public for vendor-confidence purposes, but keep BLE OUI confidence downgraded unless the address type is explicitly public
 - Active BLE enrichment now persists in the `device_enrichments` Room table; keep it separate from passive observation JSON and include it in Diagnostics/export paths
 - `ThingAlertApp` now owns the shared `ScanController`, so detail-page BLE queries can explicitly stop scans before opening a GATT connection
-- `Active scanning` is now a persisted mode in `ActiveScanPreferences`; when it is enabled, scanning should run via `ActiveScanService` instead of being tied to `MainActivity`
-- Background-capable active scanning needs `ACCESS_BACKGROUND_LOCATION` on Android 10/11 plus a `connectedDevice` foreground service notification; keep the permission flow and manifest declarations aligned
-- Active scanning now prompts for a battery-optimization exemption from `MainActivity`; keep that prompt tied to the mode enable/start path so users understand why the app may be killed otherwise
+- `Continuous scanning` is the persisted background-capable passive mode in `ContinuousScanPreferences`; when it is enabled, scanning should run via `ContinuousScanService` instead of being tied to `MainActivity`
+- Background-capable continuous scanning needs `ACCESS_BACKGROUND_LOCATION` on Android 10/11 plus a `connectedDevice` foreground service notification; keep the permission flow and manifest declarations aligned
+- Continuous scanning now prompts for a battery-optimization exemption from `MainActivity`; keep that prompt tied to the mode enable/start path so users understand why the app may be killed otherwise
 - The foreground-service notification uses `ic_unagi_status`, not the launcher asset, so the status-bar icon stays recognizable and monochrome
-- On Android 13+, active scanning should request `POST_NOTIFICATIONS` from the scan-start flow too; otherwise the foreground-service notice can fall out of the notification drawer even though scanning is still running
+- On Android 13+, continuous scanning should request `POST_NOTIFICATIONS` from the scan-start flow too; otherwise the foreground-service notice can fall out of the notification drawer even though scanning is still running
 - If the active-scan notification is expected to show a status-bar icon, do not use a low-importance channel; low importance suppresses that icon on modern Android
-- Boot autostart is now controlled by `StartOnBootPreferences` and `ActiveScanBootReceiver`; only restart the service on `BOOT_COMPLETED` when both active scanning and start-on-boot are enabled
+- Boot autostart is now controlled by `StartOnBootPreferences` and `ContinuousScanBootReceiver`; only restart the service on `BOOT_COMPLETED` when both continuous scanning and start-on-boot are enabled
 - Device history now treats `sightingsCount` as deduped presence sessions, not raw callback volume; use `observationCount` for signal-stat sampling math and diagnostics
 - Star state now lives on `DeviceEntity`; keep starred filters wired off persisted state instead of transient UI-only flags
 - The main toolbar now owns the scan start/stop action and live-device count; keep the top banner focused on scan state and filters instead of duplicating those primary controls
@@ -91,4 +91,5 @@ Build the MVP: scan -> list -> tap -> history.
 - Passive vendor decoders now live in `PassiveVendorDecoderRegistry`; they should add soft hints (ecosystem, beacon/tracker/dev-board style) without claiming stable product identity
 - Default alert rules are seeded once from `DefaultAlertSeeder`; use versioned seed keys so new defaults can ship without duplicating or constantly re-adding deleted user rules
 - Continuous scanning can flood Room with callbacks if maintenance work runs on every observation; keep pruning throttled and heavy list-presentation work off the main thread
+- Keep the term `active` reserved for explicit per-device BLE enrichment/query actions; the passive background-capable mode is `continuous scanning`
 - Reflection: before handoff, record any new command, pitfall, deploy detail, or collaborator preference discovered during the task

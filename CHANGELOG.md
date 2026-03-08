@@ -32,7 +32,7 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 - Seed default alert rules for Flipper, Axon/TASER, and Ray-Ban Meta-style name matches on first launch
 - Bump the Android app to `0.2.1` / version code `11` for the seeded-default-alert release
 - Stage website APKs under versioned filenames and update the site download links during each release
-- Move scan controls into the main header, switch the title treatment to `UNAGI`, show a live device count, and add optional background-capable active scanning via a foreground service
+- Move scan controls into the main header, switch the title treatment to `UNAGI`, show a live device count, and add optional background-capable continuous scanning via a foreground service
 - Bump the Android app to `0.2.2` / version code `12` for the active-scanning release
 - Add direct starring from device cards, a starred-only filter, and continuous-sighting dedup so long-lived scans stop inflating the history count
 - Bump the Android app to `0.2.3` / version code `13` for the starring and dedup release
@@ -40,11 +40,12 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 - Bump the Android app to `0.2.4` / version code `14` for the alert-editor release
 - Keep scan sessions continuous once started instead of auto-completing after the old 20–30 second timeout window
 - Bump the Android app to `0.2.5` / version code `15` for the continuous-scanning fix
-- Add a dedicated UNAGI status-bar icon for the active-scan notification and prompt for battery-optimization exemption when active scanning is enabled
+- Add a dedicated UNAGI status-bar icon for the continuous-scan notification and prompt for battery-optimization exemption when continuous scanning is enabled
 - Bump the Android app to `0.2.6` / version code `16` for the background-scan UX pass
-- Ask whether active scanning should restart on boot, persist that choice, and start the foreground scan service from `BOOT_COMPLETED`
+- Ask whether continuous scanning should restart on boot, persist that choice, and start the foreground scan service from `BOOT_COMPLETED`
 - Bump the Android app to `0.2.7` / version code `17` for the boot-start background scanning release
 - Reduce continuous-scan UI jank by throttling database maintenance work and moving expensive device-list presentation off the main thread
-- Request notification permission when starting active scanning and move the foreground-service notification onto a status-bar-visible channel
+- Request notification permission when starting continuous scanning and move the foreground-service notification onto a status-bar-visible channel
+- Rename the background-capable passive scan mode to `Continuous scanning` so `active` stays reserved for explicit BLE info queries
 - Move scan start/stop into the main toolbar, keep the live device count in the header, and move the installed version label into the overflow menu
 - Bump the Android app to `0.2.8` / version code `18` for the scan-performance and header-control release
