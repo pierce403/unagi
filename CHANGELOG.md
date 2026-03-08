@@ -40,3 +40,5 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 - Bump the Android app to `0.2.4` / version code `14` for the alert-editor release
 - Keep scan sessions continuous once started instead of auto-completing after the old 20–30 second timeout window
 - Bump the Android app to `0.2.5` / version code `15` for the continuous-scanning fix
+- Add a dedicated UNAGI status-bar icon for the active-scan notification and prompt for battery-optimization exemption when active scanning is enabled
+- Bump the Android app to `0.2.6` / version code `16` for the background-scan UX pass

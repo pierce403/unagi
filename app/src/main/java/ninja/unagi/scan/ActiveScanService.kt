@@ -142,7 +142,7 @@ class ActiveScanService : Service() {
   }
 
   private fun buildNotification() = NotificationCompat.Builder(this, CHANNEL_ID)
-    .setSmallIcon(R.drawable.ic_launcher)
+    .setSmallIcon(R.drawable.ic_unagi_status)
     .setContentTitle(getString(R.string.active_scan_notification_title))
     .setContentText(notificationBody())
     .setOngoing(true)

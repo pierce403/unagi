@@ -9,6 +9,7 @@ import android.os.Bundle
 import android.provider.Settings
 import android.widget.ArrayAdapter
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.isVisible
 import androidx.core.widget.doAfterTextChanged
@@ -24,6 +25,7 @@ import ninja.unagi.scan.ActiveScanPreferences
 import ninja.unagi.scan.ActiveScanService
 import ninja.unagi.scan.ScanState
 import ninja.unagi.util.AppVersion
+import ninja.unagi.util.BatteryOptimizationHelper
 import ninja.unagi.util.DebugLog
 import ninja.unagi.util.PermissionsHelper
 import ninja.unagi.util.WindowInsetsHelper
@@ -75,6 +77,12 @@ class MainActivity : AppCompatActivity() {
     } else {
       viewModel.refreshPreflightState()
     }
+  }
+
+  private val batteryOptimizationLauncher = registerForActivityResult(
+    ActivityResultContracts.StartActivityForResult()
+  ) {
+    viewModel.refreshPreflightState()
   }
 
   private val enableBluetoothLauncher = registerForActivityResult(
@@ -271,6 +279,9 @@ class MainActivity : AppCompatActivity() {
     } else if (viewModel.scanState.value is ScanState.Scanning) {
       ActiveScanService.start(this)
     }
+    if (enabled) {
+      maybePromptForBatteryOptimization()
+    }
     viewModel.refreshPreflightState()
     invalidateOptionsMenu()
   }
@@ -303,6 +314,7 @@ class MainActivity : AppCompatActivity() {
 
   private fun beginScan() {
     if (activeScanningEnabled) {
+      maybePromptForBatteryOptimization()
       ActiveScanService.start(this)
     } else {
       viewModel.startScan()
@@ -439,6 +451,21 @@ class MainActivity : AppCompatActivity() {
     DebugLog.log("Requesting background location permission for active scanning")
     PermissionsHelper.markBackgroundLocationRequestAttempted(this)
     backgroundLocationPermissionLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+  }
+
+  private fun maybePromptForBatteryOptimization() {
+    if (BatteryOptimizationHelper.isIgnoringBatteryOptimizations(this)) {
+      return
+    }
+    val requestIntent = BatteryOptimizationHelper.requestIntent(this) ?: return
+    AlertDialog.Builder(this)
+      .setTitle(R.string.battery_optimization_title)
+      .setMessage(R.string.battery_optimization_message)
+      .setNegativeButton(android.R.string.cancel, null)
+      .setPositiveButton(R.string.battery_optimization_action) { _, _ ->
+        batteryOptimizationLauncher.launch(requestIntent)
+      }
+      .show()
   }
 
   private fun openAppSettings() {

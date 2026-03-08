@@ -62,6 +62,9 @@
   <string name="active_scan_notification_unsupported">Bluetooth is unsupported on this device</string>
   <string name="active_scan_notification_idle">Ready to start scanning</string>
   <string name="active_scan_notification_with_count">%1$s • %2$d live</string>
+  <string name="battery_optimization_title">Keep active scanning alive</string>
+  <string name="battery_optimization_message">Ask Android to disable battery optimization for UNAGI so background scanning is less likely to be paused or killed. You can skip this and keep scanning anyway.</string>
+  <string name="battery_optimization_action">Open battery settings</string>
   <string name="no_devices">No devices yet. Start a scan.</string>
   <string name="diagnostics">Diagnostics</string>
   <string name="device_details">Device details</string>
