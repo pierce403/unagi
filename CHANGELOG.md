@@ -51,6 +51,7 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 - Move the main-screen filters and recovery controls into a right-side drawer so the list can use the full vertical viewport
 - Keep `Active BLE queries` separate from `Continuous scanning`; active BLE queries stay off by default and only enable the manual Device Details GATT/DIS action
 - Move the filter drawer to the left edge and open it from a dedicated toolbar filter icon instead of a text `Filters` action
+- Bump the Android app to `0.2.11` / version code `21` for the active-query toggle and left-drawer filter release
 - Bump the Android app to `0.2.10` / version code `20` for the right-drawer filter layout release
 - Bump the Android app to `0.2.9` / version code `19` for the continuous-scanning terminology split and list-stability release
 - Move scan start/stop into the main toolbar, keep the live device count in the header, and move the installed version label into the overflow menu
