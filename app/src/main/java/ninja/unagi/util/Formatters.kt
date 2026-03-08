@@ -1,16 +1,16 @@
 package ninja.unagi.util
 
-import java.text.DateFormat
-import java.util.Date
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
+import java.util.Locale
 
 object Formatters {
-  private val dateTimeFormatter: DateFormat = DateFormat.getDateTimeInstance(
-    DateFormat.MEDIUM,
-    DateFormat.MEDIUM
-  )
-
   fun formatTimestamp(timestamp: Long): String {
-    return dateTimeFormatter.format(Date(timestamp))
+    return DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM)
+      .withLocale(Locale.getDefault())
+      .format(Instant.ofEpochMilli(timestamp).atZone(ZoneId.systemDefault()))
   }
 
   fun formatRssi(rssi: Int): String {
