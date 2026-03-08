@@ -11,48 +11,38 @@
   </defs>
 
   <rect width="360" height="780" rx="28" fill="url(#screen)"/>
-  <circle cx="316" cy="96" r="108" fill="#1594FF" fill-opacity=".08"/>
+  <circle cx="280" cy="40" r="108" fill="#1594FF" fill-opacity=".08"/>
   <rect width="360" height="96" rx="28" fill="#0C1220"/>
   <rect y="94" width="360" height="2" fill="#53E1FF" fill-opacity=".35"/>
 
+  <!-- Status Bar -->
   <text x="18" y="24" fill="#AFC8FF" font-family="Avenir Next, Arial, sans-serif" font-size="14">9:30</text>
-  <text x="20" y="62" fill="#F4F8FF" font-family="Avenir Next, Arial, sans-serif" font-size="30" font-weight="700">UNAGI</text>
 
-  <g transform="translate(18 118)">
-    <rect width="324" height="240" rx="24" fill="#0C1220" stroke="#3353E1FF"/>
-    <text x="18" y="28" fill="#53E1FF" font-family="Avenir Next, Arial, sans-serif" font-size="13" font-weight="700">SCANNING IS ACTIVE</text>
+  <!-- Toolbar -->
+  <!-- Menu Icon (Hamburger) -->
+  <path d="M18 52 h18 m-18 6 h18 m-18 6 h18" stroke="#53E1FF" stroke-width="2" stroke-linecap="round"/>
+  
+  <text x="56" y="62" fill="#F4F8FF" font-family="Avenir Next, Arial, sans-serif" font-size="24" font-weight="700">UNAGI</text>
+  <text x="56" y="80" fill="#53E1FF" font-family="Avenir Next, Arial, sans-serif" font-size="13">Live now: 12 devices</text>
+  
+  <text x="266" y="64" fill="#53E1FF" font-family="Avenir Next, Arial, sans-serif" font-size="14" font-weight="700" text-transform="uppercase">Stop scan</text>
 
-    <rect x="18" y="48" width="138" height="44" rx="16" fill="url(#glow)"/>
-    <text x="48" y="75" fill="#F7FBFF" font-family="Avenir Next, Arial, sans-serif" font-size="14" font-weight="700">START SCAN</text>
-
-    <rect x="168" y="48" width="138" height="44" rx="16" fill="#141C2C" stroke="#53E1FF"/>
-    <text x="208" y="75" fill="#EAF2FF" font-family="Avenir Next, Arial, sans-serif" font-size="14" font-weight="700">STOP SCAN</text>
-
-    <rect x="18" y="110" width="288" height="56" rx="18" fill="#141C2C" stroke="#1F53E1FF"/>
-    <text x="36" y="144" fill="#7FA7D3" font-family="Avenir Next, Arial, sans-serif" font-size="15">Filter by name</text>
-
-    <text x="18" y="196" fill="#EAF2FF" font-family="Avenir Next, Arial, sans-serif" font-size="14">Sort</text>
-    <text x="56" y="196" fill="#F4F8FF" font-family="Avenir Next, Arial, sans-serif" font-size="14" font-weight="700">Recently seen</text>
-    <path d="M185 188l6 8 6-8z" fill="#53E1FF"/>
-    <rect x="230" y="182" width="14" height="14" rx="2" fill="none" stroke="#53E1FF"/>
-    <text x="252" y="195" fill="#EAF2FF" font-family="Avenir Next, Arial, sans-serif" font-size="14">Unknown only</text>
-  </g>
-
-  <g transform="translate(18 380)">
+  <!-- Device Cards -->
+  <g transform="translate(18 114)">
     <rect width="324" height="94" rx="20" fill="#141C2C" stroke="#1F53E1FF"/>
     <text x="18" y="28" fill="#53E1FF" font-family="Avenir Next, Arial, sans-serif" font-size="17" font-weight="700">Pixel Buds Pro</text>
     <text x="18" y="52" fill="#EAF2FF" font-family="Avenir Next, Arial, sans-serif" font-size="13">Last seen: 9:29 PM • 12 sightings</text>
     <text x="18" y="74" fill="#1594FF" font-family="Avenir Next, Arial, sans-serif" font-size="13" font-weight="700">RSSI -54 dBm</text>
   </g>
 
-  <g transform="translate(18 488)">
+  <g transform="translate(18 222)">
     <rect width="324" height="94" rx="20" fill="#141C2C" stroke="#1F53E1FF"/>
     <text x="18" y="28" fill="#53E1FF" font-family="Avenir Next, Arial, sans-serif" font-size="17" font-weight="700">Nintendo Switch</text>
     <text x="18" y="52" fill="#EAF2FF" font-family="Avenir Next, Arial, sans-serif" font-size="13">Last seen: 9:28 PM • 4 sightings</text>
     <text x="18" y="74" fill="#1594FF" font-family="Avenir Next, Arial, sans-serif" font-size="13" font-weight="700">RSSI -71 dBm</text>
   </g>
 
-  <g transform="translate(18 596)">
+  <g transform="translate(18 330)">
     <rect width="324" height="118" rx="20" fill="#0C1220" stroke="#3353E1FF"/>
     <text x="18" y="28" fill="#53E1FF" font-family="Avenir Next, Arial, sans-serif" font-size="15" font-weight="700">LOCAL HISTORY</text>
     <text x="18" y="54" fill="#F4F8FF" font-family="Avenir Next, Arial, sans-serif" font-size="13">Tap any device to inspect sightings after relaunch.</text>
