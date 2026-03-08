@@ -1,20 +1,30 @@
-<menu xmlns:android="http://schemas.android.com/apk/res/android">
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+  <item
+      android:id="@+id/menu_scan_toggle"
+      android:title="@string/scan_start"
+      app:showAsAction="always|withText" />
   <item
       android:id="@+id/menu_alerts"
       android:title="@string/alerts"
-      android:showAsAction="never" />
+      app:showAsAction="never" />
   <item
       android:id="@+id/menu_diagnostics"
       android:title="@string/diagnostics"
-      android:showAsAction="never" />
+      app:showAsAction="never" />
   <item
       android:id="@+id/menu_active_scanning"
       android:checkable="true"
       android:title="@string/active_scanning"
-      android:showAsAction="never" />
+      app:showAsAction="never" />
   <item
       android:id="@+id/menu_compact_cards"
       android:checkable="true"
       android:title="@string/compact_cards"
-      android:showAsAction="never" />
+      app:showAsAction="never" />
+  <item
+      android:id="@+id/menu_version"
+      android:enabled="false"
+      android:title="@string/version_label"
+      app:showAsAction="never" />
 </menu>

@@ -52,8 +52,8 @@ Foreground alerts for "let me know when X is nearby."
 - `scripts/stage-apk` to stage the built debug APK under a versioned filename in `downloads/` and update the website download links
 - `scripts/update-vendor-prefixes` refreshes the bundled IEEE MA-L / MA-M / MA-S vendor-prefix asset at `app/src/main/assets/vendor_prefixes.txt.gz`
 - `scripts/update-bluetooth-assigned-numbers` refreshes the bundled Bluetooth SIG company/service registries at `app/src/main/assets/bluetooth_company_identifiers.txt.gz` and `app/src/main/assets/bluetooth_service_uuids.txt.gz`
-- The main screen shows the installed app version prominently in the toolbar and a dedicated build banner so testers can confirm which APK is running
-- The main header now keeps the scan toggle, an all-caps `UNAGI` title, the installed build badge, and a `Live now` device count together at the top of the screen
+- The main toolbar keeps the all-caps `UNAGI` title, a start/stop scan action, and the current `Live now` device count together at the top of the screen
+- Installed version info now lives in the overflow menu and Diagnostics instead of taking space in the main banner
 - Optional `Active scanning` mode keeps scans cycling in a foreground service so scanning can continue after the activity closes
 - Started scan sessions now stay active until you stop them; BLE no longer auto-times out after ~20–30 seconds, and classic discovery is recycled under the hood during long runs
 - The foreground-service notification now uses a dedicated UNAGI status icon, and enabling active scanning prompts for a battery-optimization exemption so Android is less likely to kill the scan loop

@@ -14,6 +14,7 @@
     android:elevation="0dp"
     android:theme="@style/ThemeOverlay.MaterialComponents.Dark.ActionBar"
     android:title="@string/app_name_header"
+    app:subtitleTextColor="@color/thingalert_secondary"
     app:titleTextColor="@color/thingalert_on_surface" />
 
   <View
@@ -48,57 +49,17 @@
         android:padding="14dp">
 
         <LinearLayout
-          android:layout_width="0dp"
+          android:layout_width="match_parent"
           android:layout_height="wrap_content"
-          android:layout_weight="1"
           android:orientation="vertical">
-
-          <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
-
-            <TextView
-              android:layout_width="wrap_content"
-              android:layout_height="wrap_content"
-              android:text="@string/app_name_header"
-              android:textAllCaps="true"
-              android:textColor="@color/thingalert_secondary"
-              android:textSize="20sp"
-              android:textStyle="bold" />
-
-            <TextView
-              android:id="@+id/appVersionLabel"
-              android:layout_width="wrap_content"
-              android:layout_height="wrap_content"
-              android:layout_marginStart="10dp"
-              android:background="@drawable/version_banner"
-              android:fontFamily="monospace"
-              android:paddingHorizontal="10dp"
-              android:paddingVertical="6dp"
-              android:text="@string/version_label"
-              android:textColor="@color/thingalert_on_primary"
-              android:textSize="12sp"
-              android:textStyle="bold" />
-          </LinearLayout>
 
           <TextView
             android:id="@+id/scanStatus"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
             android:text="@string/scan_inactive"
             android:textColor="@color/thingalert_secondary"
             android:textStyle="bold" />
-
-          <TextView
-            android:id="@+id/deviceCountLabel"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:text="@string/live_device_count_zero"
-            android:textColor="@color/thingalert_on_background" />
 
           <TextView
             android:id="@+id/bannerToggleLabel"
@@ -111,14 +72,6 @@
             android:textSize="11sp"
             android:textStyle="bold" />
         </LinearLayout>
-
-        <com.google.android.material.button.MaterialButton
-          android:id="@+id/scanToggleButton"
-          style="@style/ThingAlertPrimaryButton"
-          android:layout_width="wrap_content"
-          android:layout_height="wrap_content"
-          android:layout_marginStart="12dp"
-          android:text="@string/scan_start" />
       </LinearLayout>
 
       <View

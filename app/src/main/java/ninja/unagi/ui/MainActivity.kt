@@ -26,6 +26,7 @@ import ninja.unagi.scan.ActiveScanService
 import ninja.unagi.scan.ScanState
 import ninja.unagi.scan.StartOnBootPreferences
 import ninja.unagi.util.AppVersion
+import ninja.unagi.util.AppVersionInfo
 import ninja.unagi.util.BatteryOptimizationHelper
 import ninja.unagi.util.DebugLog
 import ninja.unagi.util.NotificationPermissionHelper
@@ -50,6 +51,7 @@ class MainActivity : AppCompatActivity() {
   private var compactCards = false
   private var activeScanningEnabled = false
   private var continueActiveScanAfterNotificationPrompt = false
+  private lateinit var appVersionInfo: AppVersionInfo
 
   private val permissionLauncher = registerForActivityResult(
     ActivityResultContracts.RequestMultiplePermissions()
@@ -117,10 +119,10 @@ class MainActivity : AppCompatActivity() {
     setContentView(binding.root)
 
     viewModel = ViewModelProvider(this)[MainViewModel::class.java]
+    appVersionInfo = AppVersion.read(this)
 
     setSupportActionBar(binding.toolbar)
     supportActionBar?.title = getString(R.string.app_name_header)
-    binding.appVersionLabel.text = AppVersion.read(this).visibleLabel
 
     WindowInsetsHelper.applyToolbarInsets(binding.toolbar)
     WindowInsetsHelper.applyBottomInsets(binding.deviceList)
@@ -175,13 +177,6 @@ class MainActivity : AppCompatActivity() {
     binding.starredOnly.setOnCheckedChangeListener { _, isChecked ->
       viewModel.setStarredOnly(isChecked)
     }
-    binding.scanToggleButton.setOnClickListener {
-      if (viewModel.scanState.value is ScanState.Scanning) {
-        stopCurrentScan()
-      } else {
-        handleStartScan()
-      }
-    }
     binding.permissionActionButton.setOnClickListener { runRecoveryAction() }
     setBannerCollapsed(bannerCollapsed, persist = false)
 
@@ -202,12 +197,13 @@ class MainActivity : AppCompatActivity() {
         launch {
           viewModel.scanState.collect { state ->
             updateScanState(state)
+            invalidateOptionsMenu()
           }
         }
 
         launch {
           viewModel.liveDeviceCount.collect { count ->
-            binding.deviceCountLabel.text = getString(R.string.live_device_count, count)
+            supportActionBar?.subtitle = getString(R.string.live_device_count, count)
           }
         }
       }
@@ -230,15 +226,27 @@ class MainActivity : AppCompatActivity() {
 
   override fun onCreateOptionsMenu(menu: android.view.Menu?): Boolean {
     menuInflater.inflate(R.menu.main_menu, menu)
-    menu?.findItem(R.id.menu_active_scanning)?.isChecked = activeScanningEnabled
-    menu?.findItem(R.id.menu_compact_cards)?.isChecked = compactCards
+    syncMenuState(menu)
     return true
+  }
+
+  override fun onPrepareOptionsMenu(menu: android.view.Menu?): Boolean {
+    syncMenuState(menu)
+    return super.onPrepareOptionsMenu(menu)
   }
 
   override fun onOptionsItemSelected(item: android.view.MenuItem): Boolean {
     return when (item.itemId) {
       R.id.menu_alerts -> {
         startActivity(Intent(this, AlertsActivity::class.java))
+        true
+      }
+      R.id.menu_scan_toggle -> {
+        if (viewModel.scanState.value is ScanState.Scanning) {
+          stopCurrentScan()
+        } else {
+          handleStartScan()
+        }
         true
       }
       R.id.menu_diagnostics -> {
@@ -258,6 +266,28 @@ class MainActivity : AppCompatActivity() {
         true
       }
       else -> super.onOptionsItemSelected(item)
+    }
+  }
+
+  private fun syncMenuState(menu: android.view.Menu?) {
+    menu ?: return
+    menu.findItem(R.id.menu_active_scanning)?.isChecked = activeScanningEnabled
+    menu.findItem(R.id.menu_compact_cards)?.isChecked = compactCards
+    menu.findItem(R.id.menu_version)?.title = appVersionInfo.menuLabel
+    val scanToggle = menu.findItem(R.id.menu_scan_toggle)
+    when (val state = viewModel.scanState.value) {
+      is ScanState.Scanning -> {
+        scanToggle?.title = getString(R.string.scan_stop)
+        scanToggle?.isEnabled = true
+      }
+      is ScanState.Unsupported -> {
+        scanToggle?.title = getString(R.string.scan_start)
+        scanToggle?.isEnabled = false
+      }
+      else -> {
+        scanToggle?.title = getString(R.string.scan_start)
+        scanToggle?.isEnabled = true
+      }
     }
   }
 
@@ -348,8 +378,6 @@ class MainActivity : AppCompatActivity() {
     when (state) {
       is ScanState.Scanning -> {
         binding.scanStatus.text = getString(R.string.scan_active)
-        binding.scanToggleButton.isEnabled = true
-        binding.scanToggleButton.text = getString(R.string.scan_stop)
         binding.permissionHint.isVisible = false
       }
       is ScanState.Complete -> {
@@ -360,16 +388,12 @@ class MainActivity : AppCompatActivity() {
         } else {
           getString(R.string.scan_complete_with_devices, state.deviceCount)
         }
-        binding.scanToggleButton.isEnabled = true
-        binding.scanToggleButton.text = getString(R.string.scan_start)
         recoveryAction = RecoveryAction.RETRY_SCAN
         binding.permissionActionButton.text = getString(R.string.retry_scan)
         binding.permissionActionButton.isVisible = true
       }
       is ScanState.Idle -> {
         binding.scanStatus.text = getString(R.string.scan_inactive)
-        binding.scanToggleButton.isEnabled = true
-        binding.scanToggleButton.text = getString(R.string.scan_start)
         binding.permissionHint.isVisible = false
       }
       is ScanState.MissingPermission -> {
@@ -382,8 +406,6 @@ class MainActivity : AppCompatActivity() {
         } else {
           getString(R.string.permissions_required_detail, missing)
         }
-        binding.scanToggleButton.isEnabled = true
-        binding.scanToggleButton.text = getString(R.string.scan_start)
         recoveryAction = if (blocked) {
           RecoveryAction.OPEN_APP_SETTINGS
         } else {
@@ -400,8 +422,6 @@ class MainActivity : AppCompatActivity() {
         binding.scanStatus.text = getString(R.string.scan_inactive)
         binding.permissionHint.isVisible = true
         binding.permissionHint.text = getString(R.string.location_services_required_detail)
-        binding.scanToggleButton.isEnabled = true
-        binding.scanToggleButton.text = getString(R.string.scan_start)
         recoveryAction = RecoveryAction.OPEN_LOCATION_SETTINGS
         binding.permissionActionButton.text = getString(R.string.open_location_settings)
         binding.permissionActionButton.isVisible = true
@@ -410,8 +430,6 @@ class MainActivity : AppCompatActivity() {
         binding.scanStatus.text = getString(R.string.scan_inactive)
         binding.permissionHint.isVisible = true
         binding.permissionHint.text = getString(R.string.enable_bluetooth)
-        binding.scanToggleButton.isEnabled = true
-        binding.scanToggleButton.text = getString(R.string.scan_start)
         recoveryAction = RecoveryAction.ENABLE_BLUETOOTH
         binding.permissionActionButton.text = getString(R.string.enable_bluetooth_action)
         binding.permissionActionButton.isVisible = true
@@ -420,15 +438,11 @@ class MainActivity : AppCompatActivity() {
         binding.scanStatus.text = getString(R.string.bluetooth_unsupported)
         binding.permissionHint.isVisible = true
         binding.permissionHint.text = getString(R.string.bluetooth_unsupported_detail)
-        binding.scanToggleButton.isEnabled = false
-        binding.scanToggleButton.text = getString(R.string.scan_start)
       }
       is ScanState.Error -> {
         binding.scanStatus.text = getString(R.string.scan_error)
         binding.permissionHint.isVisible = true
         binding.permissionHint.text = state.message
-        binding.scanToggleButton.isEnabled = true
-        binding.scanToggleButton.text = getString(R.string.scan_start)
         recoveryAction = RecoveryAction.RETRY_SCAN
         binding.permissionActionButton.text = getString(R.string.retry_scan)
         binding.permissionActionButton.isVisible = true

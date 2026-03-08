@@ -24,5 +24,3 @@
 - [ ] Add a manual scan QA checklist for stock Android and GrapheneOS scenarios
 
 ### Main screen and releases
-
-- [ ] Move scan start/stop into the toolbar and move version info into the overflow menu

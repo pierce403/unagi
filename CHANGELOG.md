@@ -46,3 +46,4 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 - Bump the Android app to `0.2.7` / version code `17` for the boot-start background scanning release
 - Reduce continuous-scan UI jank by throttling database maintenance work and moving expensive device-list presentation off the main thread
 - Request notification permission when starting active scanning and move the foreground-service notification onto a status-bar-visible channel
+- Move scan start/stop into the main toolbar, keep the live device count in the header, and move the installed version label into the overflow menu
