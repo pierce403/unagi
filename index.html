@@ -567,7 +567,7 @@
             and making scan state obvious when Bluetooth is off or permissions are denied. No cloud. No remote logging by default.
           </p>
           <div class="cta-row">
-            <a class="button button-primary" id="download" href="downloads/unagi-debug.apk" download>
+            <a class="button button-primary" id="download" href="downloads/unagi-v0.2.1-debug.apk" download>
               Download APK
             </a>
             <a class="button button-secondary" href="https://github.com/pierce403/unagi">
@@ -630,7 +630,7 @@
             <article class="detail-card fade-up delay-4">
               <h3>Publishable artifact</h3>
               <p>
-                The website links to a stable filename, <code>downloads/unagi-debug.apk</code>, which is copied from Gradle's debug output after each build.
+                The website links to the current versioned build, and <code>scripts/stage-apk</code> updates that APK filename on every release.
               </p>
             </article>
           </div>
@@ -662,7 +662,7 @@
             <ul class="install-list">
               <li><code>./gradlew assembleDebug</code></li>
               <li><code>scripts/stage-apk</code></li>
-              <li>Install the staged file from <code>downloads/unagi-debug.apk</code>.</li>
+              <li>Install the versioned staged file linked from the site download button.</li>
             </ul>
           </article>
         </div>
@@ -678,7 +678,7 @@
           The site is ready to live at <code>unagi.ninja</code>, and the current download link targets the staged Android debug build.
         </div>
         <div class="toplinks">
-          <a class="chip-link" href="downloads/unagi-debug.apk" download>APK</a>
+          <a class="chip-link" href="downloads/unagi-v0.2.1-debug.apk" download>APK</a>
           <a class="chip-link" href="README.md">README</a>
           <a class="chip-link" href="PRIVACY.md">Privacy</a>
         </div>

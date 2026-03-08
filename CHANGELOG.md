@@ -31,3 +31,4 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 - Bump the Android app to `0.2.0` / version code `10` for the device-intelligence release
 - Seed default alert rules for Flipper, Axon/TASER, and Ray-Ban Meta-style name matches on first launch
 - Bump the Android app to `0.2.1` / version code `11` for the seeded-default-alert release
+- Stage website APKs under versioned filenames and update the site download links during each release

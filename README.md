@@ -2,7 +2,7 @@
 
 Android app for quick Bluetooth awareness: scan nearby devices, review the list, tap into local history, and relaunch without losing what you saw.
 
-The landing page is intended for `unagi.ninja`, and the publishable debug APK is staged at `downloads/unagi-debug.apk`.
+The landing page is intended for `unagi.ninja`, and the publishable debug APK is staged as a versioned file in `downloads/` with matching links updated in `index.html`.
 
 ## Why it exists
 
@@ -49,7 +49,7 @@ Foreground alerts for "let me know when X is nearby."
 - `./gradlew assembleDebug`
 - `./gradlew installDebug`
 - `adb devices` to confirm device connection
-- `scripts/stage-apk` to copy the built debug APK to `downloads/unagi-debug.apk` for the website
+- `scripts/stage-apk` to stage the built debug APK under a versioned filename in `downloads/` and update the website download links
 - `scripts/update-vendor-prefixes` refreshes the bundled IEEE MA-L / MA-M / MA-S vendor-prefix asset at `app/src/main/assets/vendor_prefixes.txt.gz`
 - `scripts/update-bluetooth-assigned-numbers` refreshes the bundled Bluetooth SIG company/service registries at `app/src/main/assets/bluetooth_company_identifiers.txt.gz` and `app/src/main/assets/bluetooth_service_uuids.txt.gz`
 - The main screen shows the installed app version prominently in the toolbar and a dedicated build banner so testers can confirm which APK is running

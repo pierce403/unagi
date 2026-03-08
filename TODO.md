@@ -12,6 +12,9 @@
 
 ### Alerts
 
+- [ ] Move alert creation to a modal flow with a plus action
+- [ ] Add alert editing from the alerts list
+
 ### Scan robustness
 
 - [ ] Add raw BLE/classic callback samples to diagnostics, not just counters
@@ -22,3 +25,10 @@
 ### QA
 
 - [ ] Add a manual scan QA checklist for stock Android and GrapheneOS scenarios
+
+### Main screen and releases
+
+- [ ] Move scan controls into the header, show the live device count, and use an all-caps UNAGI title
+- [ ] Add active/background scanning mode with the required service and permission flow
+- [ ] Keep continuous sightings from inflating the sightings count
+- [ ] Add starred devices and a starred-only filter

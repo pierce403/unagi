@@ -65,7 +65,8 @@ Build the MVP: scan -> list -> tap -> history.
 - Alert notifications are posted on a silent channel and the audible alert is played manually, so different presets stay distinct without depending on per-channel OS sounds
 - The vendor-prefix asset may be packaged in the APK as `vendor_prefixes.txt` even when the source file is `vendor_prefixes.txt.gz`, so the loader must handle both names and both plain/gzip content
 - Deployment: GitHub Pages publishes from `main` at repo root to `https://unagi.ninja`
-- Site artifacts: keep `index.html`, `downloads/unagi-debug.apk`, and `CNAME` aligned when shipping landing-page changes
+- Site artifacts: keep `index.html`, the current versioned APK in `downloads/`, and `CNAME` aligned when shipping landing-page changes
+- On every release, run `scripts/stage-apk` so the staged APK filename includes the current version and the website download links are updated before commit/push
 - Vendor-prefix data is refreshed with `scripts/update-vendor-prefixes`, which writes `app/src/main/assets/vendor_prefixes.txt.gz`
 - Bluetooth SIG assigned-number data is refreshed with `scripts/update-bluetooth-assigned-numbers`, which writes `app/src/main/assets/bluetooth_company_identifiers.txt.gz` and `app/src/main/assets/bluetooth_service_uuids.txt.gz`
 - When unnamed BLE devices still lack a human name, prefer surfacing manufacturer-company IDs and advertised service UUID labels rather than leaving the UI at a bare “Unknown device”
