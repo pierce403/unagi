@@ -1,24 +1,27 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-  android:width="108dp"
-  android:height="108dp"
-  android:viewportWidth="108"
-  android:viewportHeight="108">
-  <path
-    android:fillColor="@color/thingalert_background"
-    android:pathData="M0,0h108v108h-108z" />
-  <path
-    android:fillColor="@color/thingalert_primary_variant"
-    android:pathData="M54,14c22.1,0 40,17.9 40,40s-17.9,40 -40,40 -40,-17.9 -40,-40 17.9,-40 40,-40z" />
-  <path
-    android:fillColor="@color/thingalert_secondary"
-    android:pathData="M22,45c8.5,-15.3 21.8,-23 32,-23s23.5,7.7 32,23l-9.8,10H31.8z" />
-  <path
-    android:fillColor="@color/thingalert_background"
-    android:pathData="M27,46h54v18h-54z" />
-  <path
-    android:fillColor="@color/thingalert_on_surface"
-    android:pathData="M38,57l18,-8 -7,9z" />
-  <path
-    android:fillColor="@color/thingalert_on_surface"
-    android:pathData="M70,57l-18,-8 7,9z" />
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="128"
+    android:viewportHeight="128">
+
+  <!-- Background -->
+  <path android:fillColor="@color/thingalert_background" android:pathData="M0,0h128v128h-128z"/>
+  
+  <!-- Ninja hood background -->
+  <path android:fillColor="@color/thingalert_surface" android:strokeColor="@color/thingalert_surface_variant" android:strokeWidth="2" android:pathData="M64 22 C34 22, 22 45, 22 70 C22 100, 38 108, 64 108 C90 108, 106 100, 106 70 C106 45, 94 22, 64 22 Z"/>
+  
+  <!-- Face opening mask -->
+  <path android:fillColor="@color/thingalert_background" android:strokeColor="@color/thingalert_primary" android:strokeWidth="1.5" android:pathData="M30 52 C45 44, 83 44, 98 52 C104 55, 106 63, 100 68 C85 78, 43 78, 28 68 C22 63, 24 55, 30 52 Z"/>
+
+  <!-- Lower mask fabric overlay -->
+  <path android:fillColor="@color/thingalert_surface_variant" android:pathData="M28 68 C43 78, 85 78, 100 68 C106 74, 102 96, 64 104 C26 96, 22 74, 28 68 Z"/>
+  <path android:strokeColor="@color/thingalert_background" android:strokeWidth="3" android:strokeLineCap="round" android:pathData="M64 76 L54 102 M64 76 L74 102"/>
+  
+  <!-- Glowing Eyes -->
+  <path android:fillColor="@color/thingalert_on_surface" android:pathData="M42 58 L52 61 L44 63 Z"/>
+  <path android:fillColor="@color/thingalert_on_surface" android:pathData="M86 58 L76 61 L84 63 Z"/>
+  
+  <!-- Headband trails -->
+  <path android:strokeColor="@color/thingalert_primary" android:strokeWidth="2" android:strokeLineCap="round" android:pathData="M24 60 C14 55, 6 65, 14 75 C18 80, 24 78, 26 70"/>
+  <path android:strokeColor="@color/thingalert_primary" android:strokeWidth="1.5" android:strokeLineCap="round" android:pathData="M22 64 C12 60, 10 75, 18 85"/>
 </vector>

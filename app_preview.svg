@@ -16,7 +16,7 @@
   <rect y="94" width="360" height="2" fill="#53E1FF" fill-opacity=".35"/>
 
   <text x="18" y="24" fill="#AFC8FF" font-family="Avenir Next, Arial, sans-serif" font-size="14">9:30</text>
-  <text x="20" y="62" fill="#F4F8FF" font-family="Avenir Next, Arial, sans-serif" font-size="30" font-weight="700">unagi</text>
+  <text x="20" y="62" fill="#F4F8FF" font-family="Avenir Next, Arial, sans-serif" font-size="30" font-weight="700">UNAGI</text>
 
   <g transform="translate(18 118)">
     <rect width="324" height="240" rx="24" fill="#0C1220" stroke="#3353E1FF"/>
