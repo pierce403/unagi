@@ -26,11 +26,6 @@ import ninja.unagi.util.Formatters
 import ninja.unagi.util.VendorPrefixRegistryProvider
 
 class MainViewModel(app: Application) : AndroidViewModel(app) {
-  private companion object {
-    const val LIVE_DEVICE_WINDOW_MS = 30_000L
-    const val LIVE_DEVICE_TICK_MS = 5_000L
-  }
-
   private val thingAlertApp = app as ThingAlertApp
   private val repository = thingAlertApp.repository
   private val scanner = thingAlertApp.scanController
@@ -39,8 +34,17 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
   private val filterQuery = MutableStateFlow("")
   private val sortMode = MutableStateFlow(SortMode.RECENT)
+  private val liveOnly = MutableStateFlow(false)
   private val unknownOnly = MutableStateFlow(false)
   private val starredOnly = MutableStateFlow(false)
+  private val liveTicker = flow {
+    while (true) {
+      emit(System.currentTimeMillis())
+      delay(LiveDeviceWindow.TICK_MS)
+    }
+  }
+    .onStart { emit(System.currentTimeMillis()) }
+    .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), System.currentTimeMillis())
   private val observedDevices = repository.observeDevices()
     .conflate()
     .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -91,6 +95,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             metaLine = metaParts.joinToString(" • "),
             searchText = searchParts.joinToString("\n"),
             sortTimestamp = it.lastSightingAt,
+            lastSeen = it.lastSeen,
             lastRssi = it.lastRssi,
             sightingsCount = it.sightingsCount,
             starred = it.starred,
@@ -124,6 +129,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     .combine(starredOnly) { list, starred ->
       if (starred) list.filter { it.starred } else list
     }
+    .combine(liveOnly) { list, live ->
+      list to live
+    }
+    .combine(liveTicker) { (list, live), now ->
+      if (live) list.filter { LiveDeviceWindow.isLive(it.lastSeen, now) } else list
+    }
 
   val devices: StateFlow<List<DeviceListItem>> = filteredFlow
     .combine(sortMode) { list, sort ->
@@ -136,15 +147,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
   val liveDeviceCount: StateFlow<Int> = observedDevices
-    .combine(
-      flow {
-        while (true) {
-          emit(System.currentTimeMillis())
-          delay(LIVE_DEVICE_TICK_MS)
-        }
-      }.onStart { emit(System.currentTimeMillis()) }
-    ) { devices, now ->
-      devices.count { now - it.lastSeen <= LIVE_DEVICE_WINDOW_MS }
+    .combine(liveTicker) { devices, now ->
+      devices.count { LiveDeviceWindow.isLive(it.lastSeen, now) }
     }
     .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
@@ -154,6 +158,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
   fun updateSortMode(mode: SortMode) {
     sortMode.value = mode
+  }
+
+  fun setLiveOnly(live: Boolean) {
+    liveOnly.value = live
   }
 
   fun setUnknownOnly(unknown: Boolean) {

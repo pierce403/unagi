@@ -89,6 +89,7 @@ Build the MVP: scan -> list -> tap -> history.
 - Installed version info no longer lives in the main banner; keep it in the overflow menu and Diagnostics so the header stays compact
 - User-facing brand text in the Android app should use `UNAGI`, not lowercase `unagi`, including the app label and diagnostics/export headings
 - `Formatters.formatTimestamp` is used from live scan/UI paths across threads; keep it on immutable `java.time` formatters and avoid shared mutable `DateFormat`
+- The filter drawer now includes `Live only`; keep it aligned with the header count by reusing the same live-device window logic
 - The Alerts screen now uses a FAB + modal editor flow; keep add and edit behavior on the same validated dialog instead of growing a permanent inline form again
 - Passive vendor decoders now live in `PassiveVendorDecoderRegistry`; they should add soft hints (ecosystem, beacon/tracker/dev-board style) without claiming stable product identity
 - Default alert rules are seeded once from `DefaultAlertSeeder`; use versioned seed keys so new defaults can ship without duplicating or constantly re-adding deleted user rules

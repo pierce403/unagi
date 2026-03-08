@@ -181,6 +181,9 @@ class MainActivity : AppCompatActivity() {
     binding.filterInput.doAfterTextChanged { text ->
       viewModel.updateQuery(text?.toString().orEmpty())
     }
+    binding.liveOnly.setOnCheckedChangeListener { _, isChecked ->
+      viewModel.setLiveOnly(isChecked)
+    }
     binding.unknownOnly.setOnCheckedChangeListener { _, isChecked ->
       viewModel.setUnknownOnly(isChecked)
     }

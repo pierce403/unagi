@@ -59,6 +59,7 @@ Foreground alerts for "let me know when X is nearby."
 - The foreground-service notification now uses a dedicated UNAGI status icon, and enabling continuous scanning prompts for a battery-optimization exemption so Android is less likely to kill the scan loop
 - Enabling continuous scanning now also asks whether the scan service should restart after device boot; if enabled, `BOOT_COMPLETED` brings the foreground service back automatically
 - Device cards can now be starred directly from the list, and the main filters include a `Starred only` toggle for focused sweeps
+- The filter drawer now also includes a `Live only` toggle, using the same 30-second live-device window as the header count
 - Because the app targets SDK 35, system-bar insets must be handled explicitly; the main, diagnostics, and detail toolbars now pad below the status bar on Android 15+
 - The Android package identity is now `ninja.unagi`; older `com.thingalert` installs will not upgrade in place and should be uninstalled manually before testing the new build
 - Filter and recovery controls now live in a left-side drawer opened from the toolbar filter icon, so the main screen can stay almost entirely dedicated to device listings while the overflow menu still keeps the persisted `Compact device cards` toggle
