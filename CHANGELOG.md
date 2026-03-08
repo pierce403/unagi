@@ -44,3 +44,5 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 - Bump the Android app to `0.2.6` / version code `16` for the background-scan UX pass
 - Ask whether active scanning should restart on boot, persist that choice, and start the foreground scan service from `BOOT_COMPLETED`
 - Bump the Android app to `0.2.7` / version code `17` for the boot-start background scanning release
+- Reduce continuous-scan UI jank by throttling database maintenance work and moving expensive device-list presentation off the main thread
+- Request notification permission when starting active scanning and move the foreground-service notification onto a status-bar-visible channel

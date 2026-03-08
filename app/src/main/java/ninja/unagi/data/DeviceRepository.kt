@@ -9,6 +9,7 @@ class DeviceRepository(
   private val sightingDao: SightingDao
 ) {
   private val retentionDays = 30L
+  private var lastPrunedAt = 0L
 
   fun observeDevices(): Flow<List<DeviceEntity>> = deviceDao.observeDevices()
 
@@ -94,8 +95,12 @@ class DeviceRepository(
   }
 
   private suspend fun pruneIfNeeded(now: Long) {
+    if (!DeviceMaintenancePolicy.shouldPrune(lastPrunedAt, now)) {
+      return
+    }
     val threshold = now - retentionDays * 24 * 60 * 60 * 1000
     sightingDao.pruneOlderThan(threshold)
     deviceDao.deleteOlderThan(threshold)
+    lastPrunedAt = now
   }
 }

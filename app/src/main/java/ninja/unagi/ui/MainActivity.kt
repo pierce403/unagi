@@ -28,6 +28,7 @@ import ninja.unagi.scan.StartOnBootPreferences
 import ninja.unagi.util.AppVersion
 import ninja.unagi.util.BatteryOptimizationHelper
 import ninja.unagi.util.DebugLog
+import ninja.unagi.util.NotificationPermissionHelper
 import ninja.unagi.util.PermissionsHelper
 import ninja.unagi.util.WindowInsetsHelper
 
@@ -48,6 +49,7 @@ class MainActivity : AppCompatActivity() {
   private var bannerCollapsed = false
   private var compactCards = false
   private var activeScanningEnabled = false
+  private var continueActiveScanAfterNotificationPrompt = false
 
   private val permissionLauncher = registerForActivityResult(
     ActivityResultContracts.RequestMultiplePermissions()
@@ -77,6 +79,16 @@ class MainActivity : AppCompatActivity() {
       handleStartScan()
     } else {
       viewModel.refreshPreflightState()
+    }
+  }
+
+  private val notificationPermissionLauncher = registerForActivityResult(
+    ActivityResultContracts.RequestPermission()
+  ) {
+    val shouldContinue = continueActiveScanAfterNotificationPrompt
+    continueActiveScanAfterNotificationPrompt = false
+    if (shouldContinue) {
+      startActiveScanService()
     }
   }
 
@@ -316,8 +328,7 @@ class MainActivity : AppCompatActivity() {
 
   private fun beginScan() {
     if (activeScanningEnabled) {
-      maybePromptForBatteryOptimization()
-      ActiveScanService.start(this)
+      maybeRequestNotificationPermissionForActiveScan()
     } else {
       viewModel.startScan()
     }
@@ -468,6 +479,34 @@ class MainActivity : AppCompatActivity() {
         batteryOptimizationLauncher.launch(requestIntent)
       }
       .show()
+  }
+
+  private fun maybeRequestNotificationPermissionForActiveScan() {
+    if (!NotificationPermissionHelper.requiresRuntimePermission()) {
+      startActiveScanService()
+      return
+    }
+    if (NotificationPermissionHelper.canPostNotifications(this)) {
+      startActiveScanService()
+      return
+    }
+
+    continueActiveScanAfterNotificationPrompt = true
+    AlertDialog.Builder(this)
+      .setTitle(R.string.notification_permission_title)
+      .setMessage(R.string.notification_permission_detail)
+      .setNegativeButton(android.R.string.cancel) { _, _ ->
+        startActiveScanService()
+      }
+      .setPositiveButton(R.string.allow_notifications) { _, _ ->
+        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+      }
+      .show()
+  }
+
+  private fun startActiveScanService() {
+    maybePromptForBatteryOptimization()
+    ActiveScanService.start(this)
   }
 
   private fun maybePromptForStartOnBoot() {

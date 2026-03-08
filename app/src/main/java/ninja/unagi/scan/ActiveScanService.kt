@@ -147,7 +147,9 @@ class ActiveScanService : Service() {
     .setContentText(notificationBody())
     .setOngoing(true)
     .setOnlyAlertOnce(true)
+    .setSilent(true)
     .setCategory(NotificationCompat.CATEGORY_SERVICE)
+    .setPriority(NotificationCompat.PRIORITY_DEFAULT)
     .setContentIntent(openAppPendingIntent())
     .addAction(
       0,
@@ -213,10 +215,11 @@ class ActiveScanService : Service() {
     val channel = NotificationChannel(
       CHANNEL_ID,
       getString(R.string.active_scan_notification_channel_name),
-      NotificationManager.IMPORTANCE_LOW
+      NotificationManager.IMPORTANCE_DEFAULT
     ).apply {
       description = getString(R.string.active_scan_notification_channel_description)
       setShowBadge(false)
+      setSound(null, null)
     }
     manager.createNotificationChannel(channel)
   }
@@ -224,7 +227,7 @@ class ActiveScanService : Service() {
   companion object {
     private const val ACTION_START = "ninja.unagi.action.START_ACTIVE_SCAN"
     private const val ACTION_STOP = "ninja.unagi.action.STOP_ACTIVE_SCAN"
-    private const val CHANNEL_ID = "active_scan_service"
+    private const val CHANNEL_ID = "active_scan_service_status"
     private const val NOTIFICATION_ID = 4101
     private const val REQUEST_OPEN_APP = 4102
     private const val REQUEST_STOP_SERVICE = 4103

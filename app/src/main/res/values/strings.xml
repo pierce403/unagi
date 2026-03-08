@@ -46,7 +46,7 @@
   <string name="alert_invalid_mac">Enter a full MAC like 00:11:22:33:44:55.</string>
   <string name="alert_invalid_name">Enter a Bluetooth name to match.</string>
   <string name="notification_permission_title">Notifications recommended</string>
-  <string name="notification_permission_detail">Allow notifications so alert matches can show device details in the system shade while the app is scanning.</string>
+  <string name="notification_permission_detail">Allow notifications so active scanning stays visible in the notification shade and alert matches can show device details there too.</string>
   <string name="allow_notifications">Allow notifications</string>
   <string name="alert_notification_channel_name">Device alerts</string>
   <string name="alert_notification_channel_description">Bluetooth device match alerts</string>

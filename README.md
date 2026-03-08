@@ -76,6 +76,7 @@ Foreground alerts for "let me know when X is nearby."
 
 - If a scan fails to start, open Diagnostics to inspect BLE/classic startup results, the last BLE error code, and permission/Bluetooth snapshots
 - If you need the app to keep scanning after you leave the activity, enable `Active scanning` from the overflow menu and keep the foreground notification running
+- On Android 13+, grant notification permission when enabling active scanning if you want the foreground-service notice to stay visible in the notification drawer and status bar
 - Use `Copy scan debug report` in Diagnostics to capture app version, device/build info, persisted device inventory, and recent scan events for bug reports
 - `unagi` now requests the same scan-relevant Bluetooth/location permissions that WiGLE does; if scans still return zero callbacks, the remaining gap is more likely ROM/profile behavior than a missing manifest permission
 - `unagi` now prefers BLE advertised local names over generic Bluetooth device names, so BLE peripherals should surface the short broadcast name they actually expose

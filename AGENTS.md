@@ -80,10 +80,13 @@ Build the MVP: scan -> list -> tap -> history.
 - Background-capable active scanning needs `ACCESS_BACKGROUND_LOCATION` on Android 10/11 plus a `connectedDevice` foreground service notification; keep the permission flow and manifest declarations aligned
 - Active scanning now prompts for a battery-optimization exemption from `MainActivity`; keep that prompt tied to the mode enable/start path so users understand why the app may be killed otherwise
 - The foreground-service notification uses `ic_unagi_status`, not the launcher asset, so the status-bar icon stays recognizable and monochrome
+- On Android 13+, active scanning should request `POST_NOTIFICATIONS` from the scan-start flow too; otherwise the foreground-service notice can fall out of the notification drawer even though scanning is still running
+- If the active-scan notification is expected to show a status-bar icon, do not use a low-importance channel; low importance suppresses that icon on modern Android
 - Boot autostart is now controlled by `StartOnBootPreferences` and `ActiveScanBootReceiver`; only restart the service on `BOOT_COMPLETED` when both active scanning and start-on-boot are enabled
 - Device history now treats `sightingsCount` as deduped presence sessions, not raw callback volume; use `observationCount` for signal-stat sampling math and diagnostics
 - Star state now lives on `DeviceEntity`; keep starred filters wired off persisted state instead of transient UI-only flags
 - The Alerts screen now uses a FAB + modal editor flow; keep add and edit behavior on the same validated dialog instead of growing a permanent inline form again
 - Passive vendor decoders now live in `PassiveVendorDecoderRegistry`; they should add soft hints (ecosystem, beacon/tracker/dev-board style) without claiming stable product identity
 - Default alert rules are seeded once from `DefaultAlertSeeder`; use versioned seed keys so new defaults can ship without duplicating or constantly re-adding deleted user rules
+- Continuous scanning can flood Room with callbacks if maintenance work runs on every observation; keep pruning throttled and heavy list-presentation work off the main thread
 - Reflection: before handoff, record any new command, pitfall, deploy detail, or collaborator preference discovered during the task

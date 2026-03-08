@@ -3,25 +3,27 @@ package ninja.unagi.ui
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import ninja.unagi.ThingAlertApp
-import ninja.unagi.scan.ActiveScanPreferences
-import ninja.unagi.scan.ScanController
-import ninja.unagi.scan.ScanState
-import ninja.unagi.util.BluetoothAssignedNumbersProvider
-import ninja.unagi.util.BluetoothAddressTools
-import ninja.unagi.util.DeviceIdentityPresenter
-import ninja.unagi.util.Formatters
-import ninja.unagi.util.VendorPrefixRegistryProvider
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
+import ninja.unagi.ThingAlertApp
+import ninja.unagi.scan.ActiveScanPreferences
+import ninja.unagi.scan.ScanState
+import ninja.unagi.util.BluetoothAddressTools
+import ninja.unagi.util.BluetoothAssignedNumbersProvider
+import ninja.unagi.util.DeviceIdentityPresenter
+import ninja.unagi.util.Formatters
+import ninja.unagi.util.VendorPrefixRegistryProvider
 
 class MainViewModel(app: Application) : AndroidViewModel(app) {
   private companion object {
@@ -39,58 +41,63 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
   private val sortMode = MutableStateFlow(SortMode.RECENT)
   private val unknownOnly = MutableStateFlow(false)
   private val starredOnly = MutableStateFlow(false)
+  private val observedDevices = repository.observeDevices()
+    .conflate()
+    .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
   val scanState: StateFlow<ScanState> = scanner.scanState
 
-  private val devicesFlow = repository.observeDevices()
+  private val devicesFlow = observedDevices
     .map { entities ->
-      entities.map {
-        val identity = DeviceIdentityPresenter.present(
-          displayName = it.displayName,
-          address = it.lastAddress,
-          metadataJson = it.lastMetadataJson,
-          vendorRegistry = vendorRegistry,
-          assignedNumbers = assignedNumbers
-        )
-        val metaParts = mutableListOf<String>()
-        identity.classificationLabel?.let { label ->
-          val confidenceSuffix = identity.classificationConfidenceLabel?.let { " ($it)" }.orEmpty()
-          metaParts += "Likely: $label$confidenceSuffix"
+      withContext(Dispatchers.Default) {
+        entities.map {
+          val identity = DeviceIdentityPresenter.present(
+            displayName = it.displayName,
+            address = it.lastAddress,
+            metadataJson = it.lastMetadataJson,
+            vendorRegistry = vendorRegistry,
+            assignedNumbers = assignedNumbers
+          )
+          val metaParts = mutableListOf<String>()
+          identity.classificationLabel?.let { label ->
+            val confidenceSuffix = identity.classificationConfidenceLabel?.let { " ($it)" }.orEmpty()
+            metaParts += "Likely: $label$confidenceSuffix"
+          }
+          identity.addressTypeLabel?.let(metaParts::add)
+          identity.nameSourceLabel?.let(metaParts::add)
+          identity.vendorName?.let { vendor ->
+            val confidenceSuffix = identity.vendorConfidenceLabel?.let { " ($it)" }.orEmpty()
+            metaParts += "Vendor: $vendor$confidenceSuffix"
+          }
+          metaParts += identity.metadataSummary.listLabels
+            .filterNot { label -> metaParts.any { it.equals(label, ignoreCase = true) } }
+            .take(2)
+          metaParts += "Last seen: ${Formatters.formatTimestamp(it.lastSeen)}"
+          metaParts += Formatters.formatSightingsCount(it.sightingsCount)
+          val searchParts = buildList {
+            add(identity.title)
+            it.lastAddress?.let(::add)
+            identity.vendorName?.let(::add)
+            identity.vendorSource?.let(::add)
+            identity.addressTypeLabel?.let(::add)
+            identity.classificationLabel?.let(::add)
+            addAll(identity.classificationEvidence)
+            addAll(identity.metadataSummary.searchTerms)
+          }
+          DeviceListItem(
+            deviceKey = it.deviceKey,
+            displayName = it.displayName,
+            displayTitle = identity.title,
+            metaLine = metaParts.joinToString(" • "),
+            searchText = searchParts.joinToString("\n"),
+            lastSeen = it.lastSeen,
+            lastRssi = it.lastRssi,
+            sightingsCount = it.sightingsCount,
+            starred = it.starred,
+            lastAddress = it.lastAddress,
+            vendorName = identity.vendorName
+          )
         }
-        identity.addressTypeLabel?.let(metaParts::add)
-        identity.nameSourceLabel?.let(metaParts::add)
-        identity.vendorName?.let { vendor ->
-          val confidenceSuffix = identity.vendorConfidenceLabel?.let { " ($it)" }.orEmpty()
-          metaParts += "Vendor: $vendor$confidenceSuffix"
-        }
-        metaParts += identity.metadataSummary.listLabels
-          .filterNot { label -> metaParts.any { it.equals(label, ignoreCase = true) } }
-          .take(2)
-        metaParts += "Last seen: ${Formatters.formatTimestamp(it.lastSeen)}"
-        metaParts += Formatters.formatSightingsCount(it.sightingsCount)
-        val searchParts = buildList {
-          add(identity.title)
-          it.lastAddress?.let(::add)
-          identity.vendorName?.let(::add)
-          identity.vendorSource?.let(::add)
-          identity.addressTypeLabel?.let(::add)
-          identity.classificationLabel?.let(::add)
-          addAll(identity.classificationEvidence)
-          addAll(identity.metadataSummary.searchTerms)
-        }
-        DeviceListItem(
-          deviceKey = it.deviceKey,
-          displayName = it.displayName,
-          displayTitle = identity.title,
-          metaLine = metaParts.joinToString(" • "),
-          searchText = searchParts.joinToString("\n"),
-          lastSeen = it.lastSeen,
-          lastRssi = it.lastRssi,
-          sightingsCount = it.sightingsCount,
-          starred = it.starred,
-          lastAddress = it.lastAddress,
-          vendorName = identity.vendorName
-        )
       }
     }
 
@@ -128,7 +135,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
     .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-  val liveDeviceCount: StateFlow<Int> = repository.observeDevices()
+  val liveDeviceCount: StateFlow<Int> = observedDevices
     .combine(
       flow {
         while (true) {
