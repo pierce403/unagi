@@ -146,6 +146,9 @@ class MainActivity : AppCompatActivity() {
       onClick = { item ->
         startActivity(DeviceDetailActivity.intent(this, item.deviceKey))
       },
+      onLongClick = { item ->
+        copyDeviceToClipboard(item)
+      },
       onStarToggle = { item, starred ->
         viewModel.setStarred(item.deviceKey, starred)
       }
@@ -602,5 +605,24 @@ class MainActivity : AppCompatActivity() {
   private fun clearRecoveryUi() {
     recoveryAction = RecoveryAction.NONE
     binding.permissionActionButton.isVisible = false
+  }
+
+  private fun copyDeviceToClipboard(item: DeviceListItem) {
+    val clipboard = getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+    val clipText = buildString {
+      appendLine("Name: ${item.displayTitle}")
+      if (!item.lastAddress.isNullOrBlank()) {
+        appendLine("MAC: ${item.lastAddress}")
+      }
+      if (!item.vendorName.isNullOrBlank()) {
+        appendLine("Vendor: ${item.vendorName}")
+      }
+      appendLine("RSSI: ${ninja.unagi.util.Formatters.formatRssi(item.lastRssi)}")
+      appendLine("Last Seen: ${ninja.unagi.util.Formatters.formatTimestamp(item.sortTimestamp)}")
+      appendLine("Sightings: ${item.sightingsCount}")
+    }.trimEnd()
+    val clip = android.content.ClipData.newPlainText("Device Info", clipText)
+    clipboard.setPrimaryClip(clip)
+    android.widget.Toast.makeText(this, getString(R.string.copied_to_clipboard, item.displayTitle), android.widget.Toast.LENGTH_SHORT).show()
   }
 }

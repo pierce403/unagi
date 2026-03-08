@@ -111,4 +111,5 @@
   <string name="scan_error">Scan error</string>
   <string name="bluetooth_unsupported">Bluetooth unsupported</string>
   <string name="bluetooth_unsupported_detail">This device does not support Bluetooth.</string>
+  <string name="copied_to_clipboard">Copied %1$s to clipboard</string>
 </resources>

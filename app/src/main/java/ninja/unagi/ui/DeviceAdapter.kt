@@ -15,6 +15,7 @@ import ninja.unagi.util.Formatters
 
 class DeviceAdapter(
   private val onClick: (DeviceListItem) -> Unit,
+  private val onLongClick: (DeviceListItem) -> Unit,
   private val onStarToggle: (DeviceListItem, Boolean) -> Unit
 ) : ListAdapter<DeviceListItem, DeviceAdapter.DeviceViewHolder>(DiffCallback) {
   private var compactMode = false
@@ -25,7 +26,7 @@ class DeviceAdapter(
 
   override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): DeviceViewHolder {
     val binding = ItemDeviceBinding.inflate(LayoutInflater.from(parent.context), parent, false)
-    return DeviceViewHolder(binding, onClick, onStarToggle)
+    return DeviceViewHolder(binding, onClick, onLongClick, onStarToggle)
   }
 
   override fun getItemId(position: Int): Long {
@@ -47,6 +48,7 @@ class DeviceAdapter(
   class DeviceViewHolder(
     private val binding: ItemDeviceBinding,
     private val onClick: (DeviceListItem) -> Unit,
+    private val onLongClick: (DeviceListItem) -> Unit,
     private val onStarToggle: (DeviceListItem, Boolean) -> Unit
   ) : RecyclerView.ViewHolder(binding.root) {
     fun bind(item: DeviceListItem, compactMode: Boolean) {
@@ -69,6 +71,10 @@ class DeviceAdapter(
       binding.deviceMeta.ellipsize = TextUtils.TruncateAt.END
       binding.deviceRssi.text = Formatters.formatRssi(item.lastRssi)
       binding.root.setOnClickListener { onClick(item) }
+      binding.root.setOnLongClickListener {
+        onLongClick(item)
+        true
+      }
     }
 
     private fun applyCardDensity(compactMode: Boolean) {
