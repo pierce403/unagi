@@ -61,10 +61,11 @@ class ScanController(
   private val _scanState = MutableStateFlow<ScanState>(ScanState.Idle)
   val scanState: StateFlow<ScanState> = _scanState.asStateFlow()
 
-  private var timeoutJob: Job? = null
+  private var classicRestartJob: Job? = null
   private var receiverRegistered = false
   private var blePathActive = false
   private var classicPathActive = false
+  private var currentScanMode: ScanModePreset = ScanModePreset.NORMAL
   private var enabledAlertRules: List<AlertRuleEntity> = emptyList()
   private val firedAlertKeys = mutableSetOf<String>()
 
@@ -101,8 +102,8 @@ class ScanController(
       )
 
       if (!classicPathActive) {
-        timeoutJob?.cancel()
-        timeoutJob = null
+        classicRestartJob?.cancel()
+        classicRestartJob = null
         stopBleScan()
         stopClassicDiscovery()
 
@@ -144,7 +145,10 @@ class ScanController(
           }
         }
         BluetoothAdapter.ACTION_DISCOVERY_FINISHED -> {
-          // Discovery can finish before the overall scan session ends.
+          classicPathActive = false
+          if (_scanState.value is ScanState.Scanning && currentScanMode.startsClassicDiscovery) {
+            scheduleClassicDiscoveryRestart()
+          }
         }
       }
     }
@@ -152,13 +156,14 @@ class ScanController(
 
   fun startScan() {
     val activeScanning = ActiveScanPreferences.isEnabled(context)
-    timeoutJob?.cancel()
-    timeoutJob = null
+    classicRestartJob?.cancel()
+    classicRestartJob = null
     stopBleScan()
     stopClassicDiscovery()
     firedAlertKeys.clear()
 
     val scanMode = ScanModePreferences.get(context)
+    currentScanMode = scanMode
     val preflight = preflight(activeScanning)
     ScanDiagnosticsStore.reset(
       ScanDiagnosticsSnapshot(
@@ -205,9 +210,8 @@ class ScanController(
       return
     }
 
-    timeoutJob = scope.launch {
-      delay(scanMode.timeoutMs)
-      finishTimedOutScan()
+    if (!classicResult.started && scanMode.startsClassicDiscovery) {
+      scheduleClassicDiscoveryRestart()
     }
   }
 
@@ -235,8 +239,8 @@ class ScanController(
   }
 
   fun stopScan() {
-    timeoutJob?.cancel()
-    timeoutJob = null
+    classicRestartJob?.cancel()
+    classicRestartJob = null
     stopBleScan()
     stopClassicDiscovery()
     firedAlertKeys.clear()
@@ -383,6 +387,30 @@ class ScanController(
         // Ignore
       }
       receiverRegistered = false
+    }
+  }
+
+  private fun scheduleClassicDiscoveryRestart() {
+    if (!currentScanMode.startsClassicDiscovery || _scanState.value !is ScanState.Scanning) {
+      return
+    }
+    if (classicRestartJob?.isActive == true) {
+      return
+    }
+    classicRestartJob = scope.launch {
+      delay(CLASSIC_RESTART_DELAY_MS)
+      classicRestartJob = null
+      if (_scanState.value !is ScanState.Scanning || !currentScanMode.startsClassicDiscovery) {
+        return@launch
+      }
+      val result = startClassicDiscovery(currentScanMode)
+      if (!result.started && _scanState.value is ScanState.Scanning) {
+        DebugLog.log(
+          "Classic discovery restart failed: ${result.reason ?: "unknown"}",
+          level = android.util.Log.WARN
+        )
+        scheduleClassicDiscoveryRestart()
+      }
     }
   }
 
@@ -974,46 +1002,14 @@ class ScanController(
   }
 
   private fun interruptScan(state: ScanState) {
-    timeoutJob?.cancel()
-    timeoutJob = null
+    classicRestartJob?.cancel()
+    classicRestartJob = null
     stopBleScan()
     stopClassicDiscovery()
     ScanDiagnosticsStore.update {
       it.copy(outcome = ScanSessionOutcome.INTERRUPTED, timeoutReached = false)
     }
     _scanState.value = state
-  }
-
-  private fun finishTimedOutScan() {
-    timeoutJob?.cancel()
-    timeoutJob = null
-    stopBleScan()
-    stopClassicDiscovery()
-
-    ScanDiagnosticsStore.update { snapshot ->
-      snapshot.copy(
-        timeoutReached = true,
-        outcome = when {
-          !snapshot.anyPathStarted -> ScanSessionOutcome.FAILED_TO_START
-          snapshot.uniqueDeviceCount == 0 -> ScanSessionOutcome.ZERO_RESULTS
-          else -> ScanSessionOutcome.RESULTS
-        }
-      )
-    }
-
-    val snapshot = ScanDiagnosticsStore.snapshot.value
-    _scanState.value = ScanStateDecider.stateAfterTimeout(snapshot)
-    when (val state = _scanState.value) {
-      is ScanState.Complete -> {
-        if (state.deviceCount == 0) {
-          DebugLog.log("Scan ran but found no devices", level = android.util.Log.WARN)
-        } else {
-          DebugLog.log("Scan completed with ${state.deviceCount} devices", level = android.util.Log.INFO)
-        }
-      }
-      is ScanState.Error -> DebugLog.log(state.message, level = android.util.Log.WARN)
-      else -> Unit
-    }
   }
 
   private fun hasBluetoothAccess(): Boolean {
@@ -1026,6 +1022,8 @@ class ScanController(
   }
 
   companion object {
+    private const val CLASSIC_RESTART_DELAY_MS = 2_000L
+
     private fun effectiveTransport(source: String, deviceType: Int?): ObservedTransport {
       return when {
         deviceType == BluetoothDevice.DEVICE_TYPE_DUAL -> ObservedTransport.DUAL

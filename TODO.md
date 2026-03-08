@@ -24,3 +24,7 @@
 - [ ] Add a manual scan QA checklist for stock Android and GrapheneOS scenarios
 
 ### Main screen and releases
+
+- [ ] Add a proper UNAGI status-bar notification icon for background scanning
+- [ ] Prompt for battery-optimization exemption when active scanning is enabled
+- [ ] Ask whether active scanning should restart on device boot and wire the boot path

@@ -7,21 +7,18 @@ enum class ScanModePreset(
   val storageValue: String,
   val label: String,
   val bleScanMode: Int,
-  val timeoutMs: Long,
   val startsClassicDiscovery: Boolean
 ) {
   NORMAL(
     storageValue = "normal",
     label = "Normal",
     bleScanMode = ScanSettings.SCAN_MODE_LOW_LATENCY,
-    timeoutMs = 20_000L,
     startsClassicDiscovery = true
   ),
   COMPATIBILITY(
     storageValue = "compatibility",
     label = "Compatibility",
     bleScanMode = ScanSettings.SCAN_MODE_BALANCED,
-    timeoutMs = 30_000L,
     startsClassicDiscovery = false
   );
 

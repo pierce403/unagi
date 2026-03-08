@@ -38,3 +38,5 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 - Bump the Android app to `0.2.3` / version code `13` for the starring and dedup release
 - Replace the alerts screen’s large inline add form with a `+` modal editor and add in-place alert editing from the list
 - Bump the Android app to `0.2.4` / version code `14` for the alert-editor release
+- Keep scan sessions continuous once started instead of auto-completing after the old 20–30 second timeout window
+- Bump the Android app to `0.2.5` / version code `15` for the continuous-scanning fix

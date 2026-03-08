@@ -13,7 +13,7 @@
   <string name="scan_complete_no_devices">Scan ran but found no devices.</string>
   <string name="scan_complete_with_devices">%1$d devices found in the last scan.</string>
   <string name="compatibility_mode">Compatibility mode</string>
-  <string name="compatibility_mode_detail">Uses balanced BLE scanning, skips classic discovery, and waits longer before timing out.</string>
+  <string name="compatibility_mode_detail">Uses balanced BLE scanning, skips classic discovery, and keeps the scan session running continuously.</string>
   <string name="copy_scan_debug_report">Copy scan debug report</string>
   <string name="scan_debug_report_copied">Scan debug report copied.</string>
   <string name="filter_hint">Filter by name, vendor, or MAC</string>

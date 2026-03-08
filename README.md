@@ -55,6 +55,7 @@ Foreground alerts for "let me know when X is nearby."
 - The main screen shows the installed app version prominently in the toolbar and a dedicated build banner so testers can confirm which APK is running
 - The main header now keeps the scan toggle, an all-caps `UNAGI` title, the installed build badge, and a `Live now` device count together at the top of the screen
 - Optional `Active scanning` mode keeps scans cycling in a foreground service so scanning can continue after the activity closes
+- Started scan sessions now stay active until you stop them; BLE no longer auto-times out after ~20–30 seconds, and classic discovery is recycled under the hood during long runs
 - Device cards can now be starred directly from the list, and the main filters include a `Starred only` toggle for focused sweeps
 - Because the app targets SDK 35, system-bar insets must be handled explicitly; the main, diagnostics, and detail toolbars now pad below the status bar on Android 15+
 - The Android package identity is now `ninja.unagi`; older `com.thingalert` installs will not upgrade in place and should be uninstalled manually before testing the new build

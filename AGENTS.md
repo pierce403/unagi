@@ -53,7 +53,7 @@ Build the MVP: scan -> list -> tap -> history.
 - Build/test: `./gradlew assembleDebug`, `./gradlew installDebug`, and `scripts/stage-apk`
 - Local validation needs `ANDROID_HOME` / `ANDROID_SDK_ROOT`; on this workstation the SDK is at `~/Android/Sdk`
 - Headless AVD boot can be flaky on this workstation; if `thingalert_api35` exits immediately, fall back to `assembleDebug` + unit tests and verify on-device
-- Compatibility mode is toggled from Diagnostics and uses BLE-only `SCAN_MODE_BALANCED` with a 30-second timeout
+- Compatibility mode is toggled from Diagnostics and uses BLE-only `SCAN_MODE_BALANCED` while keeping the scan session continuous
 - Diagnostics now has a `Copy scan debug report` action with platform/build info, persisted device inventory, and recent scan events
 - `unagi` now matches WiGLE's scan-relevant permission posture by requesting `ACCESS_COARSE_LOCATION` and `ACCESS_FINE_LOCATION` alongside modern Bluetooth scan/connect permissions
 - When shipping a user-visible APK change, bump `versionCode` and `versionName` in `app/build.gradle.kts` and keep the installed version obvious in the main UI
