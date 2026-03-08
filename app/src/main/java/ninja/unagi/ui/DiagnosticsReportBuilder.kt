@@ -1,9 +1,11 @@
 package ninja.unagi.ui
 
 import ninja.unagi.data.DeviceEntity
+import ninja.unagi.data.DeviceEnrichmentEntity
 import ninja.unagi.scan.ScanDiagnosticsSnapshot
 import ninja.unagi.scan.ScanSessionOutcome
 import ninja.unagi.scan.ScanStateDecider
+import ninja.unagi.enrichment.DeviceEnrichmentFormatter
 import ninja.unagi.util.Formatters
 
 data class DiagnosticsPlatformInfo(
@@ -35,6 +37,7 @@ object DiagnosticsReportBuilder {
     entries: List<String>,
     scanDiagnostics: ScanDiagnosticsSnapshot,
     persistedDevices: List<DeviceEntity>,
+    persistedEnrichments: List<DeviceEnrichmentEntity>,
     platformInfo: DiagnosticsPlatformInfo,
     permissionInfo: DiagnosticsPermissionInfo,
     bluetoothSupported: Boolean,
@@ -115,6 +118,24 @@ object DiagnosticsReportBuilder {
             "address=${device.lastAddress ?: "n/a"} sightings=${device.sightingsCount} " +
             "lastSeen=${Formatters.formatTimestamp(device.lastSeen)} " +
             "rssi=${device.lastRssi} key=${device.deviceKey.take(12)}"
+        )
+      }
+    }
+    builder.appendLine()
+    builder.appendLine("Active BLE enrichments: ${persistedEnrichments.size}")
+    if (persistedEnrichments.isEmpty()) {
+      builder.appendLine("  (none yet)")
+    } else {
+      persistedEnrichments.take(MAX_DEVICE_LINES).forEachIndexed { index, enrichment ->
+        val services = DeviceEnrichmentFormatter.parseServices(enrichment.servicesPresentJson)
+        builder.appendLine(
+          "  ${index + 1}. key=${enrichment.deviceKey.take(12)} method=${enrichment.queryMethod} " +
+            "lastQuery=${Formatters.formatTimestamp(enrichment.lastQueryTimestamp)} " +
+            "dis=${enrichment.disAvailable}/${enrichment.disReadStatus} " +
+            "services=${services.size} " +
+            "reads=${enrichment.characteristicReadSuccessCount}/${enrichment.characteristicReadFailureCount} " +
+            "gatt=${enrichment.finalGattStatus ?: "n/a"} " +
+            "error=${enrichment.errorMessage ?: "none"}"
         )
       }
     }

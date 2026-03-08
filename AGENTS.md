@@ -73,4 +73,6 @@ Build the MVP: scan -> list -> tap -> history.
 - If active BLE querying is added, stop scanning first, keep it opt-in from `DeviceDetailActivity`, store enrichment separately from passive metadata, and treat DIS/GATT reads as hints rather than truth
 - Passive scan metadata now stores address type, vendor confidence/source, classification category/confidence/evidence, and a separate classification fingerprint; keep those fields in `lastMetadataJson` rather than overloading `deviceKey`
 - Treat classic Bluetooth discovery addresses as public for vendor-confidence purposes, but keep BLE OUI confidence downgraded unless the address type is explicitly public
+- Active BLE enrichment now persists in the `device_enrichments` Room table; keep it separate from passive observation JSON and include it in Diagnostics/export paths
+- `ThingAlertApp` now owns the shared `ScanController`, so detail-page BLE queries can explicitly stop scans before opening a GATT connection
 - Reflection: before handoff, record any new command, pitfall, deploy detail, or collaborator preference discovered during the task

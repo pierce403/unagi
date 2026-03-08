@@ -26,3 +26,4 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 - Rename the Android namespace and application ID from `com.thingalert` to `ninja.unagi` so the shipped package matches the `unagi.ninja` brand
 - Make the top controls banner collapsible and add a persisted compact-device-card option from the main menu
 - Split device identity keys from passive classification fingerprints, add BLE address-type/vendor-confidence handling, and surface classification evidence in the list/detail UI
+- Add opt-in BLE Device Information Service querying from Device Details, store active enrichment results in Room, and include those diagnostics in the copyable debug report

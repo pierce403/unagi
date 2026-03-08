@@ -1,9 +1,14 @@
 package ninja.unagi.ui
 
+import android.Manifest
+import android.bluetooth.BluetoothManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -11,9 +16,15 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import ninja.unagi.ThingAlertApp
 import ninja.unagi.databinding.ActivityDeviceDetailBinding
+import ninja.unagi.enrichment.BleDeviceInfoQueryClient
+import ninja.unagi.enrichment.DeviceEnrichmentFormatter
+import ninja.unagi.data.DeviceEntity
 import ninja.unagi.util.BluetoothAssignedNumbersProvider
 import ninja.unagi.util.DeviceIdentityPresenter
 import ninja.unagi.util.Formatters
+import ninja.unagi.util.ObservationMetadata
+import ninja.unagi.util.ObservationMetadataParser
+import ninja.unagi.util.ObservedTransport
 import ninja.unagi.util.VendorPrefixRegistryProvider
 import ninja.unagi.util.WindowInsetsHelper
 import kotlinx.coroutines.launch
@@ -21,8 +32,21 @@ import kotlinx.coroutines.launch
 class DeviceDetailActivity : AppCompatActivity() {
   private lateinit var binding: ActivityDeviceDetailBinding
   private lateinit var adapter: SightingAdapter
+  private var currentDevice: DeviceEntity? = null
+  private var currentMetadata: ObservationMetadata = ObservationMetadata()
+  private var queryInProgress = false
   private val vendorRegistry by lazy { VendorPrefixRegistryProvider.get(this) }
   private val assignedNumbers by lazy { BluetoothAssignedNumbersProvider.get(this) }
+  private val app by lazy { application as ThingAlertApp }
+  private val repository by lazy { app.repository }
+  private val enrichmentRepository by lazy { app.deviceEnrichmentRepository }
+  private val queryClient by lazy {
+    BleDeviceInfoQueryClient(
+      context = this,
+      bluetoothAdapter = getSystemService(BluetoothManager::class.java)?.adapter,
+      scanController = app.scanController
+    )
+  }
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
@@ -43,14 +67,18 @@ class DeviceDetailActivity : AppCompatActivity() {
     adapter = SightingAdapter(assignedNumbers)
     binding.sightingsList.layoutManager = LinearLayoutManager(this)
     binding.sightingsList.adapter = adapter
-
-    val repository = (application as ThingAlertApp).repository
+    binding.queryDeviceInfoButton.setOnClickListener {
+      val device = currentDevice ?: return@setOnClickListener
+      runBleQuery(device, currentMetadata)
+    }
 
     lifecycleScope.launch {
       repeatOnLifecycle(Lifecycle.State.STARTED) {
         launch {
           repository.observeDevice(deviceKey).collect { device ->
             if (device == null) return@collect
+            currentDevice = device
+            currentMetadata = ObservationMetadataParser.parse(device.lastMetadataJson)
             val identity = DeviceIdentityPresenter.present(
               displayName = device.displayName,
               address = device.lastAddress,
@@ -114,12 +142,28 @@ class DeviceDetailActivity : AppCompatActivity() {
             binding.detailStats.text =
               "RSSI range: ${device.rssiMin}..${device.rssiMax} dBm • Avg: ${"%.1f".format(device.rssiAvg)} • Count: ${device.sightingsCount}"
             binding.detailMetadata.text = device.lastMetadataJson ?: "No metadata recorded yet."
+            renderQueryControls(device, currentMetadata)
           }
         }
 
         launch {
           repository.observeSightings(deviceKey).collect { sightings ->
             adapter.submitList(sightings)
+          }
+        }
+
+        launch {
+          enrichmentRepository.observeEnrichment(deviceKey).collect { enrichment ->
+            binding.detailEnrichment.text = DeviceEnrichmentFormatter.formatForDetail(
+              enrichment = enrichment,
+              assignedNumbers = assignedNumbers
+            )
+            if (!queryInProgress) {
+              binding.queryDeviceInfoStatus.isVisible = enrichment != null
+              binding.queryDeviceInfoStatus.text = enrichment?.let {
+                "Last BLE query: ${Formatters.formatTimestamp(it.lastQueryTimestamp)}"
+              }.orEmpty()
+            }
           }
         }
       }
@@ -131,8 +175,69 @@ class DeviceDetailActivity : AppCompatActivity() {
     return true
   }
 
+  private fun runBleQuery(device: DeviceEntity, metadata: ObservationMetadata) {
+    val address = device.lastAddress ?: return
+    queryInProgress = true
+    renderQueryControls(device, metadata)
+    binding.queryDeviceInfoStatus.isVisible = true
+    binding.queryDeviceInfoStatus.text = getString(ninja.unagi.R.string.query_device_info_running_status)
+
+    lifecycleScope.launch {
+      val result = queryClient.query(address, metadata.rawAndroidAddressType)
+      enrichmentRepository.upsertEnrichment(result.toEntity(device.deviceKey))
+      queryInProgress = false
+      binding.queryDeviceInfoStatus.isVisible = true
+      binding.queryDeviceInfoStatus.text = if (result.errorMessage.isNullOrBlank()) {
+        getString(ninja.unagi.R.string.query_device_info_finished)
+      } else {
+        getString(ninja.unagi.R.string.query_device_info_failed, result.errorMessage)
+      }
+      renderQueryControls(device, metadata)
+    }
+  }
+
+  private fun renderQueryControls(device: DeviceEntity, metadata: ObservationMetadata) {
+    val eligibility = queryEligibility(device, metadata)
+    binding.queryDeviceInfoButton.isEnabled = !queryInProgress && eligibility.enabled
+    binding.queryDeviceInfoButton.text = getString(
+      if (queryInProgress) {
+        ninja.unagi.R.string.query_device_info_running
+      } else {
+        ninja.unagi.R.string.query_device_info
+      }
+    )
+    binding.queryDeviceInfoNote.isVisible = eligibility.message.isNotBlank()
+    binding.queryDeviceInfoNote.text = eligibility.message
+  }
+
+  private fun queryEligibility(device: DeviceEntity, metadata: ObservationMetadata): QueryEligibility {
+    if (device.lastAddress.isNullOrBlank()) {
+      return QueryEligibility(false, getString(ninja.unagi.R.string.query_device_info_unavailable_address))
+    }
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+      ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED
+    ) {
+      return QueryEligibility(false, getString(ninja.unagi.R.string.query_device_info_unavailable_permission))
+    }
+    if (metadata.transport !in setOf(ObservedTransport.BLE, ObservedTransport.DUAL)) {
+      return QueryEligibility(false, getString(ninja.unagi.R.string.query_device_info_unavailable_classic))
+    }
+    if (System.currentTimeMillis() - device.lastSeen > RECENT_SIGHTING_WINDOW_MS) {
+      return QueryEligibility(false, getString(ninja.unagi.R.string.query_device_info_unavailable_stale))
+    }
+    if (device.lastRssi <= VERY_WEAK_RSSI_THRESHOLD) {
+      return QueryEligibility(false, getString(ninja.unagi.R.string.query_device_info_unavailable_weak_signal))
+    }
+    if (metadata.connectable == false) {
+      return QueryEligibility(false, getString(ninja.unagi.R.string.query_device_info_unavailable_non_connectable))
+    }
+    return QueryEligibility(true, getString(ninja.unagi.R.string.query_device_info_note))
+  }
+
   companion object {
     private const val EXTRA_DEVICE_KEY = "device_key"
+    private const val RECENT_SIGHTING_WINDOW_MS = 10 * 60 * 1000L
+    private const val VERY_WEAK_RSSI_THRESHOLD = -95
 
     fun intent(context: Context, deviceKey: String): Intent {
       return Intent(context, DeviceDetailActivity::class.java).apply {
@@ -140,4 +245,9 @@ class DeviceDetailActivity : AppCompatActivity() {
       }
     }
   }
+
+  private data class QueryEligibility(
+    val enabled: Boolean,
+    val message: String
+  )
 }

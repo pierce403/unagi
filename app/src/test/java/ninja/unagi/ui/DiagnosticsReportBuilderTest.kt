@@ -1,6 +1,8 @@
 package ninja.unagi.ui
 
 import ninja.unagi.data.DeviceEntity
+import ninja.unagi.data.DeviceEnrichmentEntity
+import ninja.unagi.enrichment.BleDeviceInfoQueryClient
 import ninja.unagi.scan.ScanDiagnosticsSnapshot
 import ninja.unagi.scan.ScanPath
 import ninja.unagi.scan.ScanSessionOutcome
@@ -37,6 +39,34 @@ class DiagnosticsReportBuilderTest {
           lastMetadataJson = null
         )
       ),
+      persistedEnrichments = listOf(
+        DeviceEnrichmentEntity(
+          deviceKey = "abcdef1234567890",
+          lastQueryTimestamp = 3L,
+          queryMethod = BleDeviceInfoQueryClient.QUERY_METHOD_BLE_GATT_DIS,
+          servicesPresentJson = "[\"0000180A-0000-1000-8000-00805F9B34FB\"]",
+          disAvailable = true,
+          disReadStatus = "success",
+          manufacturerName = "Acme",
+          modelNumber = "Beacon",
+          serialNumber = null,
+          hardwareRevision = null,
+          firmwareRevision = null,
+          softwareRevision = null,
+          systemId = null,
+          pnpVendorIdSource = null,
+          pnpVendorId = null,
+          pnpProductId = null,
+          pnpProductVersion = null,
+          errorCode = null,
+          errorMessage = null,
+          connectDurationMs = 120L,
+          servicesDiscovered = 1,
+          characteristicReadSuccessCount = 2,
+          characteristicReadFailureCount = 0,
+          finalGattStatus = 0
+        )
+      ),
       platformInfo = DiagnosticsPlatformInfo(
         appVersionName = "0.1.0",
         appVersionCode = 7L,
@@ -66,6 +96,7 @@ class DiagnosticsReportBuilderTest {
 
     assertTrue(report.contains("App version: 0.1.0 (7)"))
     assertTrue(report.contains("Persisted devices: 1"))
+    assertTrue(report.contains("Active BLE enrichments: 1"))
     assertTrue(report.contains("name=Unknown device"))
     assertTrue(report.contains("GrapheneOS likely (best effort): true"))
     assertTrue(report.contains("try Compatibility mode"))

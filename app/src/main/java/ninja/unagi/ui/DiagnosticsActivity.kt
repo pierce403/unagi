@@ -27,6 +27,7 @@ import kotlinx.coroutines.launch
 class DiagnosticsActivity : AppCompatActivity() {
   private lateinit var binding: ActivityDiagnosticsBinding
   private val repository by lazy { (application as ThingAlertApp).repository }
+  private val enrichmentRepository by lazy { (application as ThingAlertApp).deviceEnrichmentRepository }
   private var latestDiagnosticsReport: String = ""
 
   override fun onCreate(savedInstanceState: Bundle?) {
@@ -53,8 +54,13 @@ class DiagnosticsActivity : AppCompatActivity() {
 
     lifecycleScope.launch {
       repeatOnLifecycle(Lifecycle.State.STARTED) {
-        combine(DebugLog.entries, ScanDiagnosticsStore.snapshot, repository.observeDevices()) { entries, snapshot, devices ->
-          buildDiagnostics(entries, snapshot, devices)
+        combine(
+          DebugLog.entries,
+          ScanDiagnosticsStore.snapshot,
+          repository.observeDevices(),
+          enrichmentRepository.observeEnrichments()
+        ) { entries, snapshot, devices, enrichments ->
+          buildDiagnostics(entries, snapshot, devices, enrichments)
         }.collect { text ->
           latestDiagnosticsReport = text
           binding.diagnosticsText.text = text
@@ -77,7 +83,8 @@ class DiagnosticsActivity : AppCompatActivity() {
   private fun buildDiagnostics(
     entries: List<String>,
     scanDiagnostics: ScanDiagnosticsSnapshot,
-    devices: List<DeviceEntity>
+    devices: List<DeviceEntity>,
+    enrichments: List<ninja.unagi.data.DeviceEnrichmentEntity>
   ): String {
     val manager = getSystemService(BluetoothManager::class.java)
     val adapter = manager?.adapter
@@ -92,6 +99,7 @@ class DiagnosticsActivity : AppCompatActivity() {
       entries = entries,
       scanDiagnostics = scanDiagnostics,
       persistedDevices = devices,
+      persistedEnrichments = enrichments,
       platformInfo = DiagnosticsPlatformInfo(
         appVersionName = appVersion.versionName,
         appVersionCode = appVersion.versionCode,

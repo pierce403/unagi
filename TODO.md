@@ -14,8 +14,6 @@
 
 ### Device intelligence
 
-- [ ] Add an opt-in `Query device info (BLE)` action on the detail page with a dedicated GATT/DIS enrichment client that stops scanning first and never auto-connects
-- [ ] Store active enrichment separately from passive observations and expose query diagnostics/export fields for DIS/GATT results
 - [ ] Add passive vendor decoders and tests around randomized-address behavior, confidence downgrade, classification scoring, and DeviceKey collision cases
 
 ### Scan robustness

@@ -8,14 +8,15 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
-  entities = [DeviceEntity::class, SightingEntity::class, AlertRuleEntity::class],
-  version = 2,
+  entities = [DeviceEntity::class, SightingEntity::class, AlertRuleEntity::class, DeviceEnrichmentEntity::class],
+  version = 3,
   exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
   abstract fun deviceDao(): DeviceDao
   abstract fun sightingDao(): SightingDao
   abstract fun alertRuleDao(): AlertRuleDao
+  abstract fun deviceEnrichmentDao(): DeviceEnrichmentDao
 
   companion object {
     private val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -37,13 +38,49 @@ abstract class AppDatabase : RoomDatabase() {
       }
     }
 
+    private val MIGRATION_2_3 = object : Migration(2, 3) {
+      override fun migrate(database: SupportSQLiteDatabase) {
+        database.execSQL(
+          """
+          CREATE TABLE IF NOT EXISTS `device_enrichments` (
+            `deviceKey` TEXT NOT NULL,
+            `lastQueryTimestamp` INTEGER NOT NULL,
+            `queryMethod` TEXT NOT NULL,
+            `servicesPresentJson` TEXT,
+            `disAvailable` INTEGER NOT NULL,
+            `disReadStatus` TEXT NOT NULL,
+            `manufacturerName` TEXT,
+            `modelNumber` TEXT,
+            `serialNumber` TEXT,
+            `hardwareRevision` TEXT,
+            `firmwareRevision` TEXT,
+            `softwareRevision` TEXT,
+            `systemId` TEXT,
+            `pnpVendorIdSource` INTEGER,
+            `pnpVendorId` INTEGER,
+            `pnpProductId` INTEGER,
+            `pnpProductVersion` INTEGER,
+            `errorCode` INTEGER,
+            `errorMessage` TEXT,
+            `connectDurationMs` INTEGER,
+            `servicesDiscovered` INTEGER NOT NULL,
+            `characteristicReadSuccessCount` INTEGER NOT NULL,
+            `characteristicReadFailureCount` INTEGER NOT NULL,
+            `finalGattStatus` INTEGER,
+            PRIMARY KEY(`deviceKey`)
+          )
+          """.trimIndent()
+        )
+      }
+    }
+
     fun build(context: Context): AppDatabase {
       return Room.databaseBuilder(
         context.applicationContext,
         AppDatabase::class.java,
         "thingalert.db"
       )
-        .addMigrations(MIGRATION_1_2)
+        .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
         .fallbackToDestructiveMigration()
         .build()
     }

@@ -81,6 +81,48 @@
         android:textColor="@color/thingalert_on_background" />
 
       <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="@string/active_ble_query"
+        android:textColor="@color/thingalert_secondary"
+        android:textStyle="bold" />
+
+      <TextView
+        android:id="@+id/queryDeviceInfoNote"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:textColor="@color/thingalert_on_background" />
+
+      <com.google.android.material.button.MaterialButton
+        android:id="@+id/queryDeviceInfoButton"
+        style="?attr/materialButtonOutlinedStyle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:text="@string/query_device_info" />
+
+      <TextView
+        android:id="@+id/queryDeviceInfoStatus"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:textColor="@color/thingalert_on_background"
+        android:visibility="gone" />
+
+      <TextView
+        android:id="@+id/detailEnrichment"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:background="@drawable/panel_surface_subtle"
+        android:fontFamily="monospace"
+        android:padding="16dp"
+        android:textColor="@color/thingalert_on_surface"
+        android:textIsSelectable="true" />
+
+      <TextView
         android:id="@+id/detailMetadata"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

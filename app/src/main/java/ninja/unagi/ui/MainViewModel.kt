@@ -21,13 +21,7 @@ import kotlinx.coroutines.flow.stateIn
 class MainViewModel(app: Application) : AndroidViewModel(app) {
   private val thingAlertApp = app as ThingAlertApp
   private val repository = thingAlertApp.repository
-  private val scanner = ScanController(
-    app,
-    viewModelScope,
-    repository,
-    thingAlertApp.alertRuleRepository,
-    thingAlertApp.deviceAlertNotifier
-  )
+  private val scanner = thingAlertApp.scanController
   private val vendorRegistry = VendorPrefixRegistryProvider.get(app)
   private val assignedNumbers = BluetoothAssignedNumbersProvider.get(app)
 
