@@ -42,3 +42,5 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 - Bump the Android app to `0.2.5` / version code `15` for the continuous-scanning fix
 - Add a dedicated UNAGI status-bar icon for the active-scan notification and prompt for battery-optimization exemption when active scanning is enabled
 - Bump the Android app to `0.2.6` / version code `16` for the background-scan UX pass
+- Ask whether active scanning should restart on boot, persist that choice, and start the foreground scan service from `BOOT_COMPLETED`
+- Bump the Android app to `0.2.7` / version code `17` for the boot-start background scanning release

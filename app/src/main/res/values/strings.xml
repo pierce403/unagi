@@ -65,6 +65,10 @@
   <string name="battery_optimization_title">Keep active scanning alive</string>
   <string name="battery_optimization_message">Ask Android to disable battery optimization for UNAGI so background scanning is less likely to be paused or killed. You can skip this and keep scanning anyway.</string>
   <string name="battery_optimization_action">Open battery settings</string>
+  <string name="start_on_boot_title">Start active scanning on boot?</string>
+  <string name="start_on_boot_message">When active scanning is enabled, UNAGI can restart the scan service automatically after the phone boots. You can change this later by toggling active scanning off and back on.</string>
+  <string name="start_on_boot_enable">Start on boot</string>
+  <string name="start_on_boot_disable">Not now</string>
   <string name="no_devices">No devices yet. Start a scan.</string>
   <string name="diagnostics">Diagnostics</string>
   <string name="device_details">Device details</string>

@@ -24,6 +24,7 @@ import ninja.unagi.databinding.ActivityMainBinding
 import ninja.unagi.scan.ActiveScanPreferences
 import ninja.unagi.scan.ActiveScanService
 import ninja.unagi.scan.ScanState
+import ninja.unagi.scan.StartOnBootPreferences
 import ninja.unagi.util.AppVersion
 import ninja.unagi.util.BatteryOptimizationHelper
 import ninja.unagi.util.DebugLog
@@ -280,6 +281,7 @@ class MainActivity : AppCompatActivity() {
       ActiveScanService.start(this)
     }
     if (enabled) {
+      maybePromptForStartOnBoot()
       maybePromptForBatteryOptimization()
     }
     viewModel.refreshPreflightState()
@@ -464,6 +466,19 @@ class MainActivity : AppCompatActivity() {
       .setNegativeButton(android.R.string.cancel, null)
       .setPositiveButton(R.string.battery_optimization_action) { _, _ ->
         batteryOptimizationLauncher.launch(requestIntent)
+      }
+      .show()
+  }
+
+  private fun maybePromptForStartOnBoot() {
+    AlertDialog.Builder(this)
+      .setTitle(R.string.start_on_boot_title)
+      .setMessage(R.string.start_on_boot_message)
+      .setNegativeButton(R.string.start_on_boot_disable) { _, _ ->
+        StartOnBootPreferences.setEnabled(this, false)
+      }
+      .setPositiveButton(R.string.start_on_boot_enable) { _, _ ->
+        StartOnBootPreferences.setEnabled(this, true)
       }
       .show()
   }

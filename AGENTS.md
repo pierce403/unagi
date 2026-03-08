@@ -80,6 +80,7 @@ Build the MVP: scan -> list -> tap -> history.
 - Background-capable active scanning needs `ACCESS_BACKGROUND_LOCATION` on Android 10/11 plus a `connectedDevice` foreground service notification; keep the permission flow and manifest declarations aligned
 - Active scanning now prompts for a battery-optimization exemption from `MainActivity`; keep that prompt tied to the mode enable/start path so users understand why the app may be killed otherwise
 - The foreground-service notification uses `ic_unagi_status`, not the launcher asset, so the status-bar icon stays recognizable and monochrome
+- Boot autostart is now controlled by `StartOnBootPreferences` and `ActiveScanBootReceiver`; only restart the service on `BOOT_COMPLETED` when both active scanning and start-on-boot are enabled
 - Device history now treats `sightingsCount` as deduped presence sessions, not raw callback volume; use `observationCount` for signal-stat sampling math and diagnostics
 - Star state now lives on `DeviceEntity`; keep starred filters wired off persisted state instead of transient UI-only flags
 - The Alerts screen now uses a FAB + modal editor flow; keep add and edit behavior on the same validated dialog instead of growing a permanent inline form again

@@ -24,5 +24,3 @@
 - [ ] Add a manual scan QA checklist for stock Android and GrapheneOS scenarios
 
 ### Main screen and releases
-
-- [ ] Ask whether active scanning should restart on device boot and wire the boot path
