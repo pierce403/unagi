@@ -31,7 +31,6 @@
 
   <!-- Lower mask fabric overlay -->
   <path d="M28 68 C43 78, 85 78, 100 68 C106 74, 102 96, 64 104 C26 96, 22 74, 28 68 Z" fill="url(#maskGrad)"/>
-  <path d="M64 76 L54 102 M64 76 L74 102" stroke="#05070D" stroke-width="3" stroke-linecap="round"/>
 
   <!-- Glowing Eyes -->
   <g filter="url(#neon)">

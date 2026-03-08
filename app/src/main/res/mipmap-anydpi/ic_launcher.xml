@@ -15,7 +15,6 @@
 
   <!-- Lower mask fabric overlay -->
   <path android:fillColor="@color/thingalert_surface_variant" android:pathData="M28 68 C43 78, 85 78, 100 68 C106 74, 102 96, 64 104 C26 96, 22 74, 28 68 Z"/>
-  <path android:strokeColor="@color/thingalert_background" android:strokeWidth="3" android:strokeLineCap="round" android:pathData="M64 76 L54 102 M64 76 L74 102"/>
   
   <!-- Glowing Eyes -->
   <path android:fillColor="@color/thingalert_on_surface" android:pathData="M42 58 L52 61 L44 63 Z"/>
