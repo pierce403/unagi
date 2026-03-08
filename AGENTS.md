@@ -27,6 +27,9 @@ Build the MVP: scan -> list -> tap -> history.
 - Treat observed device identifiers as observations, not ground truth identity
 - Assume devices may rotate addresses and change names; design for partial stability
 - Optimize for battery by time-limiting scans and avoiding constant background behavior (MVP stays foreground)
+- Keep passive identity/grouping separate from classification; soft fingerprints can inform category/confidence but should not silently become stable physical identity
+- Do not trust OUI/vendor-prefix resolution on randomized/local BLE addresses; prefer manufacturer company ID, advertised services, and other passive fields with explicit confidence levels
+- Active BLE enrichment must stay opt-in from the detail page, never happen during scans automatically, and remain local-only
 
 ## PR discipline
 
@@ -66,4 +69,6 @@ Build the MVP: scan -> list -> tap -> history.
 - Vendor-prefix data is refreshed with `scripts/update-vendor-prefixes`, which writes `app/src/main/assets/vendor_prefixes.txt.gz`
 - Bluetooth SIG assigned-number data is refreshed with `scripts/update-bluetooth-assigned-numbers`, which writes `app/src/main/assets/bluetooth_company_identifiers.txt.gz` and `app/src/main/assets/bluetooth_service_uuids.txt.gz`
 - When unnamed BLE devices still lack a human name, prefer surfacing manufacturer-company IDs and advertised service UUID labels rather than leaving the UI at a bare “Unknown device”
+- The current `DeviceKey` fallback order is collision-prone for common manufacturer/service payloads; future work should separate identity keys from classification fingerprints before deepening device intelligence
+- If active BLE querying is added, stop scanning first, keep it opt-in from `DeviceDetailActivity`, store enrichment separately from passive metadata, and treat DIS/GATT reads as hints rather than truth
 - Reflection: before handoff, record any new command, pitfall, deploy detail, or collaborator preference discovered during the task

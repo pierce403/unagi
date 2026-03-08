@@ -12,6 +12,15 @@
 
 ### Alerts
 
+### Device intelligence
+
+- [ ] Split passive device identity from classification fingerprints and replace the current `DeviceKey` fallback strategy that can merge devices sharing common manufacturer blobs or service UUIDs
+- [ ] Add address-type-aware BLE metadata, vendor-confidence scoring, and public-vs-randomized address handling before expanding vendor/OUI labels
+- [ ] Build a rule-based classification engine with confidence and evidence using passive BLE/classic fields instead of one-shot labels
+- [ ] Add an opt-in `Query device info (BLE)` action on the detail page with a dedicated GATT/DIS enrichment client that stops scanning first and never auto-connects
+- [ ] Store active enrichment separately from passive observations and expose query diagnostics/export fields for DIS/GATT results
+- [ ] Add passive vendor decoders and tests around randomized-address behavior, confidence downgrade, classification scoring, and DeviceKey collision cases
+
 ### Scan robustness
 
 - [ ] Add raw BLE/classic callback samples to diagnostics, not just counters
