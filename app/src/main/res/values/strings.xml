@@ -25,6 +25,7 @@
   <string name="show_controls">Show controls</string>
   <string name="hide_controls">Hide controls</string>
   <string name="filters">Filters</string>
+  <string name="open_filters">Open filters</string>
   <string name="filters_panel_title">Filters</string>
   <string name="filters_panel_subtitle">Adjust list filters, sorting, and recovery actions.</string>
   <string name="active_ble_queries_menu">Active BLE queries</string>

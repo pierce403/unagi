@@ -19,6 +19,7 @@
       android:elevation="0dp"
       android:theme="@style/ThemeOverlay.MaterialComponents.Dark.ActionBar"
       android:title="@string/app_name_header"
+      app:navigationIconTint="@color/thingalert_secondary"
       app:subtitleTextColor="@color/thingalert_secondary"
       app:titleTextColor="@color/thingalert_on_surface" />
 
@@ -59,7 +60,7 @@
     android:id="@+id/filterDrawer"
     android:layout_width="320dp"
     android:layout_height="match_parent"
-    android:layout_gravity="end"
+    android:layout_gravity="start"
     android:background="@color/thingalert_surface"
     android:fillViewport="true">
 

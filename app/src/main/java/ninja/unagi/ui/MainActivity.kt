@@ -127,6 +127,11 @@ class MainActivity : AppCompatActivity() {
 
     setSupportActionBar(binding.toolbar)
     supportActionBar?.title = getString(R.string.app_name_header)
+    binding.toolbar.setNavigationIcon(R.drawable.ic_filter_list)
+    binding.toolbar.navigationContentDescription = getString(R.string.open_filters)
+    binding.toolbar.setNavigationOnClickListener {
+      toggleFiltersDrawer()
+    }
 
     WindowInsetsHelper.applyToolbarInsets(binding.toolbar)
     WindowInsetsHelper.applyBottomInsets(binding.deviceList)
@@ -254,10 +259,6 @@ class MainActivity : AppCompatActivity() {
         }
         true
       }
-      R.id.menu_filters -> {
-        toggleFiltersDrawer()
-        true
-      }
       R.id.menu_diagnostics -> {
         startActivity(Intent(this, DiagnosticsActivity::class.java))
         true
@@ -285,16 +286,16 @@ class MainActivity : AppCompatActivity() {
   }
 
   private fun toggleFiltersDrawer() {
-    if (binding.drawerLayout.isDrawerOpen(GravityCompat.END)) {
-      binding.drawerLayout.closeDrawer(GravityCompat.END)
+    if (binding.drawerLayout.isDrawerOpen(GravityCompat.START)) {
+      binding.drawerLayout.closeDrawer(GravityCompat.START)
     } else {
-      binding.drawerLayout.openDrawer(GravityCompat.END)
+      binding.drawerLayout.openDrawer(GravityCompat.START)
     }
   }
 
   private fun openFiltersDrawer() {
-    if (!binding.drawerLayout.isDrawerOpen(GravityCompat.END)) {
-      binding.drawerLayout.openDrawer(GravityCompat.END)
+    if (!binding.drawerLayout.isDrawerOpen(GravityCompat.START)) {
+      binding.drawerLayout.openDrawer(GravityCompat.START)
     }
   }
 

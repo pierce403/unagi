@@ -60,7 +60,7 @@ Build the MVP: scan -> list -> tap -> history.
 - Since `targetSdk` is 35, new top-level screens need explicit system-bar inset handling or the toolbar can overlap the Android 15 status bar
 - Device identity is now richer: prefer BLE advertised local names over generic Bluetooth names, and resolve vendor prefixes locally from the bundled IEEE MA-L / MA-M / MA-S registries
 - Android package identity is now `ninja.unagi`; changing `applicationId` means old `com.thingalert` installs do not upgrade in place
-- MainActivity display prefs now persist in `MainDisplayPreferences`; compact device-card density stays in the overflow menu, and filter/recovery controls now live in a right-side drawer instead of a top banner
+- MainActivity display prefs now persist in `MainDisplayPreferences`; compact device-card density stays in the overflow menu, and filter/recovery controls now live in a left-edge drawer opened from the toolbar filter icon instead of a top banner
 - Alert rules now live in the dedicated Alerts screen and can match OUI, full MAC, or Bluetooth name with a chosen emoji and sound preset
 - Alert notifications are posted on a silent channel and the audible alert is played manually, so different presets stay distinct without depending on per-channel OS sounds
 - The vendor-prefix asset may be packaged in the APK as `vendor_prefixes.txt` even when the source file is `vendor_prefixes.txt.gz`, so the loader must handle both names and both plain/gzip content
@@ -85,7 +85,7 @@ Build the MVP: scan -> list -> tap -> history.
 - Boot autostart is now controlled by `StartOnBootPreferences` and `ContinuousScanBootReceiver`; only restart the service on `BOOT_COMPLETED` when both continuous scanning and start-on-boot are enabled
 - Device history now treats `sightingsCount` as deduped presence sessions, not raw callback volume; use `observationCount` for signal-stat sampling math and diagnostics
 - Star state now lives on `DeviceEntity`; keep starred filters wired off persisted state instead of transient UI-only flags
-- The main toolbar now owns the scan start/stop action and live-device count; keep filter/recovery UI in the right-side drawer instead of spending vertical space on a top banner again
+- The main toolbar now owns the scan start/stop action and live-device count; keep filter/recovery UI in the left-edge drawer instead of spending vertical space on a top banner again
 - Installed version info no longer lives in the main banner; keep it in the overflow menu and Diagnostics so the header stays compact
 - The Alerts screen now uses a FAB + modal editor flow; keep add and edit behavior on the same validated dialog instead of growing a permanent inline form again
 - Passive vendor decoders now live in `PassiveVendorDecoderRegistry`; they should add soft hints (ecosystem, beacon/tracker/dev-board style) without claiming stable product identity

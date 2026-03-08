@@ -22,7 +22,3 @@
 ### QA
 
 - [ ] Add a manual scan QA checklist for stock Android and GrapheneOS scenarios
-
-### Main screen and releases
-
-- [ ] Move filters into a left-edge toolbar drawer icon
