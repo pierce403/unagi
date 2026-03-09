@@ -8,3 +8,7 @@
 .DS_Store
 local.properties
 thingalert_ui.xml
+
+# Dev screenshots and QA artifacts (keep out of repo root)
+screen_*.png
+screen_*.jpg

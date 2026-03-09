@@ -9,6 +9,7 @@ import ninja.unagi.alerts.DeviceAlertNotifier
 import ninja.unagi.data.AppDatabase
 import ninja.unagi.data.AlertRuleRepository
 import ninja.unagi.data.DeviceEnrichmentRepository
+import ninja.unagi.data.AffinityGroupRepository
 import ninja.unagi.data.DeviceRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -26,6 +27,9 @@ class ThingAlertApp : Application() {
   }
   val alertRuleRepository: AlertRuleRepository by lazy {
     AlertRuleRepository(database.alertRuleDao())
+  }
+  val affinityGroupRepository: AffinityGroupRepository by lazy {
+    AffinityGroupRepository(database.affinityGroupDao())
   }
   val deviceAlertNotifier: DeviceAlertNotifier by lazy {
     DeviceAlertNotifier(this)

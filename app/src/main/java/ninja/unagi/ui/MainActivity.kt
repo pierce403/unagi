@@ -26,6 +26,8 @@ import ninja.unagi.databinding.ActivityMainBinding
 import ninja.unagi.enrichment.ActiveBleQueryPreferences
 import ninja.unagi.scan.ContinuousScanPreferences
 import ninja.unagi.scan.ContinuousScanService
+import ninja.unagi.scan.PermissionDenialState
+import ninja.unagi.scan.ScanDiagnosticsStore
 import ninja.unagi.scan.ScanState
 import ninja.unagi.scan.StartOnBootPreferences
 import ninja.unagi.util.AppVersion
@@ -257,6 +259,10 @@ class MainActivity : AppCompatActivity() {
         startActivity(Intent(this, AlertsActivity::class.java))
         true
       }
+      R.id.menu_groups -> {
+        startActivity(Intent(this, AffinityGroupsActivity::class.java))
+        true
+      }
       R.id.menu_scan_toggle -> {
         if (viewModel.scanState.value is ScanState.Scanning) {
           stopCurrentScan()
@@ -434,19 +440,24 @@ class MainActivity : AppCompatActivity() {
       is ScanState.MissingPermission -> {
         binding.scanStatus.text = getString(R.string.scan_inactive)
         binding.permissionHint.isVisible = true
-        val missing = PermissionsHelper.missingPermissionLabels(this, continuousScanningEnabled).joinToString()
-        val blocked = PermissionsHelper.shouldOpenAppSettings(this, continuousScanningEnabled)
-        binding.permissionHint.text = if (blocked) {
-          getString(R.string.permissions_blocked_detail, missing)
+        val statuses = PermissionsHelper.classifyMissingPermissions(this, continuousScanningEnabled)
+        ScanDiagnosticsStore.update { it.copy(permissionStatuses = statuses) }
+        val anyBlocked = statuses.any { it.denialState == PermissionDenialState.PERMANENTLY_DENIED }
+        val labels = statuses.map { it.label }.distinct().joinToString()
+        binding.permissionHint.text = if (anyBlocked) {
+          val blockedLabels = statuses
+            .filter { it.denialState == PermissionDenialState.PERMANENTLY_DENIED }
+            .map { it.label }.distinct().joinToString()
+          getString(R.string.permissions_blocked_detail, blockedLabels)
         } else {
-          getString(R.string.permissions_required_detail, missing)
+          getString(R.string.permissions_required_detail, labels)
         }
-        recoveryAction = if (blocked) {
+        recoveryAction = if (anyBlocked) {
           RecoveryAction.OPEN_APP_SETTINGS
         } else {
           RecoveryAction.REQUEST_PERMISSIONS
         }
-        binding.permissionActionButton.text = if (blocked) {
+        binding.permissionActionButton.text = if (anyBlocked) {
           getString(R.string.open_app_settings)
         } else {
           getString(R.string.grant_access)

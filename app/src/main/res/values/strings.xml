@@ -112,7 +112,7 @@
   <string name="rssi_avg">RSSI average</string>
   <string name="permissions_required">Permissions required to scan nearby devices.</string>
   <string name="permissions_required_detail">%1$s access is required before UNAGI can scan. Requests stay foreground-only and observations stay on-device.</string>
-  <string name="permissions_blocked_detail">%1$s access is currently blocked. Open app settings, allow it, then return to scan.</string>
+  <string name="permissions_blocked_detail">%1$s access is permanently denied. Open App Settings, tap Permissions, then enable %1$s.</string>
   <string name="enable_bluetooth">Bluetooth is off. Enable to scan.</string>
   <string name="enable_bluetooth_action">Enable Bluetooth</string>
   <string name="location_services_required_detail">Location services are off. Android 11 and below require them for Bluetooth scans even when the app only stores data locally.</string>
@@ -165,4 +165,7 @@
   <string name="member_you">(you)</string>
   <string name="member_revoked">revoked</string>
   <string name="sharing_config_updated">Sharing config updated.</string>
+  <string name="group_list_info">Created %1$s · Epoch %2$d</string>
+  <string name="member_name_with_suffix">%1$s %2$s</string>
+  <string name="member_epoch">Epoch %1$d</string>
 </resources>

@@ -11,6 +11,12 @@ interface DeviceEnrichmentDao {
   @Query("SELECT * FROM device_enrichments ORDER BY lastQueryTimestamp DESC")
   fun observeEnrichments(): Flow<List<DeviceEnrichmentEntity>>
 
+  @Query("SELECT * FROM device_enrichments ORDER BY lastQueryTimestamp DESC")
+  suspend fun getEnrichments(): List<DeviceEnrichmentEntity>
+
+  @Query("SELECT * FROM device_enrichments WHERE deviceKey = :deviceKey LIMIT 1")
+  suspend fun getEnrichment(deviceKey: String): DeviceEnrichmentEntity?
+
   @Query("SELECT * FROM device_enrichments WHERE deviceKey = :deviceKey LIMIT 1")
   fun observeEnrichment(deviceKey: String): Flow<DeviceEnrichmentEntity?>
 

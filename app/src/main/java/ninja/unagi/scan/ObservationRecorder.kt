@@ -36,8 +36,25 @@ class ObservationRecorder(
 
   fun record(input: ObservationInput) {
     val key = DeviceKey.from(input)
-    ScanDiagnosticsStore.update {
-      it.copy(deviceKeys = it.deviceKeys + key)
+    ScanDiagnosticsStore.update { snap ->
+      val samples = if (snap.callbackSamples.size < CallbackSample.MAX_SAMPLES) {
+        snap.callbackSamples + CallbackSample(
+          path = when {
+            input.source.equals("BLE", ignoreCase = true) -> ScanPath.BLE
+            input.source.equals("SDR", ignoreCase = true) -> ScanPath.SDR
+            else -> ScanPath.CLASSIC
+          },
+          timestampMs = input.timestamp,
+          address = input.address,
+          name = input.name,
+          rssi = input.rssi,
+          serviceUuidCount = input.serviceUuids.size,
+          manufacturerDataKeys = input.manufacturerData.keys.sorted()
+        )
+      } else {
+        snap.callbackSamples
+      }
+      snap.copy(deviceKeys = snap.deviceKeys + key, callbackSamples = samples)
     }
     val metadata = buildMetadataJson(input)
     DebugLog.log(

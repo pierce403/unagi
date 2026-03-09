@@ -8,6 +8,8 @@ import android.location.LocationManager
 import android.os.Build
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import ninja.unagi.scan.PermissionDenialState
+import ninja.unagi.scan.PermissionStatus
 
 object PermissionsHelper {
   private const val PREFS_NAME = "unagi_permissions"
@@ -93,6 +95,44 @@ object PermissionsHelper {
         else -> hasRequestedBefore
       }
       requestedBefore && !ActivityCompat.shouldShowRequestPermissionRationale(activity, permission)
+    }
+  }
+
+  fun classifyMissingPermissions(
+    activity: Activity,
+    continuousScanning: Boolean = false
+  ): List<PermissionStatus> {
+    val missing = missingPermissions(activity, continuousScanning)
+    if (missing.isEmpty()) return emptyList()
+
+    val prefs = activity.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    val scanRequested = prefs.getBoolean(KEY_SCAN_PERMISSION_REQUESTED, false)
+    val bgLocationRequested = prefs.getBoolean(KEY_BACKGROUND_LOCATION_REQUESTED, false)
+
+    return missing.mapNotNull { permission ->
+      val label = permissionLabel(permission) ?: return@mapNotNull null
+      val requestedBefore = when (permission) {
+        Manifest.permission.ACCESS_BACKGROUND_LOCATION -> bgLocationRequested
+        else -> scanRequested
+      }
+      val denialState = when {
+        !requestedBefore -> PermissionDenialState.NOT_REQUESTED
+        ActivityCompat.shouldShowRequestPermissionRationale(activity, permission) ->
+          PermissionDenialState.DENIED_CAN_ASK
+        else -> PermissionDenialState.PERMANENTLY_DENIED
+      }
+      PermissionStatus(permission = permission, label = label, denialState = denialState)
+    }
+  }
+
+  private fun permissionLabel(permission: String): String? {
+    return when (permission) {
+      Manifest.permission.BLUETOOTH_SCAN,
+      Manifest.permission.BLUETOOTH_CONNECT -> "Nearby devices"
+      Manifest.permission.ACCESS_FINE_LOCATION,
+      Manifest.permission.ACCESS_COARSE_LOCATION -> "Location"
+      Manifest.permission.ACCESS_BACKGROUND_LOCATION -> "Background location"
+      else -> null
     }
   }
 

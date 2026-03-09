@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+  xmlns:app="http://schemas.android.com/apk/res-auto"
+  android:layout_width="match_parent"
+  android:layout_height="match_parent"
+  android:background="@color/thingalert_background"
+  android:orientation="vertical">
+
+  <com.google.android.material.appbar.MaterialToolbar
+    android:id="@+id/toolbar"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@color/thingalert_surface"
+    android:elevation="0dp"
+    android:theme="@style/ThemeOverlay.MaterialComponents.Dark.ActionBar"
+    app:navigationIconTint="@color/thingalert_secondary"
+    app:titleTextColor="@color/thingalert_on_surface" />
+
+  <View
+    android:layout_width="match_parent"
+    android:layout_height="1dp"
+    android:background="@color/thingalert_stroke_soft" />
+
+  <ScrollView
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:id="@+id/scrollView">
+
+    <LinearLayout
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:orientation="vertical"
+      android:padding="16dp">
+
+      <com.google.android.material.card.MaterialCardView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:cardBackgroundColor="@color/thingalert_surface"
+        app:cardCornerRadius="16dp"
+        app:cardElevation="0dp"
+        app:strokeColor="@color/thingalert_stroke_soft"
+        app:strokeWidth="1dp">
+
+        <LinearLayout
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:orientation="vertical"
+          android:padding="16dp">
+
+          <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/group_info"
+            android:textColor="@color/thingalert_secondary"
+            android:textStyle="bold" />
+
+          <TextView
+            android:id="@+id/groupDetailInfo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:textColor="@color/thingalert_on_background"
+            android:textSize="13sp" />
+        </LinearLayout>
+      </com.google.android.material.card.MaterialCardView>
+
+      <com.google.android.material.card.MaterialCardView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        app:cardBackgroundColor="@color/thingalert_surface"
+        app:cardCornerRadius="16dp"
+        app:cardElevation="0dp"
+        app:strokeColor="@color/thingalert_stroke_soft"
+        app:strokeWidth="1dp">
+
+        <LinearLayout
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:orientation="vertical"
+          android:padding="16dp">
+
+          <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/sharing_config"
+            android:textColor="@color/thingalert_secondary"
+            android:textStyle="bold" />
+
+          <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/shareDevices"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/share_devices"
+            android:textColor="@color/thingalert_on_background" />
+
+          <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/shareSightings"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/share_sightings"
+            android:textColor="@color/thingalert_on_background" />
+
+          <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/shareAlertRules"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/share_alert_rules"
+            android:textColor="@color/thingalert_on_background" />
+
+          <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/shareEnrichments"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/share_enrichments"
+            android:textColor="@color/thingalert_on_background" />
+
+          <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/shareStarred"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/share_starred"
+            android:textColor="@color/thingalert_on_background" />
+
+          <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/shareTpms"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/share_tpms"
+            android:textColor="@color/thingalert_on_background" />
+        </LinearLayout>
+      </com.google.android.material.card.MaterialCardView>
+
+      <com.google.android.material.card.MaterialCardView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        app:cardBackgroundColor="@color/thingalert_surface"
+        app:cardCornerRadius="16dp"
+        app:cardElevation="0dp"
+        app:strokeColor="@color/thingalert_stroke_soft"
+        app:strokeWidth="1dp">
+
+        <LinearLayout
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:orientation="vertical"
+          android:padding="16dp">
+
+          <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/group_members"
+            android:textColor="@color/thingalert_secondary"
+            android:textStyle="bold" />
+
+          <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/membersList"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:nestedScrollingEnabled="false" />
+        </LinearLayout>
+      </com.google.android.material.card.MaterialCardView>
+
+      <com.google.android.material.button.MaterialButton
+        android:id="@+id/exportBundleButton"
+        style="@style/ThingAlertSecondaryButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="@string/export_bundle" />
+
+      <com.google.android.material.button.MaterialButton
+        android:id="@+id/shareGroupKeyButton"
+        style="@style/ThingAlertSecondaryButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="@string/share_group_key" />
+
+      <com.google.android.material.button.MaterialButton
+        android:id="@+id/deleteGroupButton"
+        style="@style/ThingAlertSecondaryButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="@string/delete_group"
+        android:textColor="@color/thingalert_error" />
+    </LinearLayout>
+  </ScrollView>
+</LinearLayout>

@@ -70,7 +70,14 @@ object DiagnosticsReportBuilder {
     builder.appendLine(
       "Permission labels: ${permissionInfo.permissionLabels.ifEmpty { listOf("none") }.joinToString()}"
     )
-    builder.appendLine("Permissions blocked by policy or 'don't ask again': ${permissionInfo.permissionsBlocked}")
+    if (scanDiagnostics.permissionStatuses.isNotEmpty()) {
+      builder.appendLine("Permission denial states:")
+      scanDiagnostics.permissionStatuses.forEach { status ->
+        builder.appendLine("  ${status.label}: ${status.denialState.label}")
+      }
+    } else {
+      builder.appendLine("Permissions blocked by policy or 'don't ask again': ${permissionInfo.permissionsBlocked}")
+    }
     if (permissionInfo.locationServicesRequired) {
       builder.appendLine("Location services enabled: ${permissionInfo.locationServicesEnabled}")
     }
@@ -100,6 +107,16 @@ object DiagnosticsReportBuilder {
     builder.appendLine("SDR callbacks: ${scanDiagnostics.sdrCallbackCount}")
     builder.appendLine("Raw callbacks: ${scanDiagnostics.rawCallbackCount}")
     builder.appendLine("Unique device keys this session: ${scanDiagnostics.uniqueDeviceCount}")
+    if (scanDiagnostics.callbackSamples.isNotEmpty()) {
+      builder.appendLine("Callback samples (first ${scanDiagnostics.callbackSamples.size}):")
+      scanDiagnostics.callbackSamples.forEachIndexed { index, sample ->
+        builder.appendLine(
+          "  ${index + 1}. ${sample.path.label} addr=${sample.address ?: "n/a"} " +
+            "name=${sample.name ?: "unknown"} rssi=${sample.rssi} " +
+            "services=${sample.serviceUuidCount} mfg=${sample.manufacturerDataKeys.ifEmpty { listOf("none") }.joinToString(",")}"
+        )
+      }
+    }
     builder.appendLine(
       "Permission snapshot: ${
         scanDiagnostics.missingPermissions.ifEmpty { listOf("none") }.joinToString()
@@ -169,7 +186,14 @@ object DiagnosticsReportBuilder {
   ): List<String> {
     val suggestions = mutableListOf<String>()
     if (permissionInfo.missingPermissions.isNotEmpty()) {
-      suggestions += "Grant ${permissionInfo.permissionLabels.ifEmpty { listOf("required scan permissions") }.joinToString()} before scanning again."
+      val blocked = scanDiagnostics.permissionStatuses
+        .filter { it.denialState == ninja.unagi.scan.PermissionDenialState.PERMANENTLY_DENIED }
+      if (blocked.isNotEmpty()) {
+        val names = blocked.map { it.label }.distinct().joinToString()
+        suggestions += "Open App Settings → Permissions and enable $names to scan again."
+      } else {
+        suggestions += "Grant ${permissionInfo.permissionLabels.ifEmpty { listOf("required scan permissions") }.joinToString()} before scanning again."
+      }
     }
     if (!bluetoothEnabled) {
       suggestions += "Turn Bluetooth on before retrying the scan."

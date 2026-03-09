@@ -45,6 +45,31 @@
         <activity
             android:name=".ui.DeviceDetailActivity"
             android:exported="false" />
+        <activity
+            android:name=".ui.AffinityGroupsActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ui.AffinityGroupDetailActivity"
+            android:exported="false" />
+        <!-- Fix #15: narrower intent filter for .unagi files only -->
+        <activity
+            android:name=".ui.AffinityImportActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="content" />
+                <data android:mimeType="application/octet-stream" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="file" />
+                <data android:host="*" />
+                <data android:pathPattern=".*\\.unagi" />
+            </intent-filter>
+        </activity>
         <service
             android:name=".scan.ContinuousScanService"
             android:exported="false"

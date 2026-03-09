@@ -73,4 +73,55 @@ class DeviceKeyTest {
 
     assertNotEquals(DeviceKey.from(sensor1), DeviceKey.from(sensor2))
   }
+
+  @Test
+  fun `unnamed devices with same fingerprint produce same key across observations`() {
+    val first = ObservationInput(
+      name = null,
+      address = null,
+      rssi = -60,
+      timestamp = 1000L,
+      serviceUuids = listOf("0000FEAA-0000-1000-8000-00805F9B34FB"),
+      manufacturerData = mapOf(76 to "0215AABB"),
+      source = "BLE",
+      classificationFingerprint = "fp-beacon-a"
+    )
+    val second = first.copy(timestamp = 5000L, rssi = -72)
+
+    assertEquals(DeviceKey.from(first), DeviceKey.from(second))
+  }
+
+  @Test
+  fun `unnamed devices with different fingerprints produce different keys`() {
+    val first = ObservationInput(
+      name = null,
+      address = null,
+      rssi = -60,
+      timestamp = 1L,
+      serviceUuids = emptyList(),
+      manufacturerData = emptyMap(),
+      source = "BLE",
+      classificationFingerprint = "fp-type-a"
+    )
+    val second = first.copy(classificationFingerprint = "fp-type-b")
+
+    assertNotEquals(DeviceKey.from(first), DeviceKey.from(second))
+  }
+
+  @Test
+  fun `unnamed devices with different service UUIDs produce different keys`() {
+    val first = ObservationInput(
+      name = null,
+      address = null,
+      rssi = -60,
+      timestamp = 1L,
+      serviceUuids = listOf("0000FEAA-0000-1000-8000-00805F9B34FB"),
+      manufacturerData = emptyMap(),
+      source = "BLE",
+      classificationFingerprint = "fp-same"
+    )
+    val second = first.copy(serviceUuids = listOf("0000FE9F-0000-1000-8000-00805F9B34FB"))
+
+    assertNotEquals(DeviceKey.from(first), DeviceKey.from(second))
+  }
 }

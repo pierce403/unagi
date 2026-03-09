@@ -26,6 +26,18 @@ enum class ScanSessionOutcome(val label: String) {
   INTERRUPTED("interrupted/cancelled")
 }
 
+enum class PermissionDenialState(val label: String) {
+  NOT_REQUESTED("not yet requested"),
+  DENIED_CAN_ASK("denied, can ask again"),
+  PERMANENTLY_DENIED("permanently denied")
+}
+
+data class PermissionStatus(
+  val permission: String,
+  val label: String,
+  val denialState: PermissionDenialState
+)
+
 data class ScanPreflightResult(
   val state: ScanState,
   val missingPermissions: List<String> = emptyList(),
@@ -33,6 +45,20 @@ data class ScanPreflightResult(
   val bleScannerAvailable: Boolean? = null,
   val locationServicesEnabled: Boolean? = null
 )
+
+data class CallbackSample(
+  val path: ScanPath,
+  val timestampMs: Long,
+  val address: String?,
+  val name: String?,
+  val rssi: Int,
+  val serviceUuidCount: Int,
+  val manufacturerDataKeys: List<Int>
+) {
+  companion object {
+    const val MAX_SAMPLES = 20
+  }
+}
 
 data class ScanDiagnosticsSnapshot(
   val scanMode: ScanModePreset = ScanModePreset.NORMAL,
@@ -45,10 +71,12 @@ data class ScanDiagnosticsSnapshot(
   val classicCallbackCount: Int = 0,
   val sdrCallbackCount: Int = 0,
   val rawCallbackCount: Int = 0,
+  val callbackSamples: List<CallbackSample> = emptyList(),
   val deviceKeys: Set<String> = emptySet(),
   val timeoutReached: Boolean = false,
   val outcome: ScanSessionOutcome? = null,
   val missingPermissions: List<String> = emptyList(),
+  val permissionStatuses: List<PermissionStatus> = emptyList(),
   val bluetoothEnabled: Boolean? = null,
   val locationServicesEnabled: Boolean? = null
 ) {
