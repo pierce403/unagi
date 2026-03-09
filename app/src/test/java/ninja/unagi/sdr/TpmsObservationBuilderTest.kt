@@ -10,7 +10,7 @@ class TpmsObservationBuilderTest {
   fun `builds observation with correct display name`() {
     val reading = sampleReading()
     val input = TpmsObservationBuilder.build(reading)
-    assertEquals("TPMS Toyota 0x00ABCDEF", input.name)
+    assertEquals("TPMS PMV-107J 0x00ABCDEF", input.name)
   }
 
   @Test
@@ -36,18 +36,27 @@ class TpmsObservationBuilderTest {
   }
 
   @Test
-  fun `sets vendor from protocol model`() {
+  fun `sets mapped vendor name for known protocol`() {
     val input = TpmsObservationBuilder.build(sampleReading())
-    assertEquals("Toyota", input.vendorName)
-    assertEquals("rtl_433 protocol", input.vendorSource)
+    assertEquals("Pacific Industrial Co.", input.vendorName)
+    assertEquals("rtl_433 protocol (mapped)", input.vendorSource)
     assertEquals("high", input.vendorConfidence)
+  }
+
+  @Test
+  fun `falls back to model name for unknown protocol`() {
+    val reading = sampleReading().copy(model = "SomeNewProtocol")
+    val input = TpmsObservationBuilder.build(reading)
+    assertEquals("SomeNewProtocol", input.vendorName)
+    assertEquals("rtl_433 protocol", input.vendorSource)
+    assertEquals("medium", input.vendorConfidence)
   }
 
   @Test
   fun `populates TPMS fields`() {
     val reading = sampleReading()
     val input = TpmsObservationBuilder.build(reading)
-    assertEquals("Toyota", input.tpmsModel)
+    assertEquals("PMV-107J", input.tpmsModel)
     assertEquals("0x00ABCDEF", input.tpmsSensorId)
     assertEquals(220.5, input.tpmsPressureKpa!!, 0.01)
     assertEquals(28.0, input.tpmsTemperatureC!!, 0.01)
@@ -67,11 +76,11 @@ class TpmsObservationBuilderTest {
   fun `includes classification evidence`() {
     val input = TpmsObservationBuilder.build(sampleReading())
     assertTrue(input.classificationEvidence.any { it.contains("sdr") })
-    assertTrue(input.classificationEvidence.any { it.contains("Toyota") })
+    assertTrue(input.classificationEvidence.any { it.contains("PMV-107J") })
   }
 
   private fun sampleReading(rssi: Double? = -12.3) = TpmsReading(
-    model = "Toyota",
+    model = "PMV-107J",
     sensorId = "0x00ABCDEF",
     pressureKpa = 220.5,
     temperatureC = 28.0,

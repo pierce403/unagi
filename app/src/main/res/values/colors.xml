@@ -12,4 +12,5 @@
   <color name="thingalert_on_surface">#F4F8FF</color>
   <color name="thingalert_stroke">#3353E1FF</color>
   <color name="thingalert_stroke_soft">#1F53E1FF</color>
+  <color name="thingalert_error">#FF5252</color>
 </resources>

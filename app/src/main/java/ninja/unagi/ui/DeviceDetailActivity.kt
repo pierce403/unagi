@@ -114,7 +114,8 @@ class DeviceDetailActivity : AppCompatActivity() {
               address = device.lastAddress,
               metadataJson = device.lastMetadataJson,
               vendorRegistry = vendorRegistry,
-              assignedNumbers = assignedNumbers
+              assignedNumbers = assignedNumbers,
+              userCustomName = device.userCustomName
             )
             binding.detailName.text = identity.title
             val identityLines = mutableListOf<String>()
@@ -208,6 +209,7 @@ class DeviceDetailActivity : AppCompatActivity() {
 
   override fun onPrepareOptionsMenu(menu: Menu): Boolean {
     val exportReady = currentDevice != null
+    menu.findItem(ninja.unagi.R.id.menu_rename_device)?.isEnabled = exportReady
     menu.findItem(ninja.unagi.R.id.menu_copy_device_json)?.isEnabled = exportReady
     menu.findItem(ninja.unagi.R.id.menu_save_device_json)?.isEnabled = exportReady
     menu.findItem(ninja.unagi.R.id.menu_share_device_json)?.isEnabled = exportReady
@@ -216,6 +218,10 @@ class DeviceDetailActivity : AppCompatActivity() {
 
   override fun onOptionsItemSelected(item: MenuItem): Boolean {
     return when (item.itemId) {
+      ninja.unagi.R.id.menu_rename_device -> {
+        showRenameDialog()
+        true
+      }
       ninja.unagi.R.id.menu_copy_device_json -> {
         copyCurrentDeviceJson()
         true
@@ -235,6 +241,32 @@ class DeviceDetailActivity : AppCompatActivity() {
   override fun onSupportNavigateUp(): Boolean {
     finish()
     return true
+  }
+
+  private fun showRenameDialog() {
+    val device = currentDevice ?: return
+    val input = android.widget.EditText(this).apply {
+      setText(device.userCustomName ?: device.displayName.orEmpty())
+      hint = getString(ninja.unagi.R.string.rename_device_hint)
+      selectAll()
+    }
+    val container = android.widget.FrameLayout(this).apply {
+      val margin = (16 * resources.displayMetrics.density).toInt()
+      setPadding(margin, margin / 2, margin, 0)
+      addView(input)
+    }
+    com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+      .setTitle(ninja.unagi.R.string.rename_device_title)
+      .setView(container)
+      .setMessage(ninja.unagi.R.string.rename_device_clear_hint)
+      .setPositiveButton(android.R.string.ok) { _, _ ->
+        val newName = input.text.toString().trim().takeIf(String::isNotEmpty)
+        lifecycleScope.launch {
+          repository.setUserCustomName(device.deviceKey, newName)
+        }
+      }
+      .setNegativeButton(android.R.string.cancel, null)
+      .show()
   }
 
   private fun runBleQuery(device: DeviceEntity, metadata: ObservationMetadata) {

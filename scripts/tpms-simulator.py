@@ -25,37 +25,49 @@ import sys
 import threading
 import time
 
+# Profiles use real rtl_433 decoder model names and vary the pressure unit
+# to exercise all parser conversion paths (kPa, PSI, bar).
 SENSOR_PROFILES = [
-    {"model": "Toyota", "id": "0x00ABCDEF", "freq": 433.92},
-    {"model": "Toyota", "id": "0x00ABCDE0", "freq": 433.92},
-    {"model": "Schrader", "id": "0x12345678", "freq": 433.92},
-    {"model": "Schrader", "id": "0x12345679", "freq": 433.92},
-    {"model": "Ford", "id": "0xAABBCCDD", "freq": 433.92},
-    {"model": "Ford", "id": "0xAABBCCDE", "freq": 433.92},
-    {"model": "Continental", "id": "0x55667788", "freq": 433.92},
-    {"model": "Continental", "id": "0x55667789", "freq": 433.92},
-    {"model": "Renault", "id": "0xDEADBEEF", "freq": 433.92},
-    {"model": "Renault", "id": "0xDEADBEF0", "freq": 433.92},
-    {"model": "Hyundai", "id": "0x11223344", "freq": 315.00},
-    {"model": "Hyundai", "id": "0x11223345", "freq": 315.00},
+    {"model": "PMV-107J",         "id": "0x00ABCDEF", "freq": 433.92, "pressure_field": "pressure_kPa"},
+    {"model": "PMV-107J",         "id": "0x00ABCDE0", "freq": 433.92, "pressure_field": "pressure_kPa"},
+    {"model": "Schrader",         "id": "0x12345678", "freq": 433.92, "pressure_field": "pressure_kPa"},
+    {"model": "Schrader",         "id": "0x12345679", "freq": 433.92, "pressure_field": "pressure_PSI"},
+    {"model": "Ford",             "id": "0xAABBCCDD", "freq": 433.92, "pressure_field": "pressure_PSI"},
+    {"model": "Ford",             "id": "0xAABBCCDE", "freq": 433.92, "pressure_field": "pressure_PSI"},
+    {"model": "Hyundai-VDO",      "id": "0x55667788", "freq": 315.00, "pressure_field": "pressure_kPa"},
+    {"model": "Hyundai-VDO",      "id": "0x55667789", "freq": 315.00, "pressure_field": "pressure_kPa"},
+    {"model": "Renault",          "id": "0xDEADBEEF", "freq": 433.92, "pressure_field": "pressure_bar"},
+    {"model": "Renault",          "id": "0xDEADBEF0", "freq": 433.92, "pressure_field": "pressure_bar"},
+    {"model": "Jansite-Solar",    "id": "0x11223344", "freq": 433.92, "pressure_field": "pressure_kPa"},
+    {"model": "Abarth-124Spider", "id": "0x99887766", "freq": 433.92, "pressure_field": "pressure_kPa"},
 ]
+
+# Pressure ranges per unit (all equivalent to ~200-250 kPa / 29-36 PSI / 2.0-2.5 bar)
+PRESSURE_RANGES = {
+    "pressure_kPa": (200.0, 250.0),
+    "pressure_PSI": (29.0, 36.0),
+    "pressure_bar": (2.0, 2.5),
+}
 
 
 def generate_reading(profile):
     """Generate a single rtl_433-compatible TPMS JSON reading."""
-    return {
+    pfield = profile["pressure_field"]
+    pmin, pmax = PRESSURE_RANGES[pfield]
+    reading = {
         "time": time.strftime("%Y-%m-%d %H:%M:%S"),
         "model": profile["model"],
         "type": "TPMS",
         "id": profile["id"],
         "status": random.choice([0, 0, 0, 1]),
         "battery_ok": random.choices([1, 0], weights=[95, 5])[0],
-        "pressure_kPa": round(random.uniform(200.0, 250.0), 1),
+        pfield: round(random.uniform(pmin, pmax), 1),
         "temperature_C": round(random.uniform(15.0, 40.0), 1),
         "rssi": round(random.uniform(-20.0, -5.0), 1),
         "snr": round(random.uniform(8.0, 25.0), 1),
         "freq": profile["freq"],
     }
+    return reading
 
 
 def handle_client(conn, addr, profiles, interval):

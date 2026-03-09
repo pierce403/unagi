@@ -97,4 +97,28 @@ class Rtl433JsonParserTest {
     assertNotNull(reading)
     assertEquals("Toyota", reading!!.model)
   }
+
+  @Test
+  fun `parses pressure_PSI and converts to kPa`() {
+    val json = """{"type":"TPMS","model":"Schrader","id":"0x12345678","pressure_PSI":32.0}"""
+    val reading = Rtl433JsonParser.parse(json)
+    assertNotNull(reading)
+    assertEquals(220.6, reading!!.pressureKpa!!, 0.5)
+  }
+
+  @Test
+  fun `parses pressure_bar and converts to kPa`() {
+    val json = """{"type":"TPMS","model":"Renault","id":"0xDEADBEEF","pressure_bar":2.2}"""
+    val reading = Rtl433JsonParser.parse(json)
+    assertNotNull(reading)
+    assertEquals(220.0, reading!!.pressureKpa!!, 0.1)
+  }
+
+  @Test
+  fun `prefers pressure_kPa over PSI or bar when multiple present`() {
+    val json = """{"type":"TPMS","model":"Ford","id":"0xAABBCCDD","pressure_kPa":215.0,"pressure_PSI":32.0,"pressure_bar":2.2}"""
+    val reading = Rtl433JsonParser.parse(json)
+    assertNotNull(reading)
+    assertEquals(215.0, reading!!.pressureKpa!!, 0.01)
+  }
 }
