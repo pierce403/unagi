@@ -19,6 +19,13 @@
 - [ ] Strengthen permanently-denied permission UX with a clearer settings path
 - [ ] Review dedup/merge behavior for unnamed devices and BLE/classic overlap
 
+### SDR / TPMS
+
+- [ ] SDR settings UI (frequency band, gain, USB/network source toggle)
+- [ ] Unit conversion preferences for TPMS display (kPa/PSI, °C/°F)
+- [ ] Cross-compile rtl_433 + librtlsdr for ARM64/ARM via NDK
+- [ ] TPMS-specific alert rule type (sensor ID matching)
+
 ### QA
 
 - [ ] Add a manual scan QA checklist for stock Android and GrapheneOS scenarios

@@ -8,7 +8,8 @@ import kotlinx.coroutines.flow.update
 
 enum class ScanPath(val label: String) {
   BLE("ble"),
-  CLASSIC("classic")
+  CLASSIC("classic"),
+  SDR("sdr")
 }
 
 data class ScanStartupResult(
@@ -42,6 +43,7 @@ data class ScanDiagnosticsSnapshot(
   val lastBleErrorCode: Int? = null,
   val bleCallbackCount: Int = 0,
   val classicCallbackCount: Int = 0,
+  val sdrCallbackCount: Int = 0,
   val rawCallbackCount: Int = 0,
   val deviceKeys: Set<String> = emptySet(),
   val timeoutReached: Boolean = false,

@@ -2,7 +2,9 @@ package ninja.unagi
 
 import android.app.Application
 import ninja.unagi.alerts.DefaultAlertSeeder
+import ninja.unagi.scan.ObservationRecorder
 import ninja.unagi.scan.ScanController
+import ninja.unagi.sdr.SdrController
 import ninja.unagi.alerts.DeviceAlertNotifier
 import ninja.unagi.data.AppDatabase
 import ninja.unagi.data.AlertRuleRepository
@@ -28,14 +30,14 @@ class ThingAlertApp : Application() {
   val deviceAlertNotifier: DeviceAlertNotifier by lazy {
     DeviceAlertNotifier(this)
   }
+  val observationRecorder: ObservationRecorder by lazy {
+    ObservationRecorder(repository, alertRuleRepository, deviceAlertNotifier, applicationScope)
+  }
   val scanController: ScanController by lazy {
-    ScanController(
-      this,
-      applicationScope,
-      repository,
-      alertRuleRepository,
-      deviceAlertNotifier
-    )
+    ScanController(this, applicationScope, observationRecorder)
+  }
+  val sdrController: SdrController by lazy {
+    SdrController(this, applicationScope, observationRecorder)
   }
 
   override fun onCreate() {

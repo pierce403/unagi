@@ -11,7 +11,6 @@ import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -22,6 +21,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import ninja.unagi.R
 import ninja.unagi.ThingAlertApp
+import ninja.unagi.sdr.SdrState
 
 class ContinuousScanService : Service() {
   private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -35,6 +35,7 @@ class ContinuousScanService : Service() {
     app = application as ThingAlertApp
     ensureNotificationChannel()
     observeScanUpdates()
+    app.sdrController.registerUsbDetection()
   }
 
   override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -48,12 +49,15 @@ class ContinuousScanService : Service() {
         ContinuousScanPreferences.setEnabled(this, true)
         startForegroundNotification()
         ensureScanLoop()
+        app.sdrController.startSdr()
       }
     }
     return START_STICKY
   }
 
   override fun onDestroy() {
+    app.sdrController.stopSdr()
+    app.sdrController.unregisterUsbDetection()
     scanLoopJob?.cancel()
     serviceScope.cancel()
     super.onDestroy()
@@ -106,6 +110,24 @@ class ContinuousScanService : Service() {
         }
       }
     }
+
+    serviceScope.launch {
+      var sdrRetryCount = 0
+      app.sdrController.sdrState.collectLatest { state ->
+        if (!ContinuousScanPreferences.isEnabled(this@ContinuousScanService)) return@collectLatest
+        when (state) {
+          is SdrState.Error -> {
+            val backoff = (SCAN_ERROR_RETRY_MS * (1 shl sdrRetryCount.coerceAtMost(4)))
+              .coerceAtMost(SCAN_BLOCKED_RETRY_MS)
+            delay(backoff)
+            sdrRetryCount++
+            app.sdrController.startSdr()
+          }
+          is SdrState.Scanning -> sdrRetryCount = 0
+          else -> {}
+        }
+      }
+    }
   }
 
   private fun stopContinuousScanning() {
@@ -113,6 +135,7 @@ class ContinuousScanService : Service() {
     scanLoopJob?.cancel()
     scanLoopJob = null
     app.scanController.stopScan()
+    app.sdrController.stopSdr()
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
       stopForeground(STOP_FOREGROUND_REMOVE)
     } else {

@@ -98,4 +98,10 @@ Build the MVP: scan -> list -> tap -> history.
 - Keep the term `active` reserved for explicit per-device BLE enrichment/query actions; the passive background-capable mode is `continuous scanning`
 - The overflow menu now has a separate `Active BLE queries` toggle; keep it distinct from `Continuous scanning`, default it off, and use it only to gate manual detail-page GATT reads
 - To keep the device list readable during scans, prefer session-level recency (`lastSightingAt`) over packet-level `lastSeen` for list ordering, suppress tiny RSSI-only row diffs, and avoid RecyclerView change animations
+- SDR/TPMS integration lives in `ninja.unagi.sdr/`; `SdrController` orchestrates USB (`Rtl433Process`) and network (`Rtl433NetworkBridge`) paths, feeding observations through the shared `ObservationRecorder`
+- TPMS sensors have no MAC address; `DeviceKey` uses name-based keying (`"n:TPMS Toyota 0x00ABCDEF"` → SHA-256), stable per sensor since 32-bit sensor IDs don't rotate
+- SDR transport → TPMS_SENSOR classification with score 100 (HIGH confidence); rtl_433 already decoded the protocol, so classification is definitive
+- For development testing without SDR hardware, use network bridge mode: run `rtl_433 -f 433.92M -F json:tcp:0.0.0.0:1234` on desktop, or use `scripts/tpms-simulator.py` for fully simulated data; configure `SdrPreferences` with source=NETWORK, host=desktop-IP, port=1234
+- The emulator AVD is `unagi_test`; source `scripts/dev-env.sh` to set up PATH and the `start-emulator` helper function
+- `ObservationRecorder` is the shared pipeline for both BLE/Classic (`ScanController`) and SDR (`SdrController`) observations — handles metadata JSON, DB writes, and alert matching in one place
 - Reflection: before handoff, record any new command, pitfall, deploy detail, or collaborator preference discovered during the task

@@ -41,4 +41,36 @@ class DeviceKeyTest {
 
     assertEquals(DeviceKey.from(first), DeviceKey.from(second))
   }
+
+  @Test
+  fun `TPMS sensor uses name-based key and is stable across observations`() {
+    val first = ObservationInput(
+      name = "TPMS Toyota 0x00ABCDEF",
+      address = null,
+      rssi = -45,
+      timestamp = 1000L,
+      serviceUuids = emptyList(),
+      manufacturerData = emptyMap(),
+      source = "SDR"
+    )
+    val second = first.copy(timestamp = 2000L, rssi = -50)
+
+    assertEquals(DeviceKey.from(first), DeviceKey.from(second))
+  }
+
+  @Test
+  fun `different TPMS sensors produce different keys`() {
+    val sensor1 = ObservationInput(
+      name = "TPMS Toyota 0x00ABCDEF",
+      address = null,
+      rssi = -45,
+      timestamp = 1000L,
+      serviceUuids = emptyList(),
+      manufacturerData = emptyMap(),
+      source = "SDR"
+    )
+    val sensor2 = sensor1.copy(name = "TPMS Toyota 0x00AABBCC")
+
+    assertNotEquals(DeviceKey.from(sensor1), DeviceKey.from(sensor2))
+  }
 }
