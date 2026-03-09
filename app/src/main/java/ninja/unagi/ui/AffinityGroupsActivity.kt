@@ -5,6 +5,8 @@ import android.content.ClipboardManager
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.os.PersistableBundle
 import android.widget.EditText
 import android.widget.LinearLayout
@@ -24,7 +26,9 @@ import ninja.unagi.data.AffinityGroupMemberEntity
 import ninja.unagi.data.AffinityGroupRepository
 import ninja.unagi.databinding.ActivityAffinityGroupsBinding
 import ninja.unagi.group.GroupKeyManager
+import ninja.unagi.group.EcdhKeyManager
 import ninja.unagi.group.GroupSharingConfig
+import ninja.unagi.util.DeviceCredentialHelper
 import ninja.unagi.util.WindowInsetsHelper
 import org.json.JSONObject
 import java.util.UUID
@@ -80,7 +84,12 @@ class AffinityGroupsActivity : AppCompatActivity() {
       .setTitle(R.string.affinity_groups)
       .setItems(arrayOf(getString(R.string.create_group), getString(R.string.join_group))) { _, which ->
         when (which) {
-          0 -> showCreateGroupDialog()
+          0 -> DeviceCredentialHelper.authenticate(
+            this,
+            getString(R.string.auth_required_title),
+            getString(R.string.auth_required_create_group),
+            onSuccess = { showCreateGroupDialog() }
+          )
           1 -> showJoinGroupDialog()
         }
       }
@@ -129,6 +138,9 @@ class AffinityGroupsActivity : AppCompatActivity() {
         keyEpoch = 1,
         sharingConfigJson = config.toJson()
       )
+      // Generate ECDH keypair for this member
+      val publicKeyBase64 = EcdhKeyManager.generateKeypair(groupId, memberId)
+
       repository.createGroup(group)
       repository.addMember(
         AffinityGroupMemberEntity(
@@ -137,13 +149,12 @@ class AffinityGroupsActivity : AppCompatActivity() {
           displayName = displayName,
           joinedAt = System.currentTimeMillis(),
           lastSeenEpoch = 1,
-          publicKeyBase64 = null,
+          publicKeyBase64 = publicKeyBase64,
           revoked = false
         )
       )
 
-      // Fix #12: include creator's memberId in share payload
-      // Fix #14: include checksum for key integrity verification
+      // P7: include public key in share payload; checksum binds key + groupId to group secret
       val shareJson = JSONObject().apply {
         put("g", groupId)
         put("n", name)
@@ -151,6 +162,7 @@ class AffinityGroupsActivity : AppCompatActivity() {
         put("e", 1)
         put("c", displayName)
         put("m", memberId)
+        put("pk", publicKeyBase64)
         put("h", GroupKeyManager.computeKeyChecksum(rawKey, groupId))
       }
 
@@ -218,6 +230,11 @@ class AffinityGroupsActivity : AppCompatActivity() {
         val memberId = UUID.randomUUID().toString()
         val config = GroupSharingConfig()
 
+        // Generate ECDH keypair for this member
+        val publicKeyBase64 = EcdhKeyManager.generateKeypair(groupId, memberId)
+        // Read creator's public key from share payload
+        val creatorPublicKey = if (obj.has("pk")) obj.getString("pk") else null
+
         repository.createGroup(
           AffinityGroupEntity(
             groupId = groupId,
@@ -235,16 +252,15 @@ class AffinityGroupsActivity : AppCompatActivity() {
           AffinityGroupMemberEntity(
             groupId = groupId, memberId = memberId, displayName = displayName,
             joinedAt = System.currentTimeMillis(), lastSeenEpoch = epoch,
-            publicKeyBase64 = null, revoked = false
+            publicKeyBase64 = publicKeyBase64, revoked = false
           )
         )
 
-        // Fix #12: use real creator memberId instead of hardcoded "creator"
         repository.addMember(
           AffinityGroupMemberEntity(
             groupId = groupId, memberId = creatorMemberId, displayName = creatorName,
             joinedAt = System.currentTimeMillis(), lastSeenEpoch = epoch,
-            publicKeyBase64 = null, revoked = false
+            publicKeyBase64 = creatorPublicKey, revoked = false
           )
         )
 
@@ -268,6 +284,16 @@ class AffinityGroupsActivity : AppCompatActivity() {
     }
     val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
     clipboard.setPrimaryClip(clip)
+    scheduleClipboardClear(clipboard)
+  }
+
+  private fun scheduleClipboardClear(clipboard: ClipboardManager) {
+    Handler(Looper.getMainLooper()).postDelayed({
+      val current = clipboard.primaryClip
+      if (current?.description?.label == "UNAGI group key") {
+        clipboard.setPrimaryClip(ClipData.newPlainText("", ""))
+      }
+    }, 60_000)
   }
 
   private fun toast(message: String) {

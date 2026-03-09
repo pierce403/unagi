@@ -4,12 +4,14 @@ import android.text.TextUtils
 import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.core.view.updateLayoutParams
 import androidx.core.view.updatePadding
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
+import ninja.unagi.R
 import ninja.unagi.databinding.ItemDeviceBinding
 import ninja.unagi.util.Formatters
 
@@ -53,6 +55,14 @@ class DeviceAdapter(
   ) : RecyclerView.ViewHolder(binding.root) {
     fun bind(item: DeviceListItem, compactMode: Boolean) {
       applyCardDensity(compactMode)
+      val ctx = itemView.context
+      if (item.isShared) {
+        binding.root.setCardBackgroundColor(ContextCompat.getColor(ctx, R.color.thingalert_surface_shared))
+        binding.root.strokeColor = ContextCompat.getColor(ctx, R.color.thingalert_stroke_shared)
+      } else {
+        binding.root.setCardBackgroundColor(ContextCompat.getColor(ctx, R.color.thingalert_surface_variant))
+        binding.root.strokeColor = ContextCompat.getColor(ctx, R.color.thingalert_stroke_soft)
+      }
       binding.deviceName.text = item.displayTitle
       binding.deviceName.maxLines = if (compactMode) 1 else 2
       binding.deviceName.ellipsize = TextUtils.TruncateAt.END
@@ -139,6 +149,7 @@ class DeviceAdapter(
           oldItem.starred == newItem.starred &&
           oldItem.lastAddress == newItem.lastAddress &&
           oldItem.vendorName == newItem.vendorName &&
+          oldItem.sharedFromGroupIds == newItem.sharedFromGroupIds &&
           kotlin.math.abs(oldItem.lastRssi - newItem.lastRssi) < RSSI_CHANGE_THRESHOLD_DBM
       }
     }

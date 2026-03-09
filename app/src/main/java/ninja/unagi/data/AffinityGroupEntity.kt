@@ -12,5 +12,6 @@ data class AffinityGroupEntity(
   val myDisplayName: String,
   val groupKeyWrapped: String,
   val keyEpoch: Int,
-  val sharingConfigJson: String
+  val sharingConfigJson: String,
+  val requireEcdh: Boolean = false
 )

@@ -2,12 +2,13 @@ package ninja.unagi.ui
 
 import android.content.ClipData
 import android.content.ClipboardManager
-import android.content.ContentValues
+import android.content.Intent
 import android.os.Build
 import android.os.Bundle
-import android.os.Environment
+import android.os.Handler
+import android.os.Looper
 import android.os.PersistableBundle
-import android.provider.MediaStore
+import androidx.core.content.FileProvider
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Lifecycle
@@ -19,10 +20,13 @@ import kotlinx.coroutines.launch
 import ninja.unagi.R
 import ninja.unagi.ThingAlertApp
 import ninja.unagi.data.AffinityGroupEntity
+import ninja.unagi.data.AffinityGroupMemberEntity
 import ninja.unagi.databinding.ActivityAffinityGroupDetailBinding
 import ninja.unagi.group.BundleExporter
+import ninja.unagi.group.EcdhKeyManager
 import ninja.unagi.group.GroupKeyManager
 import ninja.unagi.group.GroupSharingConfig
+import ninja.unagi.util.DeviceCredentialHelper
 import ninja.unagi.util.WindowInsetsHelper
 import org.json.JSONObject
 
@@ -70,7 +74,9 @@ class AffinityGroupDetailActivity : AppCompatActivity() {
 
           // Initialize member adapter once we know the memberId
           if (!::memberAdapter.isInitialized) {
-            memberAdapter = AffinityMemberAdapter(group.myMemberId)
+            memberAdapter = AffinityMemberAdapter(group.myMemberId) { member ->
+              confirmRevokeMember(member)
+            }
             binding.membersList.layoutManager = LinearLayoutManager(this@AffinityGroupDetailActivity)
             binding.membersList.adapter = memberAdapter
           }
@@ -91,8 +97,22 @@ class AffinityGroupDetailActivity : AppCompatActivity() {
       }
     }
 
-    binding.exportBundleButton.setOnClickListener { exportBundle() }
-    binding.shareGroupKeyButton.setOnClickListener { shareGroupKey() }
+    binding.exportBundleButton.setOnClickListener {
+      DeviceCredentialHelper.authenticate(
+        this,
+        getString(R.string.auth_required_title),
+        getString(R.string.auth_required_export),
+        onSuccess = { exportBundle() }
+      )
+    }
+    binding.shareGroupKeyButton.setOnClickListener {
+      DeviceCredentialHelper.authenticate(
+        this,
+        getString(R.string.auth_required_title),
+        getString(R.string.auth_required_share_key),
+        onSuccess = { shareGroupKey() }
+      )
+    }
     binding.deleteGroupButton.setOnClickListener { confirmDeleteGroup() }
   }
 
@@ -153,49 +173,37 @@ class AffinityGroupDetailActivity : AppCompatActivity() {
         val exporter = BundleExporter(
           db.deviceDao(), db.sightingDao(), db.alertRuleDao(), db.deviceEnrichmentDao()
         )
-        val bundleBytes = exporter.export(group, config)
+        val members = repository.getMembers(group.groupId)
+        val bundleBytes = exporter.export(group, config, members)
         val fileName = BundleExporter.defaultFileName(group.groupName)
 
-        val saved = saveBundleToDownloads(fileName, bundleBytes)
-        if (saved) {
-          toast(getString(R.string.export_saved))
-        } else {
-          toast(getString(R.string.export_failed))
-        }
+        shareBundleViaIntent(fileName, bundleBytes)
       } catch (e: Exception) {
         toast(getString(R.string.export_failed))
       }
     }
   }
 
-  private fun saveBundleToDownloads(fileName: String, bytes: ByteArray): Boolean {
-    val collection = MediaStore.Downloads.EXTERNAL_CONTENT_URI
-    val values = ContentValues().apply {
-      put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
-      put(MediaStore.MediaColumns.MIME_TYPE, "application/octet-stream")
-      put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
-      put(MediaStore.MediaColumns.IS_PENDING, 1)
+  private fun shareBundleViaIntent(fileName: String, bytes: ByteArray) {
+    val bundlesDir = java.io.File(cacheDir, "bundles")
+    bundlesDir.mkdirs()
+    val file = java.io.File(bundlesDir, fileName)
+    file.writeBytes(bytes)
+
+    val uri = FileProvider.getUriForFile(this, "${packageName}.fileprovider", file)
+    val shareIntent = Intent(Intent.ACTION_SEND).apply {
+      type = "application/octet-stream"
+      putExtra(Intent.EXTRA_STREAM, uri)
+      addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
     }
-    val uri = contentResolver.insert(collection, values) ?: return false
-    return try {
-      contentResolver.openOutputStream(uri, "wt")?.use { stream ->
-        stream.write(bytes)
-      } ?: error("Unable to open Downloads export")
-      val completedValues = ContentValues().apply {
-        put(MediaStore.MediaColumns.IS_PENDING, 0)
-      }
-      contentResolver.update(uri, completedValues, null, null)
-      true
-    } catch (e: Exception) {
-      contentResolver.delete(uri, null, null)
-      false
-    }
+    startActivity(Intent.createChooser(shareIntent, getString(R.string.export_bundle)))
   }
 
   private fun shareGroupKey() {
     val group = currentGroup ?: return
     lifecycleScope.launch {
       val rawKey = GroupKeyManager.unwrapKey(group.groupKeyWrapped)
+      val publicKey = EcdhKeyManager.getPublicKey(group.groupId, group.myMemberId)
       val shareJson = JSONObject().apply {
         put("g", group.groupId)
         put("n", group.groupName)
@@ -203,11 +211,28 @@ class AffinityGroupDetailActivity : AppCompatActivity() {
         put("e", group.keyEpoch)
         put("c", group.myDisplayName)
         put("m", group.myMemberId)
+        if (publicKey != null) put("pk", publicKey)
         put("h", GroupKeyManager.computeKeyChecksum(rawKey, group.groupId))
       }
       copyToClipboardSensitive(shareJson.toString())
       toast(getString(R.string.group_key_copied))
     }
+  }
+
+  private fun confirmRevokeMember(member: AffinityGroupMemberEntity) {
+    MaterialAlertDialogBuilder(this)
+      .setTitle(R.string.revoke_member)
+      .setMessage(getString(R.string.revoke_member_confirm, member.displayName))
+      .setNegativeButton(android.R.string.cancel, null)
+      .setPositiveButton(R.string.revoke_member) { _, _ ->
+        lifecycleScope.launch {
+          val updated = repository.revokeMemberAndRotateKey(member.groupId, member.memberId)
+          if (updated != null) {
+            toast(getString(R.string.member_revoked_toast, updated.keyEpoch))
+          }
+        }
+      }
+      .show()
   }
 
   private fun confirmDeleteGroup() {
@@ -235,6 +260,16 @@ class AffinityGroupDetailActivity : AppCompatActivity() {
     }
     val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
     clipboard.setPrimaryClip(clip)
+    scheduleClipboardClear(clipboard)
+  }
+
+  private fun scheduleClipboardClear(clipboard: ClipboardManager) {
+    Handler(Looper.getMainLooper()).postDelayed({
+      val current = clipboard.primaryClip
+      if (current?.description?.label == "UNAGI group key") {
+        clipboard.setPrimaryClip(ClipData.newPlainText("", ""))
+      }
+    }, 60_000)
   }
 
   private fun toast(message: String) {

@@ -11,6 +11,7 @@ import ninja.unagi.data.AlertRuleRepository
 import ninja.unagi.data.DeviceEnrichmentRepository
 import ninja.unagi.data.AffinityGroupRepository
 import ninja.unagi.data.DeviceRepository
+import ninja.unagi.group.GroupKeyManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -48,6 +49,8 @@ class ThingAlertApp : Application() {
     super.onCreate()
     applicationScope.launch {
       DefaultAlertSeeder.seedIfNeeded(this@ThingAlertApp, alertRuleRepository)
+      // P3: Keystore migration runs after DB is open (SQLCipher migration happens in AppDatabase.build)
+      GroupKeyManager.migrateToV2IfNeeded(this@ThingAlertApp, affinityGroupRepository)
     }
   }
 }

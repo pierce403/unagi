@@ -13,4 +13,6 @@
   <color name="thingalert_stroke">#3353E1FF</color>
   <color name="thingalert_stroke_soft">#1F53E1FF</color>
   <color name="thingalert_error">#FF5252</color>
+  <color name="thingalert_surface_shared">#15202E</color>
+  <color name="thingalert_stroke_shared">#2A1594FF</color>
 </resources>

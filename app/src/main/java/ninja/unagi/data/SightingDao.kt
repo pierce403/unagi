@@ -13,6 +13,9 @@ interface SightingDao {
   @Query("SELECT * FROM sightings ORDER BY timestamp DESC")
   suspend fun getSightings(): List<SightingEntity>
 
+  @Query("SELECT * FROM sightings WHERE timestamp >= :afterTimestamp ORDER BY timestamp DESC")
+  suspend fun getSightingsAfter(afterTimestamp: Long): List<SightingEntity>
+
   @Query("SELECT deviceKey || '|' || timestamp FROM sightings WHERE deviceKey IN (:deviceKeys)")
   suspend fun getExistingSightingKeys(deviceKeys: List<String>): List<String>
 

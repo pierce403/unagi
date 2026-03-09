@@ -52,6 +52,7 @@ dependencies {
   implementation("androidx.constraintlayout:constraintlayout:2.1.4")
   implementation("androidx.recyclerview:recyclerview:1.3.2")
   implementation("androidx.activity:activity-ktx:1.9.0")
+  implementation("androidx.biometric:biometric:1.1.0")
 
   implementation("androidx.lifecycle:lifecycle-runtime-ktx:$lifecycleVersion")
   implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:$lifecycleVersion")
@@ -59,6 +60,9 @@ dependencies {
   implementation("androidx.room:room-runtime:$roomVersion")
   implementation("androidx.room:room-ktx:$roomVersion")
   kapt("androidx.room:room-compiler:$roomVersion")
+
+  implementation("net.zetetic:sqlcipher-android:4.6.1@aar")
+  implementation("androidx.sqlite:sqlite-ktx:2.4.0")
 
   testImplementation("junit:junit:4.13.2")
   testImplementation("org.json:json:20240303")

@@ -9,9 +9,9 @@ import ninja.unagi.R
 import ninja.unagi.data.AffinityGroupMemberEntity
 import ninja.unagi.databinding.ItemAffinityMemberBinding
 
-/** Fix #19: uses string resources instead of concatenation. */
 class AffinityMemberAdapter(
-  private val myMemberId: String
+  private val myMemberId: String,
+  private val onRevoke: ((AffinityGroupMemberEntity) -> Unit)? = null
 ) : ListAdapter<AffinityGroupMemberEntity, AffinityMemberAdapter.ViewHolder>(DIFF) {
 
   override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -41,6 +41,17 @@ class AffinityMemberAdapter(
         member.displayName
       }
       binding.memberStatus.text = ctx.getString(R.string.member_epoch, member.lastSeenEpoch)
+
+      // Long-press to revoke (only for non-self, non-revoked members)
+      if (member.memberId != myMemberId && !member.revoked && onRevoke != null) {
+        binding.root.setOnLongClickListener {
+          onRevoke.invoke(member)
+          true
+        }
+      } else {
+        binding.root.setOnLongClickListener(null)
+        binding.root.isLongClickable = false
+      }
     }
   }
 

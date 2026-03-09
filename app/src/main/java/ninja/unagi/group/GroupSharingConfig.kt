@@ -13,7 +13,8 @@ data class GroupSharingConfig(
   val alertRules: Boolean = false,
   val enrichments: Boolean = false,
   val starredDevices: Boolean = true,
-  val tpmsReadings: Boolean = true
+  val tpmsReadings: Boolean = true,
+  val exportWindowDays: Int = 30
 ) {
   fun toJson(): String {
     val obj = JSONObject()
@@ -23,6 +24,7 @@ data class GroupSharingConfig(
     obj.put("enrichments", enrichments)
     obj.put("starredDevices", starredDevices)
     obj.put("tpmsReadings", tpmsReadings)
+    obj.put("exportWindowDays", exportWindowDays)
     return obj.toString()
   }
 
@@ -47,7 +49,8 @@ data class GroupSharingConfig(
         alertRules = obj.optBoolean("alertRules", false),
         enrichments = obj.optBoolean("enrichments", false),
         starredDevices = obj.optBoolean("starredDevices", true),
-        tpmsReadings = obj.optBoolean("tpmsReadings", true)
+        tpmsReadings = obj.optBoolean("tpmsReadings", true),
+        exportWindowDays = obj.optInt("exportWindowDays", 30)
       )
     }
   }

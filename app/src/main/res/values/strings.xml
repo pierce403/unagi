@@ -165,7 +165,14 @@
   <string name="member_you">(you)</string>
   <string name="member_revoked">revoked</string>
   <string name="sharing_config_updated">Sharing config updated.</string>
+  <string name="auth_required_title">Confirm identity</string>
+  <string name="auth_required_export">Authenticate to export bundle</string>
+  <string name="auth_required_share_key">Authenticate to share group key</string>
+  <string name="auth_required_create_group">Authenticate to create group</string>
   <string name="group_list_info">Created %1$s · Epoch %2$d</string>
   <string name="member_name_with_suffix">%1$s %2$s</string>
   <string name="member_epoch">Epoch %1$d</string>
+  <string name="revoke_member">Revoke member</string>
+  <string name="revoke_member_confirm">Revoke %1$s? This will rotate the group key and enable ECDH-only encryption. The revoked member will not be able to decrypt new bundles.</string>
+  <string name="member_revoked_toast">Member revoked. Group key rotated to epoch %1$d.</string>
 </resources>

@@ -101,7 +101,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             sightingsCount = it.sightingsCount,
             starred = it.starred,
             lastAddress = it.lastAddress,
-            vendorName = identity.vendorName
+            vendorName = identity.vendorName,
+            sharedFromGroupIds = it.sharedFromGroupIds
           )
         }
       }

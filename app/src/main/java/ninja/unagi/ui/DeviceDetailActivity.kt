@@ -57,6 +57,7 @@ class DeviceDetailActivity : AppCompatActivity() {
   private val app by lazy { application as ThingAlertApp }
   private val repository by lazy { app.repository }
   private val enrichmentRepository by lazy { app.deviceEnrichmentRepository }
+  private val affinityGroupRepository by lazy { app.affinityGroupRepository }
   private val queryClient by lazy {
     BleDeviceInfoQueryClient(
       context = this,
@@ -167,6 +168,7 @@ class DeviceDetailActivity : AppCompatActivity() {
             }
             binding.detailIdentity.isVisible = identityLines.isNotEmpty()
             binding.detailIdentity.text = identityLines.joinToString("\n")
+            updateSharedOrigin(device.sharedFromGroupIds)
             binding.detailKey.text = "Device key: ${device.deviceKey}"
             binding.detailFirstSeen.text = "First seen: ${Formatters.formatTimestamp(device.firstSeen)}"
             binding.detailLastSeen.text = "Last seen: ${Formatters.formatTimestamp(device.lastSeen)}"
@@ -458,6 +460,26 @@ class DeviceDetailActivity : AppCompatActivity() {
       return ContentUris.withAppendedId(collection, cursor.getLong(idIndex))
     }
     return null
+  }
+
+  private fun updateSharedOrigin(sharedFromGroupIds: String?) {
+    if (sharedFromGroupIds == null) {
+      binding.detailSharedOrigin.isVisible = false
+      return
+    }
+    binding.detailSharedOrigin.isVisible = true
+    val groupIds = sharedFromGroupIds.split(",").filter(String::isNotBlank)
+    lifecycleScope.launch {
+      val names = groupIds.mapNotNull { id ->
+        affinityGroupRepository.getGroup(id)?.groupName
+      }
+      val label = if (names.isNotEmpty()) {
+        "Shared from: ${names.joinToString(", ")}"
+      } else {
+        "Shared from ${groupIds.size} group${if (groupIds.size != 1) "s" else ""}"
+      }
+      binding.detailSharedOrigin.text = label
+    }
   }
 
   companion object {

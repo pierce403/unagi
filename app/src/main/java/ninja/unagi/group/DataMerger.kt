@@ -23,13 +23,13 @@ class DataMerger(
   private val alertRuleDao: AlertRuleDao,
   private val enrichmentDao: DeviceEnrichmentDao
 ) {
-  suspend fun merge(payload: BundlePayload): MergeResult {
+  suspend fun merge(payload: BundlePayload, groupId: String? = null): MergeResult {
     return database.withTransaction {
-      mergeInTransaction(payload)
+      mergeInTransaction(payload, groupId)
     }
   }
 
-  private suspend fun mergeInTransaction(payload: BundlePayload): MergeResult {
+  private suspend fun mergeInTransaction(payload: BundlePayload, groupId: String?): MergeResult {
     var devicesAdded = 0
     var devicesUpdated = 0
     var sightingsAdded = 0
@@ -40,10 +40,13 @@ class DataMerger(
     for (imported in payload.devices) {
       val local = deviceDao.getDevice(imported.deviceKey)
       if (local == null) {
-        deviceDao.upsertDevice(imported)
+        val withOrigin = if (groupId != null) {
+          imported.copy(sharedFromGroupIds = groupId)
+        } else imported
+        deviceDao.upsertDevice(withOrigin)
         devicesAdded++
       } else {
-        val merged = mergeDevice(local, imported)
+        val merged = mergeDevice(local, imported, groupId)
         if (merged != local) {
           deviceDao.upsertDevice(merged)
           devicesUpdated++
@@ -111,7 +114,8 @@ class DataMerger(
   /**
    * Fix #6: use max() for counts instead of sum to prevent inflation on re-exchange.
    */
-  private fun mergeDevice(local: DeviceEntity, imported: DeviceEntity): DeviceEntity {
+  private fun mergeDevice(local: DeviceEntity, imported: DeviceEntity, groupId: String?): DeviceEntity {
+    val mergedGroupIds = unionGroupIds(local.sharedFromGroupIds, groupId)
     return local.copy(
       firstSeen = minOf(local.firstSeen, imported.firstSeen),
       lastSeen = maxOf(local.lastSeen, imported.lastSeen),
@@ -126,8 +130,17 @@ class DataMerger(
       starred = local.starred || imported.starred,
       displayName = local.displayName ?: imported.displayName,
       lastAddress = if (imported.lastSeen > local.lastSeen) imported.lastAddress else local.lastAddress,
-      userCustomName = local.userCustomName ?: imported.userCustomName
+      userCustomName = local.userCustomName ?: imported.userCustomName,
+      sharedFromGroupIds = mergedGroupIds
     )
+  }
+
+  private fun unionGroupIds(existing: String?, newGroupId: String?): String? {
+    if (newGroupId == null) return existing
+    if (existing == null) return newGroupId
+    val ids = existing.split(",").toMutableSet()
+    ids.add(newGroupId)
+    return ids.joinToString(",")
   }
 }
 

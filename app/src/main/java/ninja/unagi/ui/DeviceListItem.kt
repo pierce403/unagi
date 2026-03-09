@@ -12,5 +12,8 @@ data class DeviceListItem(
   val sightingsCount: Int,
   val starred: Boolean,
   val lastAddress: String?,
-  val vendorName: String?
-)
+  val vendorName: String?,
+  val sharedFromGroupIds: String? = null
+) {
+  val isShared: Boolean get() = sharedFromGroupIds != null
+}
