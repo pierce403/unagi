@@ -98,4 +98,26 @@ class PassiveDeviceIntelligenceTest {
     assertTrue(classification.evidence.any { it.contains("tracker", ignoreCase = true) })
     assertTrue(classification.confidence != ClassificationConfidence.UNKNOWN)
   }
+
+  @Test
+  fun `classification engine scores SDR transport as TPMS sensor`() {
+    val classification = DeviceClassificationEngine.classify(
+      metadata = ClassificationMetadata(
+        transport = ObservedTransport.SDR,
+        addressType = PassiveAddressType.UNKNOWN,
+        manufacturerData = emptyMap(),
+        serviceUuids = emptyList(),
+        serviceData = emptyMap(),
+        appearance = null,
+        classicMajorClass = null,
+        classicDeviceClass = null,
+        displayName = "TPMS Toyota 0x00ABCDEF"
+      ),
+      assignedNumbers = assignedNumbers
+    )
+
+    assertEquals(DeviceCategory.TPMS_SENSOR, classification.category)
+    assertEquals(ClassificationConfidence.HIGH, classification.confidence)
+    assertTrue(classification.evidence.any { it.contains("sdr") })
+  }
 }

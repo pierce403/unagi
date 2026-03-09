@@ -15,13 +15,6 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.Build
 import android.util.SparseArray
-import ninja.unagi.alerts.AlertObservation
-import ninja.unagi.alerts.DeviceAlertMatcher
-import ninja.unagi.alerts.DeviceAlertNotifier
-import ninja.unagi.data.AlertRuleEntity
-import ninja.unagi.data.AlertRuleRepository
-import ninja.unagi.data.DeviceObservation
-import ninja.unagi.data.DeviceRepository
 import ninja.unagi.util.BluetoothAssignedNumbersProvider
 import ninja.unagi.util.ClassificationFingerprint
 import ninja.unagi.util.ClassificationMetadata
@@ -42,15 +35,11 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import org.json.JSONArray
-import org.json.JSONObject
 
 class ScanController(
   private val context: Context,
   private val scope: CoroutineScope,
-  private val repository: DeviceRepository,
-  private val alertRuleRepository: AlertRuleRepository,
-  private val deviceAlertNotifier: DeviceAlertNotifier
+  val observationRecorder: ObservationRecorder
 ) {
   private val bluetoothManager = context.getSystemService(BluetoothManager::class.java)
   private val bluetoothAdapter: BluetoothAdapter? = bluetoothManager?.adapter
@@ -66,16 +55,6 @@ class ScanController(
   private var blePathActive = false
   private var classicPathActive = false
   private var currentScanMode: ScanModePreset = ScanModePreset.NORMAL
-  private var enabledAlertRules: List<AlertRuleEntity> = emptyList()
-  private val firedAlertKeys = mutableSetOf<String>()
-
-  init {
-    scope.launch {
-      alertRuleRepository.observeEnabledRules().collect { rules ->
-        enabledAlertRules = rules
-      }
-    }
-  }
 
   private val scanCallback = object : ScanCallback() {
     override fun onScanResult(callbackType: Int, result: ScanResult) {
@@ -160,7 +139,7 @@ class ScanController(
     classicRestartJob = null
     stopBleScan()
     stopClassicDiscovery()
-    firedAlertKeys.clear()
+    observationRecorder.clearFiredAlerts()
 
     val scanMode = ScanModePreferences.get(context)
     currentScanMode = scanMode
@@ -243,7 +222,7 @@ class ScanController(
     classicRestartJob = null
     stopBleScan()
     stopClassicDiscovery()
-    firedAlertKeys.clear()
+    observationRecorder.clearFiredAlerts()
     if (_scanState.value is ScanState.Scanning) {
       ScanDiagnosticsStore.update {
         it.copy(outcome = ScanSessionOutcome.INTERRUPTED, timeoutReached = false)
@@ -636,7 +615,7 @@ class ScanController(
       classificationEvidence = classification.evidence
     )
 
-    handleObservation(input)
+    observationRecorder.record(input)
   }
 
   private fun handleClassicResult(device: BluetoothDevice, rssi: Int) {
@@ -730,76 +709,7 @@ class ScanController(
       classificationEvidence = classification.evidence
     )
 
-    handleObservation(input)
-  }
-
-  private fun handleObservation(input: ObservationInput) {
-    val key = DeviceKey.from(input)
-    ScanDiagnosticsStore.update {
-      it.copy(deviceKeys = it.deviceKeys + key)
-    }
-    val metadata = buildMetadataJson(input)
-    DebugLog.log(
-      "Observation ${input.source} name=${input.name ?: "unknown"} addr=${input.address ?: "n/a"} " +
-        "rssi=${input.rssi} services=${input.serviceUuids.size} mfg=${input.manufacturerData.size}"
-    )
-    val observation = DeviceObservation(
-      deviceKey = key,
-      name = input.name,
-      address = input.address,
-      rssi = input.rssi,
-      timestamp = input.timestamp,
-      metadataJson = metadata
-    )
-
-    scope.launch {
-      repository.recordObservation(observation)
-      emitAlertNotifications(
-        key = key,
-        input = input
-      )
-    }
-  }
-
-  private fun emitAlertNotifications(
-    key: String,
-    input: ObservationInput
-  ) {
-    val matches = DeviceAlertMatcher.findMatches(
-      rules = enabledAlertRules,
-      observation = AlertObservation(
-        deviceKey = key,
-        displayName = input.name,
-        advertisedName = input.advertisedName,
-        systemName = input.systemName,
-        address = input.address,
-        vendorName = input.vendorName,
-        source = input.source
-      )
-    )
-
-    matches.forEach { match ->
-      val dedupeKey = buildString {
-        append(match.rule.id)
-        append(':')
-        append(input.address ?: key)
-      }
-      if (!firedAlertKeys.add(dedupeKey)) {
-        return@forEach
-      }
-      deviceAlertNotifier.notifyMatch(
-        match = match,
-        observation = AlertObservation(
-          deviceKey = key,
-          displayName = input.name,
-          advertisedName = input.advertisedName,
-          systemName = input.systemName,
-          address = input.address,
-          vendorName = input.vendorName,
-          source = input.source
-        )
-      )
-    }
+    observationRecorder.record(input)
   }
 
   private fun safeName(device: BluetoothDevice): String? {
@@ -895,84 +805,6 @@ class ScanController(
       index += length + 1
     }
     return null
-  }
-
-  private fun buildMetadataJson(input: ObservationInput): String {
-    val json = JSONObject()
-    json.put("source", input.source)
-    json.putIfNotNull("transport", input.transport)
-    json.put("name", input.name)
-    json.put("address", input.address)
-    json.put("advertisedName", input.advertisedName)
-    json.put("systemName", input.systemName)
-    json.put("nameSource", input.nameSource)
-    json.putIfNotNull("vendorName", input.vendorName)
-    json.putIfNotNull("vendorSource", input.vendorSource)
-    json.putIfNotNull("vendorConfidence", input.vendorConfidence)
-    json.putIfNotNull("locallyAdministeredAddress", input.locallyAdministeredAddress)
-    json.putIfNotNull("normalizedAddress", input.normalizedAddress)
-    json.putIfNotNull("addressType", input.addressType)
-    json.putIfNotNull("addressTypeLabel", input.addressTypeLabel)
-    json.putIfNotNull("rawAndroidAddressType", input.rawAndroidAddressType)
-    json.putIfNotNull("deviceType", input.deviceType)
-    json.putIfNotNull("deviceTypeLabel", input.deviceTypeLabel)
-    json.putIfNotNull("bondState", input.bondState)
-    json.putIfNotNull("bondStateLabel", input.bondStateLabel)
-    json.putIfNotNull("advertiseFlags", input.advertiseFlags)
-    json.putIfNotNull("txPowerLevel", input.txPowerLevel)
-    json.putIfNotNull("resultTxPower", input.resultTxPower)
-    json.putIfNotNull("connectable", input.connectable)
-    json.putIfNotNull("legacy", input.legacy)
-    json.putIfNotNull("dataStatus", input.dataStatus)
-    json.putIfNotNull("primaryPhy", input.primaryPhy)
-    json.putIfNotNull("secondaryPhy", input.secondaryPhy)
-    json.putIfNotNull("advertisingSid", input.advertisingSid)
-    json.putIfNotNull("periodicAdvertisingInterval", input.periodicAdvertisingInterval)
-    json.putIfNotNull("appearance", input.appearance)
-    json.putIfNotNull("appearanceLabel", input.appearanceLabel)
-    json.putIfNotNull("classicMajorClass", input.classicMajorClass)
-    json.putIfNotNull("classicMajorClassLabel", input.classicMajorClassLabel)
-    json.putIfNotNull("classicDeviceClass", input.classicDeviceClass)
-    json.putIfNotNull("classicDeviceClassLabel", input.classicDeviceClassLabel)
-
-    val passiveDecoderHints = JSONArray()
-    input.passiveDecoderHints.forEach { passiveDecoderHints.put(it) }
-    json.put("passiveDecoderHints", passiveDecoderHints)
-
-    json.putIfNotNull("classificationFingerprint", input.classificationFingerprint)
-    json.putIfNotNull("classificationCategory", input.classificationCategory)
-    json.putIfNotNull("classificationLabel", input.classificationLabel)
-    json.putIfNotNull("classificationConfidence", input.classificationConfidence)
-    json.put("rssi", input.rssi)
-    json.put("timestamp", input.timestamp)
-
-    val services = JSONArray()
-    input.serviceUuids.forEach { services.put(it) }
-    json.put("serviceUuids", services)
-
-    val serviceDataJson = JSONObject()
-    input.serviceData.forEach { (uuid, data) ->
-      serviceDataJson.put(uuid, data)
-    }
-    json.put("serviceData", serviceDataJson)
-
-    val manufacturerJson = JSONObject()
-    input.manufacturerData.forEach { (id, data) ->
-      manufacturerJson.put(id.toString(), data)
-    }
-    json.put("manufacturerData", manufacturerJson)
-
-    val classificationEvidence = JSONArray()
-    input.classificationEvidence.forEach { classificationEvidence.put(it) }
-    json.put("classificationEvidence", classificationEvidence)
-
-    return json.toString(2)
-  }
-
-  private fun JSONObject.putIfNotNull(key: String, value: Any?) {
-    if (value != null) {
-      put(key, value)
-    }
   }
 
   private fun ByteArray.toHexString(): String {

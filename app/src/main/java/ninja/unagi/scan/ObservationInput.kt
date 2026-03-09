@@ -46,5 +46,12 @@ data class ObservationInput(
   val classificationCategory: String? = null,
   val classificationLabel: String? = null,
   val classificationConfidence: String? = null,
-  val classificationEvidence: List<String> = emptyList()
+  val classificationEvidence: List<String> = emptyList(),
+  val tpmsModel: String? = null,
+  val tpmsSensorId: String? = null,
+  val tpmsPressureKpa: Double? = null,
+  val tpmsTemperatureC: Double? = null,
+  val tpmsBatteryOk: Boolean? = null,
+  val tpmsFrequencyMhz: Double? = null,
+  val tpmsSnr: Double? = null
 )

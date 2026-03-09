@@ -65,7 +65,14 @@ data class ObservationMetadata(
   val classificationCategory: String? = null,
   val classificationLabel: String? = null,
   val classificationConfidence: ClassificationConfidence = ClassificationConfidence.UNKNOWN,
-  val classificationEvidence: List<String> = emptyList()
+  val classificationEvidence: List<String> = emptyList(),
+  val tpmsModel: String? = null,
+  val tpmsSensorId: String? = null,
+  val tpmsPressureKpa: Double? = null,
+  val tpmsTemperatureC: Double? = null,
+  val tpmsBatteryOk: Boolean? = null,
+  val tpmsFrequencyMhz: Double? = null,
+  val tpmsSnr: Double? = null
 )
 
 data class MetadataSummary(
@@ -185,7 +192,14 @@ object ObservationMetadataParser {
         classificationConfidence = ClassificationConfidence.fromMetadataValue(
           json.optStringOrNull("classificationConfidence")
         ),
-        classificationEvidence = json.optStringList("classificationEvidence")
+        classificationEvidence = json.optStringList("classificationEvidence"),
+        tpmsModel = json.optStringOrNull("tpmsModel"),
+        tpmsSensorId = json.optStringOrNull("tpmsSensorId"),
+        tpmsPressureKpa = json.optDoubleOrNull("tpmsPressureKpa"),
+        tpmsTemperatureC = json.optDoubleOrNull("tpmsTemperatureC"),
+        tpmsBatteryOk = json.optBooleanOrNull("tpmsBatteryOk"),
+        tpmsFrequencyMhz = json.optDoubleOrNull("tpmsFrequencyMhz"),
+        tpmsSnr = json.optDoubleOrNull("tpmsSnr")
       )
     } catch (_: Exception) {
       ObservationMetadata()
@@ -211,6 +225,13 @@ object ObservationMetadataParser {
       return null
     }
     return optInt(key)
+  }
+
+  private fun JSONObject.optDoubleOrNull(key: String): Double? {
+    if (!has(key) || isNull(key)) {
+      return null
+    }
+    return optDouble(key).takeIf { !it.isNaN() && !it.isInfinite() }
   }
 
   private fun JSONObject.optStringList(key: String): List<String> {
@@ -302,6 +323,13 @@ object PassiveMetadataInterpreter {
           ?.label
         add(if (confidence != null) "Likely: $label ($confidence)" else "Likely: $label")
       }
+      if (metadata.tpmsPressureKpa != null || metadata.tpmsTemperatureC != null) {
+        val parts = buildList {
+          metadata.tpmsPressureKpa?.let { add("%.1f kPa (%.1f PSI)".format(it, it * 0.145038)) }
+          metadata.tpmsTemperatureC?.let { add("%.0f°C".format(it)) }
+        }
+        if (parts.isNotEmpty()) add(parts.joinToString(" / "))
+      }
       manufacturerEntries.firstOrNull()?.let { first ->
         val label = first.companyName ?: first.companyCode
         add(if (manufacturerEntries.size == 1) "Mfr: $label" else "Mfr: $label +${manufacturerEntries.size - 1}")
@@ -367,6 +395,17 @@ object PassiveMetadataInterpreter {
           }
         )
       }
+      metadata.tpmsModel?.let { add("TPMS protocol: $it") }
+      metadata.tpmsSensorId?.let { add("Sensor ID: $it") }
+      metadata.tpmsPressureKpa?.let { kpa ->
+        add("Pressure: %.1f kPa (%.1f PSI)".format(kpa, kpa * 0.145038))
+      }
+      metadata.tpmsTemperatureC?.let { c ->
+        add("Temperature: %.1f°C (%.1f°F)".format(c, c * 9.0 / 5.0 + 32.0))
+      }
+      metadata.tpmsBatteryOk?.let { add("Battery: ${if (it) "OK" else "Low"}") }
+      metadata.tpmsFrequencyMhz?.let { add("Frequency: %.2f MHz".format(it)) }
+      metadata.tpmsSnr?.let { add("SNR: %.1f dB".format(it)) }
       metadata.classicMajorClassLabel?.let { add("Classic major class: $it") }
       metadata.classicDeviceClassLabel?.let { add("Classic device class: $it") }
       if (metadata.connectable != null || metadata.legacy != null) {
@@ -412,6 +451,9 @@ object PassiveMetadataInterpreter {
       }
       metadata.deviceTypeLabel?.let(::add)
       metadata.addressType.label.let(::add)
+      metadata.tpmsModel?.let(::add)
+      metadata.tpmsSensorId?.let(::add)
+      if (metadata.tpmsModel != null) add("TPMS")
     }
 
     val titleFallback = when {

@@ -9,6 +9,7 @@ enum class ObservedTransport(val metadataValue: String, val label: String) {
   BLE("ble", "BLE"),
   CLASSIC("classic", "Classic"),
   DUAL("dual", "Dual"),
+  SDR("sdr", "SDR"),
   UNKNOWN("unknown", "Unknown");
 
   companion object {
@@ -62,6 +63,7 @@ enum class DeviceCategory(
   BEACON("beacon", "beacon"),
   AUTOMOTIVE("automotive", "automotive"),
   MEDICAL_FITNESS("medical_fitness", "medical / fitness"),
+  TPMS_SENSOR("tpms_sensor", "TPMS sensor"),
   UNKNOWN("unknown", "unknown");
 
   companion object {
@@ -312,6 +314,7 @@ object DeviceClassificationEngine {
     when (metadata.transport) {
       ObservedTransport.CLASSIC -> scorer.add(DeviceCategory.AUDIO, 5, "transport:classic")
       ObservedTransport.DUAL -> scorer.add(DeviceCategory.AUDIO, 10, "transport:dual")
+      ObservedTransport.SDR -> scorer.add(DeviceCategory.TPMS_SENSOR, 100, "transport:sdr")
       else -> Unit
     }
   }

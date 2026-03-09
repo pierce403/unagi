@@ -97,6 +97,7 @@ object DiagnosticsReportBuilder {
     )
     builder.appendLine("BLE callbacks: ${scanDiagnostics.bleCallbackCount}")
     builder.appendLine("Classic callbacks: ${scanDiagnostics.classicCallbackCount}")
+    builder.appendLine("SDR callbacks: ${scanDiagnostics.sdrCallbackCount}")
     builder.appendLine("Raw callbacks: ${scanDiagnostics.rawCallbackCount}")
     builder.appendLine("Unique device keys this session: ${scanDiagnostics.uniqueDeviceCount}")
     builder.appendLine(
