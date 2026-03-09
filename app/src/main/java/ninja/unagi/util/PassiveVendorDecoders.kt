@@ -22,7 +22,8 @@ object PassiveVendorDecoderRegistry {
     MicrosoftPassiveVendorDecoder,
     SamsungPassiveVendorDecoder,
     NordicPassiveVendorDecoder,
-    TilePassiveVendorDecoder
+    TilePassiveVendorDecoder,
+    BleTpmsDecoder
   )
 
   fun decode(context: PassiveDecoderContext): List<String> {

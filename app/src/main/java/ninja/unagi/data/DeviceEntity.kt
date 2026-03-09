@@ -18,5 +18,6 @@ data class DeviceEntity(
   val rssiMax: Int,
   val rssiAvg: Double,
   val lastMetadataJson: String?,
-  val starred: Boolean
+  val starred: Boolean,
+  val userCustomName: String? = null
 )

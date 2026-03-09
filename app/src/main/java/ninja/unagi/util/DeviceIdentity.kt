@@ -511,7 +511,8 @@ object DeviceIdentityPresenter {
     address: String?,
     metadataJson: String?,
     vendorRegistry: VendorPrefixRegistry,
-    assignedNumbers: BluetoothAssignedNumbersRegistry
+    assignedNumbers: BluetoothAssignedNumbersRegistry,
+    userCustomName: String? = null
   ): DevicePresentation {
     val metadata = ObservationMetadataParser.parse(metadataJson)
     val addressInsight = PassiveAddressResolver.resolve(
@@ -609,7 +610,7 @@ object DeviceIdentityPresenter {
     )
 
     return DevicePresentation(
-      title = Formatters.formatName(
+      title = userCustomName?.takeIf(String::isNotBlank) ?: Formatters.formatName(
         name = displayName,
         vendorName = vendorHint.vendorName,
         fallbackName = metadataSummary.titleFallback

@@ -12,7 +12,9 @@ object Rtl433JsonParser {
       TpmsReading(
         model = json.optString("model", "Unknown"),
         sensorId = json.optString("id", "0x00000000"),
-        pressureKpa = json.optDoubleOrNull("pressure_kPa"),
+        pressureKpa = json.optDoubleOrNull("pressure_kPa")
+          ?: json.optDoubleOrNull("pressure_PSI")?.let { it * 6.89476 }
+          ?: json.optDoubleOrNull("pressure_bar")?.let { it * 100.0 },
         temperatureC = json.optDoubleOrNull("temperature_C"),
         batteryOk = json.optBooleanOrNull("battery_ok"),
         status = json.optIntOrNull("status"),

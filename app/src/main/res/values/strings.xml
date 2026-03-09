@@ -78,6 +78,10 @@
   <string name="no_devices">No devices yet. Start a scan.</string>
   <string name="diagnostics">Diagnostics</string>
   <string name="device_details">Device details</string>
+  <string name="rename_device">Rename device</string>
+  <string name="rename_device_title">Rename device</string>
+  <string name="rename_device_hint">Custom name</string>
+  <string name="rename_device_clear_hint">Leave empty to use scanned name</string>
   <string name="copy_device_json">Copy device JSON</string>
   <string name="device_json_copied">Device JSON copied to clipboard.</string>
   <string name="save_device_json">Save device JSON</string>
@@ -120,4 +124,45 @@
   <string name="bluetooth_unsupported">Bluetooth unsupported</string>
   <string name="bluetooth_unsupported_detail">This device does not support Bluetooth.</string>
   <string name="copied_to_clipboard">Copied %1$s to clipboard</string>
+
+  <!-- Affinity Groups -->
+  <string name="affinity_groups">Groups</string>
+  <string name="affinity_groups_section_title">Affinity groups</string>
+  <string name="affinity_groups_section_detail">Team up with others to share device observations. Data is encrypted with a shared group key and exchanged via files. No server required.</string>
+  <string name="no_affinity_groups">No groups yet. Use + to create or join one.</string>
+  <string name="create_group">Create group</string>
+  <string name="join_group">Join group</string>
+  <string name="group_name_hint">Group name</string>
+  <string name="your_display_name_hint">Your display name</string>
+  <string name="group_created">Group created.</string>
+  <string name="group_joined">Joined group.</string>
+  <string name="group_deleted">Group deleted.</string>
+  <string name="group_info">Group info</string>
+  <string name="group_members">Members</string>
+  <string name="sharing_config">Sharing config</string>
+  <string name="share_devices">Devices</string>
+  <string name="share_sightings">Sightings</string>
+  <string name="share_alert_rules">Alert rules</string>
+  <string name="share_enrichments">BLE enrichments</string>
+  <string name="share_starred">Starred devices</string>
+  <string name="share_tpms">TPMS readings</string>
+  <string name="export_bundle">Export bundle</string>
+  <string name="share_group_key">Share group key</string>
+  <string name="delete_group">Delete group</string>
+  <string name="delete_group_confirm">Delete this group? You will lose the group key and cannot decrypt future bundles.</string>
+  <string name="import_bundle">Import bundle</string>
+  <string name="import_data">Import</string>
+  <string name="bundle_preview">Bundle preview</string>
+  <string name="bundle_from">From %1$s</string>
+  <string name="bundle_contains">Contains: %1$s</string>
+  <string name="import_success">Imported: %1$d devices, %2$d sightings, %3$d alert rules, %4$d enrichments.</string>
+  <string name="import_failed">Import failed: %1$s</string>
+  <string name="export_saved">Bundle saved to Downloads.</string>
+  <string name="export_failed">Could not export bundle.</string>
+  <string name="group_key_copied">Group key copied to clipboard.</string>
+  <string name="join_paste_hint">Paste group key JSON</string>
+  <string name="join_invalid_key">Invalid group key. Ask the group creator to share again.</string>
+  <string name="member_you">(you)</string>
+  <string name="member_revoked">revoked</string>
+  <string name="sharing_config_updated">Sharing config updated.</string>
 </resources>

@@ -22,6 +22,10 @@ class DeviceRepository(
     deviceDao.setStarred(deviceKey, starred)
   }
 
+  suspend fun setUserCustomName(deviceKey: String, name: String?) {
+    deviceDao.setUserCustomName(deviceKey, name?.takeIf(String::isNotBlank))
+  }
+
   suspend fun recordObservation(observation: DeviceObservation) {
     database.withTransaction {
       ninja.unagi.util.DebugLog.log(
@@ -72,7 +76,8 @@ class DeviceRepository(
           rssiMax = maxOf(existing.rssiMax, observation.rssi),
           rssiAvg = avg,
           lastMetadataJson = observation.metadataJson ?: existing.lastMetadataJson,
-          starred = existing.starred
+          starred = existing.starred,
+          userCustomName = existing.userCustomName
         )
       }
 
