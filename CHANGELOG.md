@@ -56,6 +56,7 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 - Bump the Android app to `0.2.12` / version code `22` for the branding-capitalization release
 - Fix `First seen` / `Last seen` timestamp flicker on live device details by replacing the shared non-thread-safe formatter with immutable `java.time` formatting
 - Add Device Details save/share actions for exporting full per-device JSON without the sightings list, and bump the Android app to `0.2.19` / version code `29`
+- Add a Device Details copy action for putting the same per-device JSON export on the clipboard, and bump the Android app to `0.2.20` / version code `30`
 - Bump the Android app to `0.2.13` / version code `23` for the timestamp-stability fix
 - Add a `Live only` filter toggle to the drawer, using the same 30-second window as the header’s live-device count
 - Bump the Android app to `0.2.14` / version code `24` for the live-only filter release

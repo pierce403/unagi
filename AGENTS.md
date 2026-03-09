@@ -75,7 +75,7 @@ Build the MVP: scan -> list -> tap -> history.
 - Passive scan metadata now stores address type, vendor confidence/source, classification category/confidence/evidence, and a separate classification fingerprint; keep those fields in `lastMetadataJson` rather than overloading `deviceKey`
 - Treat classic Bluetooth discovery addresses as public for vendor-confidence purposes, but keep BLE OUI confidence downgraded unless the address type is explicitly public
 - Active BLE enrichment now persists in the `device_enrichments` Room table; keep it separate from passive observation JSON and include it in Diagnostics/export paths
-- Device Details now has top-right save/share export actions; the export payload includes the device row, parsed passive metadata, and active BLE enrichment, but intentionally excludes the sightings list
+- Device Details now has top-right copy/save/share export actions; the export payload includes the device row, parsed passive metadata, and active BLE enrichment, but intentionally excludes the sightings list
 - `ThingAlertApp` now owns the shared `ScanController`, so detail-page BLE queries can explicitly stop scans before opening a GATT connection
 - `Continuous scanning` is the persisted background-capable passive mode in `ContinuousScanPreferences`; when it is enabled, scanning should run via `ContinuousScanService` instead of being tied to `MainActivity`
 - Background-capable continuous scanning needs `ACCESS_BACKGROUND_LOCATION` on Android 10/11 plus a `connectedDevice` foreground service notification; keep the permission flow and manifest declarations aligned

@@ -90,7 +90,7 @@ Foreground alerts for "let me know when X is nearby."
 - Terminology note: `Continuous scanning` is the background-capable passive scan mode; `Active BLE query` is the explicit per-device enrichment action from Device Details
 - The overflow menu keeps `Active BLE queries` separate from `Continuous scanning`; active BLE queries stay off by default and only unlock the manual Device Details query action
 - Active BLE query results are local-only and feed both the detail screen and the copyable Diagnostics report with DIS availability, service discovery, read counts, GATT status, and any returned manufacturer/model/PnP fields
-- Device Details now exposes top-right save/share actions that export the full device JSON without the sightings list; save writes `unagi-<MAC>.txt` to Downloads on Android 10+ and share sends the same JSON through the normal text-share sheet
+- Device Details now exposes top-right copy/save/share actions that export the full device JSON without the sightings list; copy puts the JSON on the clipboard, save writes `unagi-<MAC>.txt` to Downloads on Android 10+, and share sends the same JSON through the normal text-share sheet
 - Passive vendor decoders now attach human-readable hints for Apple, Google/Fast Pair, Microsoft, Samsung, Nordic, and Tile-style payloads so randomized or unnamed devices expose better context without being treated as stable identities
 - The main search field now matches normalized MAC and OUI fragments, so `001122` and `00:11:22` both work as live filters
 - Sightings are now deduped across continuous presence, so a device that stays nearby updates `last seen` and signal stats without endlessly inflating the sightings counter or history timeline

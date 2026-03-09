@@ -78,6 +78,8 @@
   <string name="no_devices">No devices yet. Start a scan.</string>
   <string name="diagnostics">Diagnostics</string>
   <string name="device_details">Device details</string>
+  <string name="copy_device_json">Copy device JSON</string>
+  <string name="device_json_copied">Device JSON copied to clipboard.</string>
   <string name="save_device_json">Save device JSON</string>
   <string name="share_device_json">Share device JSON</string>
   <string name="device_json_saved">Saved %1$s.</string>

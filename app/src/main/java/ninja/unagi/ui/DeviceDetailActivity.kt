@@ -2,6 +2,8 @@ package ninja.unagi.ui
 
 import android.Manifest
 import android.bluetooth.BluetoothManager
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.ContentUris
 import android.content.ContentValues
 import android.content.Context
@@ -206,6 +208,7 @@ class DeviceDetailActivity : AppCompatActivity() {
 
   override fun onPrepareOptionsMenu(menu: Menu): Boolean {
     val exportReady = currentDevice != null
+    menu.findItem(ninja.unagi.R.id.menu_copy_device_json)?.isEnabled = exportReady
     menu.findItem(ninja.unagi.R.id.menu_save_device_json)?.isEnabled = exportReady
     menu.findItem(ninja.unagi.R.id.menu_share_device_json)?.isEnabled = exportReady
     return super.onPrepareOptionsMenu(menu)
@@ -213,6 +216,10 @@ class DeviceDetailActivity : AppCompatActivity() {
 
   override fun onOptionsItemSelected(item: MenuItem): Boolean {
     return when (item.itemId) {
+      ninja.unagi.R.id.menu_copy_device_json -> {
+        copyCurrentDeviceJson()
+        true
+      }
       ninja.unagi.R.id.menu_save_device_json -> {
         saveCurrentDeviceJson()
         true
@@ -298,6 +305,18 @@ class DeviceDetailActivity : AppCompatActivity() {
       return QueryEligibility(false, getString(ninja.unagi.R.string.query_device_info_unavailable_non_connectable))
     }
     return QueryEligibility(true, getString(ninja.unagi.R.string.query_device_info_note))
+  }
+
+  private fun copyCurrentDeviceJson() {
+    val export = buildCurrentExport() ?: return
+    getSystemService(ClipboardManager::class.java)?.setPrimaryClip(
+      ClipData.newPlainText(getString(ninja.unagi.R.string.copy_device_json), export.json)
+    )
+    Toast.makeText(
+      this,
+      ninja.unagi.R.string.device_json_copied,
+      Toast.LENGTH_SHORT
+    ).show()
   }
 
   private fun saveCurrentDeviceJson() {

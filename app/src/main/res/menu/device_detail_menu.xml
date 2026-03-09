@@ -1,6 +1,11 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
   <item
+      android:id="@+id/menu_copy_device_json"
+      android:icon="@drawable/ic_content_copy"
+      android:title="@string/copy_device_json"
+      app:showAsAction="always" />
+  <item
       android:id="@+id/menu_save_device_json"
       android:icon="@drawable/ic_save"
       android:title="@string/save_device_json"
