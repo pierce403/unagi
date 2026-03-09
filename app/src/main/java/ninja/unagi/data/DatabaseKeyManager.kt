@@ -37,7 +37,9 @@ object DatabaseKeyManager {
     SecureRandom().nextBytes(passphrase)
 
     val wrappedBase64 = wrapPassphrase(passphrase)
-    prefs.edit().putString(PREF_WRAPPED_KEY, wrappedBase64).apply()
+    check(prefs.edit().putString(PREF_WRAPPED_KEY, wrappedBase64).commit()) {
+      "Failed to persist SQLCipher passphrase"
+    }
 
     return passphrase
   }

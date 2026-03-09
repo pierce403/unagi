@@ -12,8 +12,8 @@ android {
     applicationId = "ninja.unagi"
     minSdk = 24
     targetSdk = 35
-    versionCode = 31
-    versionName = "0.2.21"
+    versionCode = 32
+    versionName = "0.2.22"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }

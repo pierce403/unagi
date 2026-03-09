@@ -74,6 +74,7 @@ Bluetooth/SDR situational awareness on Android — scan nearby devices, surface 
 - DB tables: `affinity_groups`, `affinity_group_members`, `affinity_import_log` (migration 5→6)
 - Merge is additive-only (min firstSeen, max lastSeen, max counts)
 - Advanced crypto (ECDH, epoch rotation, revocation) deferred to Phase 4
+- SQLCipher upgrade pitfall: the plaintext→encrypted export must use `ATTACH ... KEY x'hex'` without wrapping the hex literal in extra quotes; if migration fails, fall back to opening the legacy plaintext DB instead of crash-looping at startup
 
 ## Recursive learning
 

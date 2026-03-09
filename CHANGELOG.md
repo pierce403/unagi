@@ -6,6 +6,10 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+## [0.2.22] — SQLCipher migration hotfix
+
+- Fix startup crash when upgrading an existing plaintext install to the SQLCipher database build by correcting the export-key SQL and falling back to plaintext open if migration still fails
+
 ## [0.2.21] — Affinity groups and SDR/TPMS
 
 - Affinity groups for encrypted device-observation sharing between team members

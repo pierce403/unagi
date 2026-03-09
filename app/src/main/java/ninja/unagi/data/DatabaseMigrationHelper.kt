@@ -17,37 +17,79 @@ object DatabaseMigrationHelper {
   private const val TAG = "DbMigration"
   private const val DB_NAME = "thingalert.db"
 
-  fun migrateIfNeeded(context: Context, passphrase: ByteArray) {
+  enum class OpenMode {
+    ENCRYPTED,
+    PLAINTEXT_FALLBACK
+  }
+
+  fun prepareOpenMode(context: Context, passphrase: ByteArray): OpenMode {
     val dbFile = context.getDatabasePath(DB_NAME)
-    if (!dbFile.exists()) return
+    if (!dbFile.exists()) return OpenMode.ENCRYPTED
 
-    if (!isPlaintext(dbFile)) return
+    loadSqlCipher()
 
+    if (canOpenEncrypted(dbFile, passphrase)) {
+      return OpenMode.ENCRYPTED
+    }
+
+    if (!isPlaintext(dbFile) && !canOpenPlaintext(dbFile)) {
+      Log.w(TAG, "Database is not plaintext and could not be opened with the current SQLCipher key")
+      return OpenMode.ENCRYPTED
+    }
+
+    return if (migratePlaintextDatabase(dbFile, passphrase)) {
+      OpenMode.ENCRYPTED
+    } else {
+      Log.e(TAG, "Falling back to plaintext Room open after SQLCipher migration failure")
+      OpenMode.PLAINTEXT_FALLBACK
+    }
+  }
+
+  private fun migratePlaintextDatabase(dbFile: File, passphrase: ByteArray): Boolean {
     Log.i(TAG, "Plaintext database detected, migrating to encrypted")
-    System.loadLibrary("sqlcipher")
-
     val tempFile = File(dbFile.parentFile, "${DB_NAME}_encrypted")
+    val backupFile = File(dbFile.parentFile, "${DB_NAME}_plaintext_backup")
     try {
+      tempFile.delete()
+      backupFile.delete()
+
       val db = SQLiteDatabase.openDatabase(
-        dbFile.absolutePath, "", null, SQLiteDatabase.OPEN_READWRITE, null, null
+        dbFile.absolutePath,
+        null,
+        SQLiteDatabase.OPEN_READWRITE
       )
 
-      db.rawExecSQL("ATTACH DATABASE '${tempFile.absolutePath}' AS encrypted KEY '${passphraseToHex(passphrase)}'")
+      db.rawExecSQL(buildAttachStatement(tempFile.absolutePath, passphrase))
       db.rawExecSQL("SELECT sqlcipher_export('encrypted')")
       db.rawExecSQL("DETACH DATABASE encrypted")
       db.close()
 
-      // P5: overwrite old plaintext file with random bytes before deleting
-      secureDelete(dbFile)
-      secureDelete(File(dbFile.absolutePath + "-wal"))
-      secureDelete(File(dbFile.absolutePath + "-shm"))
-      secureDelete(File(dbFile.absolutePath + "-journal"))
+      if (!canOpenEncrypted(tempFile, passphrase)) {
+        error("Encrypted migration output could not be reopened with the generated passphrase")
+      }
 
-      tempFile.renameTo(dbFile)
+      val walFile = File(dbFile.absolutePath + "-wal")
+      val shmFile = File(dbFile.absolutePath + "-shm")
+      val journalFile = File(dbFile.absolutePath + "-journal")
+
+      if (!dbFile.renameTo(backupFile)) {
+        error("Could not move plaintext database aside before finalizing migration")
+      }
+      if (!tempFile.renameTo(dbFile)) {
+        backupFile.renameTo(dbFile)
+        error("Could not move encrypted database into place")
+      }
+
+      secureDelete(backupFile)
+      secureDelete(walFile)
+      secureDelete(shmFile)
+      secureDelete(journalFile)
       Log.i(TAG, "Migration to encrypted database complete")
+      return true
     } catch (e: Exception) {
       Log.e(TAG, "Migration failed, deleting temp file", e)
       tempFile.delete()
+      return false
     }
   }
 
@@ -60,6 +102,55 @@ object DatabaseMigrationHelper {
     } catch (e: Exception) {
       false
     }
+  }
+
+  internal fun isPlaintextHeader(header: ByteArray): Boolean {
+    return String(header, Charsets.US_ASCII).startsWith("SQLite format 3")
+  }
+
+  internal fun buildAttachStatement(databasePath: String, passphrase: ByteArray): String {
+    return "ATTACH DATABASE '${escapeSqlString(databasePath)}' AS encrypted KEY ${passphraseToHexLiteral(passphrase)}"
+  }
+
+  private fun canOpenPlaintext(dbFile: File): Boolean {
+    return runCatching {
+      val db = SQLiteDatabase.openDatabase(
+        dbFile.absolutePath,
+        null,
+        SQLiteDatabase.OPEN_READONLY
+      )
+      try {
+        db.query("SELECT COUNT(*) FROM sqlite_master").use { cursor ->
+          cursor.moveToFirst()
+        }
+      } finally {
+        db.close()
+      }
+    }.isSuccess
+  }
+
+  private fun canOpenEncrypted(dbFile: File, passphrase: ByteArray): Boolean {
+    return runCatching {
+      val db = SQLiteDatabase.openDatabase(
+        dbFile.absolutePath,
+        passphrase,
+        null,
+        SQLiteDatabase.OPEN_READONLY,
+        null,
+        null
+      )
+      try {
+        db.query("SELECT COUNT(*) FROM sqlite_master").use { cursor ->
+          cursor.moveToFirst()
+        }
+      } finally {
+        db.close()
+      }
+    }.isSuccess
+  }
+
+  private fun loadSqlCipher() {
+    System.loadLibrary("sqlcipher")
   }
 
   private fun secureDelete(file: File) {
@@ -83,7 +174,11 @@ object DatabaseMigrationHelper {
     file.delete()
   }
 
-  private fun passphraseToHex(passphrase: ByteArray): String {
+  private fun passphraseToHexLiteral(passphrase: ByteArray): String {
     return "x'" + passphrase.joinToString("") { "%02x".format(it) } + "'"
+  }
+
+  private fun escapeSqlString(value: String): String {
+    return value.replace("'", "''")
   }
 }

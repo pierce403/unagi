@@ -195,18 +195,19 @@ abstract class AppDatabase : RoomDatabase() {
 
     fun build(context: Context): AppDatabase {
       val passphrase = DatabaseKeyManager.getOrCreatePassphrase(context)
-      DatabaseMigrationHelper.migrateIfNeeded(context, passphrase)
-      System.loadLibrary("sqlcipher")
-      val factory = SupportOpenHelperFactory(passphrase)
-      return Room.databaseBuilder(
+      val openMode = DatabaseMigrationHelper.prepareOpenMode(context, passphrase)
+      val builder = Room.databaseBuilder(
         context.applicationContext,
         AppDatabase::class.java,
         "thingalert.db"
       )
-        .openHelperFactory(factory)
         .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
         .fallbackToDestructiveMigration()
-        .build()
+      if (openMode == DatabaseMigrationHelper.OpenMode.ENCRYPTED) {
+        System.loadLibrary("sqlcipher")
+        builder.openHelperFactory(SupportOpenHelperFactory(passphrase))
+      }
+      return builder.build()
     }
   }
 }
