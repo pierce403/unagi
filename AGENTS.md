@@ -31,6 +31,7 @@ Bluetooth/SDR situational awareness on Android — scan nearby devices, surface 
 - Package identity: `ninja.unagi` (old `com.thingalert` installs don't upgrade in place)
 - Bump `versionCode` and `versionName` in `app/build.gradle.kts` for every release
 - Run `scripts/stage-apk` before commit so the versioned APK and site links stay aligned
+- Merging feature work into `main` does not publish a release by itself; a real rollout still needs the version bump, build/test pass, and `scripts/stage-apk`
 - GitHub Pages publishes from `main` at repo root to `https://unagi.ninja`
 - Keep `index.html`, versioned APK in `downloads/`, and `CNAME` aligned
 

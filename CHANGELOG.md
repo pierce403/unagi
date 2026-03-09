@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+## [0.2.21] — Affinity groups and SDR/TPMS
+
 - Affinity groups for encrypted device-observation sharing between team members
 - SDR/TPMS integration via rtl_433 JSON pipeline for tire-pressure sensor observations
 - TPMS sensor vendor identification from BLE advertisement payloads
