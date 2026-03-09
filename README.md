@@ -61,7 +61,7 @@ Foreground alerts for "let me know when X is nearby."
 - **Alert rules** matching by OUI, full MAC, or Bluetooth name with emoji + sound presets; default rules for Flipper, Axon/TASER, Ray-Ban
 - **Active BLE queries** (opt-in per-device GATT reads for Device Information Service)
 - **SDR/TPMS integration** via rtl_433 JSON pipeline for tire-pressure sensor observations
-- **Affinity groups** for encrypted device-observation sharing between team members via file-based bundles
+- **Affinity groups** for encrypted device-observation sharing between team members via file-based bundles (see [docs/AFFINITY_GROUPS.md](docs/AFFINITY_GROUPS.md))
 - **Passive vendor decoders** for Apple, Google/Fast Pair, Microsoft, Samsung, Nordic, and Tile-style payloads
 - **Diagnostics** with full debug report including callback samples, permission denial states, and scan session metrics
 
