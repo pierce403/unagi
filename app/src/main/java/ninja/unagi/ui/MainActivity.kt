@@ -11,6 +11,7 @@ import android.widget.ArrayAdapter
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.core.view.GravityCompat
 import androidx.core.view.isVisible
 import androidx.core.widget.doAfterTextChanged
@@ -27,6 +28,7 @@ import ninja.unagi.enrichment.ActiveBleQueryPreferences
 import ninja.unagi.scan.ContinuousScanPreferences
 import ninja.unagi.scan.ContinuousScanService
 import ninja.unagi.scan.PermissionDenialState
+import ninja.unagi.scan.PermissionStatus
 import ninja.unagi.scan.ScanDiagnosticsStore
 import ninja.unagi.scan.ScanState
 import ninja.unagi.scan.StartOnBootPreferences
@@ -56,11 +58,13 @@ class MainActivity : AppCompatActivity() {
   private var activeBleQueriesEnabled = false
   private var continuousScanningEnabled = false
   private var continueContinuousScanAfterNotificationPrompt = false
+  private var permissionRequestInFlight = false
   private lateinit var appVersionInfo: AppVersionInfo
 
   private val permissionLauncher = registerForActivityResult(
     ActivityResultContracts.RequestMultiplePermissions()
   ) { result ->
+    permissionRequestInFlight = false
     val granted = result.values.all { it }
     DebugLog.log("Permission results: $result")
     if (granted) {
@@ -81,6 +85,7 @@ class MainActivity : AppCompatActivity() {
   private val backgroundLocationPermissionLauncher = registerForActivityResult(
     ActivityResultContracts.RequestPermission()
   ) { granted ->
+    permissionRequestInFlight = false
     DebugLog.log("Background location permission result: $granted")
     if (granted) {
       handleStartScan()
@@ -275,6 +280,10 @@ class MainActivity : AppCompatActivity() {
         startActivity(Intent(this, DiagnosticsActivity::class.java))
         true
       }
+      R.id.menu_fix_permissions -> {
+        repairPermissions()
+        true
+      }
       R.id.menu_active_ble_queries -> {
         val enabled = !item.isChecked
         item.isChecked = enabled
@@ -317,6 +326,8 @@ class MainActivity : AppCompatActivity() {
     menu.findItem(R.id.menu_continuous_scanning)?.isChecked = continuousScanningEnabled
     menu.findItem(R.id.menu_compact_cards)?.isChecked = compactCards
     menu.findItem(R.id.menu_version)?.title = appVersionInfo.menuLabel
+    menu.findItem(R.id.menu_fix_permissions)?.isVisible =
+      PermissionsHelper.missingPermissions(this, continuousScanningEnabled).isNotEmpty()
     val scanToggle = menu.findItem(R.id.menu_scan_toggle)
     when (val state = viewModel.scanState.value) {
       is ScanState.Scanning -> {
@@ -372,12 +383,7 @@ class MainActivity : AppCompatActivity() {
 
   private fun handleStartScan() {
     if (!PermissionsHelper.hasPermissions(this, continuousScanningEnabled)) {
-      if (PermissionsHelper.shouldOpenAppSettings(this, continuousScanningEnabled)) {
-        DebugLog.log("Permissions blocked; directing user to app settings", level = android.util.Log.WARN)
-        viewModel.refreshPreflightState()
-      } else {
-        requestScanPermissions()
-      }
+      repairPermissions()
       return
     }
 
@@ -464,6 +470,7 @@ class MainActivity : AppCompatActivity() {
         }
         binding.permissionActionButton.isVisible = true
         openFiltersDrawer()
+        maybeAutoRepairPermissions(statuses)
       }
       is ScanState.LocationServicesOff -> {
         binding.scanStatus.text = getString(R.string.scan_inactive)
@@ -512,23 +519,68 @@ class MainActivity : AppCompatActivity() {
 
   private fun requestScanPermissions() {
     val permissions = PermissionsHelper.foregroundPermissions(continuousScanningEnabled)
+      .filter { permission ->
+        ContextCompat.checkSelfPermission(this, permission) != android.content.pm.PackageManager.PERMISSION_GRANTED
+      }
     DebugLog.log("Requesting permissions: $permissions")
-    PermissionsHelper.markPermissionRequestAttempted(this)
     if (permissions.isEmpty()) {
-      handleStartScan()
+      if (
+        continuousScanningEnabled &&
+        PermissionsHelper.requiresBackgroundLocationForContinuousScan() &&
+        !PermissionsHelper.hasBackgroundLocationPermission(this)
+      ) {
+        requestBackgroundLocationPermission()
+      } else {
+        viewModel.refreshPreflightState()
+      }
       return
     }
+    permissionRequestInFlight = true
+    PermissionsHelper.markPermissionRequestAttempted(this)
     permissionLauncher.launch(permissions.toTypedArray())
   }
 
   private fun requestBackgroundLocationPermission() {
     if (!PermissionsHelper.requiresBackgroundLocationForContinuousScan()) {
-      handleStartScan()
+      viewModel.refreshPreflightState()
       return
     }
     DebugLog.log("Requesting background location permission for continuous scanning")
+    permissionRequestInFlight = true
     PermissionsHelper.markBackgroundLocationRequestAttempted(this)
     backgroundLocationPermissionLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+  }
+
+  private fun repairPermissions() {
+    if (permissionRequestInFlight) {
+      return
+    }
+
+    val missingPermissions = PermissionsHelper.missingPermissions(this, continuousScanningEnabled)
+    if (missingPermissions.isEmpty()) {
+      viewModel.refreshPreflightState()
+      return
+    }
+
+    if (PermissionsHelper.shouldOpenAppSettings(this, continuousScanningEnabled)) {
+      DebugLog.log("Permissions blocked; directing user to app settings", level = android.util.Log.WARN)
+      viewModel.refreshPreflightState()
+      openAppSettings()
+      return
+    }
+
+    requestScanPermissions()
+  }
+
+  private fun maybeAutoRepairPermissions(statuses: List<PermissionStatus>) {
+    if (permissionRequestInFlight) {
+      return
+    }
+    if (statuses.none { it.denialState == PermissionDenialState.NOT_REQUESTED }) {
+      return
+    }
+    DebugLog.log("Auto-requesting missing scan permissions")
+    repairPermissions()
   }
 
   private fun maybePromptForBatteryOptimization() {

@@ -17,6 +17,10 @@
       android:title="@string/diagnostics"
       app:showAsAction="never" />
   <item
+      android:id="@+id/menu_fix_permissions"
+      android:title="@string/fix_permissions"
+      app:showAsAction="never" />
+  <item
       android:id="@+id/menu_active_ble_queries"
       android:checkable="true"
       android:title="@string/active_ble_queries_menu"

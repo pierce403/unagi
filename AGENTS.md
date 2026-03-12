@@ -45,6 +45,7 @@ Bluetooth/SDR situational awareness on Android — scan nearby devices, surface 
 - Notification channels: foreground-service uses `ic_unagi_status` (monochrome); don't use low-importance channel or the status-bar icon is suppressed
 - Alert notifications use a silent channel with manual audio playback so different sound presets stay distinct
 - Some devices return `false` from `BluetoothAdapter.startDiscovery()` instead of throwing when classic discovery is blocked; re-check scan preflight/permissions and cap restart retries so the app surfaces recovery instead of loop-spamming diagnostics
+- Permission recovery cannot live only in the drawer state UI; prompt once when scan state enters `MissingPermission`, keep an overflow-menu repair action, and handle background-location-only gaps without recursing through the foreground permission launcher
 
 ## Device identity model
 
