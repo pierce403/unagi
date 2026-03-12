@@ -6,6 +6,11 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+## [0.2.24] — Permission repair from scan UI
+
+- Auto-request missing scan permissions when scanning enters a permission-blocked state instead of silently stalling
+- Add a `Fix permissions` overflow-menu action so users can reopen the runtime prompt or jump to app settings when permissions are denied
+
 ## [0.2.23] — Scan responsiveness and permission recovery
 
 - Reduce scan-induced UI lag by buffering observation writes, compacting metadata JSON, and throttling main-list refreshes under heavy callback load
