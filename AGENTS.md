@@ -16,6 +16,7 @@ Bluetooth/SDR situational awareness on Android — scan nearby devices, surface 
 - Pin AGP/Gradle versions from the official compatibility matrix; never use dynamic versions
 - Android SDK at `~/Android/Sdk`; set `ANDROID_HOME` / `ANDROID_SDK_ROOT`
 - Emulator AVD: `unagi_test`; source `scripts/dev-env.sh` for PATH and `start-emulator` helper
+- If `scripts/dev-env.sh` points at stale `/c/...` Windows paths on Linux/WSL, export `ANDROID_HOME=$HOME/Android/Sdk` and a local `JAVA_HOME` explicitly before running Gradle
 - Headless AVD can be flaky — fall back to `assembleDebug` + unit tests and verify on-device
 
 ## PR discipline
