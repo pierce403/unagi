@@ -6,6 +6,10 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+## [0.2.28] — Tighter quick filter header
+
+- Reduce the vertical padding around the main-screen quick filter pills so the `All` / `Starred` / `Active` / `Alerts` header takes less space
+
 ## [0.2.27] — Note quote hardening
 
 - Keep device notes single-line and control-safe while preserving normal punctuation like apostrophes and quotes
