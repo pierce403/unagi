@@ -6,6 +6,11 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+## [0.2.25] — Static Pages publishing hardening
+
+- Add root `.nojekyll` so GitHub Pages treats the site as plain static content instead of processing repository markdown and other Jekyll-specific behavior
+- Document the current Pages deploy pitfall: site content can build successfully while the deploy worker fails separately with a transient GitHub-side action-download error
+
 ## [0.2.24] — Permission repair from scan UI
 
 - Auto-request missing scan permissions when scanning enters a permission-blocked state instead of silently stalling

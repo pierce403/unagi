@@ -31,10 +31,12 @@ Bluetooth/SDR situational awareness on Android — scan nearby devices, surface 
 - Package identity: `ninja.unagi` (old `com.thingalert` installs don't upgrade in place)
 - Every update that lands on `main` should ship as a fresh site release in the same pass; do not leave code changes pushed without the matching version bump, staged APK, and updated download links
 - Bump `versionCode` and `versionName` in `app/build.gradle.kts` for every release
+- Keep a root `.nojekyll` file so GitHub Pages publishes the repo as a static site instead of applying Jekyll processing to markdown and underscore-prefixed paths
 - Run `scripts/stage-apk` before commit so the versioned APK and site links stay aligned
 - Release flow for every update: bump version, run build/test, run `scripts/stage-apk`, verify `index.html` and `downloads/`, then commit/push the release so GitHub Pages publishes it
 - GitHub Pages publishes from `main` at repo root to `https://unagi.ninja`
 - Keep `index.html`, versioned APK in `downloads/`, and `CNAME` aligned
+- If Pages content build succeeds but deploy fails during worker setup with `actions/deploy-pages` download `401`, treat it as a GitHub-side deploy glitch first and rerun the `pages build and deployment` workflow before changing site files
 
 ## Architecture pitfalls
 
