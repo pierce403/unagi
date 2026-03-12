@@ -6,6 +6,11 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+## [0.2.23] — Scan responsiveness and permission recovery
+
+- Reduce scan-induced UI lag by buffering observation writes, compacting metadata JSON, and throttling main-list refreshes under heavy callback load
+- Stop classic discovery restart loops when Bluetooth permissions are missing or the stack silently refuses discovery start, and surface permission recovery instead
+
 ## [0.2.22] — SQLCipher migration hotfix
 
 - Fix startup crash when upgrading an existing plaintext install to the SQLCipher database build by correcting the export-key SQL and falling back to plaintext open if migration still fails
