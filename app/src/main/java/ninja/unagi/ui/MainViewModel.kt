@@ -18,24 +18,30 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.flow.stateIn
+import ninja.unagi.alerts.AlertObservation
+import ninja.unagi.alerts.DeviceAlertMatcher
 import ninja.unagi.ThingAlertApp
 import ninja.unagi.scan.ContinuousScanPreferences
 import ninja.unagi.scan.ScanState
 import ninja.unagi.util.BluetoothAddressTools
 import ninja.unagi.util.BluetoothAssignedNumbersProvider
+import ninja.unagi.util.DeviceNoteFormatter
 import ninja.unagi.util.DeviceIdentityPresenter
 import ninja.unagi.util.Formatters
+import ninja.unagi.util.ObservationMetadataParser
 import ninja.unagi.util.VendorPrefixRegistryProvider
 
 @OptIn(FlowPreview::class)
 class MainViewModel(app: Application) : AndroidViewModel(app) {
   private val thingAlertApp = app as ThingAlertApp
   private val repository = thingAlertApp.repository
+  private val alertRuleRepository = thingAlertApp.alertRuleRepository
   private val scanner = thingAlertApp.scanController
   private val vendorRegistry = VendorPrefixRegistryProvider.get(app)
   private val assignedNumbers = BluetoothAssignedNumbersProvider.get(app)
 
   private val filterQuery = MutableStateFlow("")
+  private val deviceGroup = MutableStateFlow(DeviceListGroup.ALL)
   private val sortMode = MutableStateFlow(SortMode.RECENT)
   private val liveOnly = MutableStateFlow(false)
   private val unknownOnly = MutableStateFlow(false)
@@ -52,21 +58,26 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     .conflate()
     .sample(DEVICE_LIST_SAMPLE_MS)
     .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+  private val enabledAlertRules = alertRuleRepository.observeEnabledRules()
+    .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
   val scanState: StateFlow<ScanState> = scanner.scanState
+  val selectedDeviceGroup: StateFlow<DeviceListGroup> = deviceGroup
 
   private val devicesFlow = observedDevices
-    .map { entities ->
+    .combine(enabledAlertRules) { entities, rules -> entities to rules }
+    .map { (entities, rules) ->
       withContext(Dispatchers.Default) {
         entities.map {
+          val metadata = ObservationMetadataParser.parse(it.lastMetadataJson)
           val identity = DeviceIdentityPresenter.present(
             displayName = it.displayName,
             address = it.lastAddress,
-            metadataJson = it.lastMetadataJson,
+            metadata = metadata,
             vendorRegistry = vendorRegistry,
-            assignedNumbers = assignedNumbers,
-            userCustomName = it.userCustomName
+            assignedNumbers = assignedNumbers
           )
+          val deviceNote = DeviceNoteFormatter.normalize(it.userCustomName)
           val metaParts = mutableListOf<String>()
           identity.classificationLabel?.let { label ->
             val confidenceSuffix = identity.classificationConfidenceLabel?.let { " ($it)" }.orEmpty()
@@ -83,8 +94,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             .take(2)
           metaParts += "Nearby since: ${Formatters.formatTimestamp(it.lastSightingAt)}"
           metaParts += Formatters.formatSightingsCount(it.sightingsCount)
+          val displayTitle = DeviceNoteFormatter.appendToTitle(identity.title, deviceNote)
           val searchParts = buildList {
             add(identity.title)
+            add(displayTitle)
+            deviceNote?.let(::add)
             it.lastAddress?.let(::add)
             identity.vendorName?.let(::add)
             identity.vendorSource?.let(::add)
@@ -93,10 +107,23 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             addAll(identity.classificationEvidence)
             addAll(identity.metadataSummary.searchTerms)
           }
+          val matchesEnabledAlert = DeviceAlertMatcher.findMatches(
+            rules = rules,
+            observation = AlertObservation(
+              deviceKey = it.deviceKey,
+              displayName = it.displayName,
+              advertisedName = metadata.advertisedName,
+              systemName = metadata.systemName,
+              address = it.lastAddress,
+              vendorName = identity.vendorName,
+              source = metadata.source ?: metadata.transport.label
+            )
+          ).isNotEmpty()
           DeviceListItem(
             deviceKey = it.deviceKey,
             displayName = it.displayName,
-            displayTitle = identity.title,
+            displayTitle = displayTitle,
+            deviceNote = deviceNote,
             metaLine = metaParts.joinToString(" • "),
             searchText = searchParts.joinToString("\n"),
             sortTimestamp = it.lastSightingAt,
@@ -104,6 +131,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             lastRssi = it.lastRssi,
             sightingsCount = it.sightingsCount,
             starred = it.starred,
+            matchesEnabledAlert = matchesEnabledAlert,
             lastAddress = it.lastAddress,
             vendorName = identity.vendorName,
             sharedFromGroupIds = it.sharedFromGroupIds
@@ -128,6 +156,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
               )
         }
       }
+    }
+    .combine(deviceGroup) { list, group -> list to group }
+    .combine(liveTicker) { (list, group), now ->
+      list.filter { item -> DeviceListFilters.matchesGroup(item, group, now) }
     }
     .combine(unknownOnly) { list, unknown ->
       if (unknown) list.filter { it.displayName.isNullOrBlank() } else list
@@ -162,6 +194,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     filterQuery.value = query
   }
 
+  fun setDeviceGroup(group: DeviceListGroup) {
+    deviceGroup.value = group
+  }
+
   fun updateSortMode(mode: SortMode) {
     sortMode.value = mode
   }
@@ -181,6 +217,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
   fun setStarred(deviceKey: String, starred: Boolean) {
     viewModelScope.launch {
       repository.setStarred(deviceKey, starred)
+    }
+  }
+
+  fun setDeviceNote(deviceKey: String, note: String?) {
+    viewModelScope.launch {
+      repository.setUserCustomName(deviceKey, note)
     }
   }
 

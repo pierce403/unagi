@@ -4,6 +4,7 @@ import android.Manifest
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothManager
 import android.content.Intent
+import android.content.res.ColorStateList
 import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
@@ -53,6 +54,7 @@ class MainActivity : AppCompatActivity() {
   private lateinit var binding: ActivityMainBinding
   private lateinit var viewModel: MainViewModel
   private lateinit var adapter: DeviceAdapter
+  private lateinit var deviceGroupButtons: Map<DeviceListGroup, com.google.android.material.button.MaterialButton>
   private var recoveryAction = RecoveryAction.NONE
   private var compactCards = false
   private var activeBleQueriesEnabled = false
@@ -158,6 +160,9 @@ class MainActivity : AppCompatActivity() {
       },
       onStarToggle = { item, starred ->
         viewModel.setStarred(item.deviceKey, starred)
+      },
+      onNoteEdit = { item ->
+        showDeviceNoteDialog(item)
       }
     )
     setCompactCards(compactCards, persist = false)
@@ -165,6 +170,16 @@ class MainActivity : AppCompatActivity() {
     binding.deviceList.layoutManager = LinearLayoutManager(this)
     binding.deviceList.adapter = adapter
     binding.deviceList.itemAnimator = null
+    deviceGroupButtons = mapOf(
+      DeviceListGroup.ALL to binding.groupAllButton,
+      DeviceListGroup.STARRED to binding.groupStarredButton,
+      DeviceListGroup.ACTIVE to binding.groupActiveButton,
+      DeviceListGroup.ALERTS to binding.groupAlertsButton
+    )
+    deviceGroupButtons.forEach { (group, button) ->
+      button.setOnClickListener { viewModel.setDeviceGroup(group) }
+    }
+    syncDeviceGroupButtons(viewModel.selectedDeviceGroup.value)
 
     val sortAdapter = ArrayAdapter(
       this,
@@ -226,6 +241,12 @@ class MainActivity : AppCompatActivity() {
         launch {
           viewModel.liveDeviceCount.collect { count ->
             supportActionBar?.subtitle = getString(R.string.live_device_count, count)
+          }
+        }
+
+        launch {
+          viewModel.selectedDeviceGroup.collect { group ->
+            syncDeviceGroupButtons(group)
           }
         }
       }
@@ -668,6 +689,35 @@ class MainActivity : AppCompatActivity() {
   private fun clearRecoveryUi() {
     recoveryAction = RecoveryAction.NONE
     binding.permissionActionButton.isVisible = false
+  }
+
+  private fun showDeviceNoteDialog(item: DeviceListItem) {
+    DeviceNoteEditorDialog.show(
+      activity = this,
+      currentNote = item.deviceNote
+    ) { newNote ->
+      viewModel.setDeviceNote(item.deviceKey, newNote)
+    }
+  }
+
+  private fun syncDeviceGroupButtons(selectedGroup: DeviceListGroup) {
+    val selectedBackground = ContextCompat.getColor(this, R.color.thingalert_primary)
+    val selectedText = ContextCompat.getColor(this, R.color.thingalert_on_primary)
+    val selectedStroke = ContextCompat.getColor(this, R.color.thingalert_primary)
+    val unselectedBackground = ContextCompat.getColor(this, R.color.thingalert_surface_variant)
+    val unselectedText = ContextCompat.getColor(this, R.color.thingalert_on_surface)
+    val unselectedStroke = ContextCompat.getColor(this, R.color.thingalert_stroke_soft)
+
+    deviceGroupButtons.forEach { (group, button) ->
+      val selected = group == selectedGroup
+      button.backgroundTintList = ColorStateList.valueOf(
+        if (selected) selectedBackground else unselectedBackground
+      )
+      button.setTextColor(if (selected) selectedText else unselectedText)
+      button.strokeColor = ColorStateList.valueOf(
+        if (selected) selectedStroke else unselectedStroke
+      )
+    }
   }
 
   private fun copyDeviceToClipboard(item: DeviceListItem) {

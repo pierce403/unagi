@@ -6,6 +6,11 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+## [0.2.26] — Quick list groups and device notes
+
+- Add top-row quick groups for `All`, `Starred`, `Active`, and live alert-matching devices on the main list
+- Rework the saved custom device label into a short per-device note shown in parentheses on cards, with inline pencil editing and export support
+
 ## [0.2.25] — Static Pages publishing hardening
 
 - Add root `.nojekyll` so GitHub Pages treats the site as plain static content instead of processing repository markdown and other Jekyll-specific behavior

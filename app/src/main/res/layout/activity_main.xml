@@ -28,6 +28,63 @@
       android:layout_height="1dp"
       android:background="@color/thingalert_stroke_soft" />
 
+    <HorizontalScrollView
+      android:id="@+id/deviceGroupScroll"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:background="@color/thingalert_surface"
+      android:fillViewport="true"
+      android:scrollbars="none">
+
+      <LinearLayout
+        android:id="@+id/deviceGroupRow"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="16dp"
+        android:paddingTop="12dp"
+        android:paddingEnd="16dp"
+        android:paddingBottom="12dp">
+
+        <com.google.android.material.button.MaterialButton
+          android:id="@+id/groupAllButton"
+          style="@style/ThingAlertFilterPill"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:layout_marginEnd="8dp"
+          android:text="@string/device_group_all" />
+
+        <com.google.android.material.button.MaterialButton
+          android:id="@+id/groupStarredButton"
+          style="@style/ThingAlertFilterPill"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:layout_marginEnd="8dp"
+          android:text="@string/device_group_starred" />
+
+        <com.google.android.material.button.MaterialButton
+          android:id="@+id/groupActiveButton"
+          style="@style/ThingAlertFilterPill"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:layout_marginEnd="8dp"
+          android:text="@string/device_group_active" />
+
+        <com.google.android.material.button.MaterialButton
+          android:id="@+id/groupAlertsButton"
+          style="@style/ThingAlertFilterPill"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:text="@string/device_group_alerts" />
+      </LinearLayout>
+    </HorizontalScrollView>
+
+    <View
+      android:layout_width="match_parent"
+      android:layout_height="1dp"
+      android:background="@color/thingalert_stroke_soft" />
+
     <FrameLayout
       android:layout_width="match_parent"
       android:layout_height="0dp"

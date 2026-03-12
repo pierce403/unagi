@@ -33,6 +33,7 @@ import ninja.unagi.enrichment.DeviceEnrichmentFormatter
 import ninja.unagi.data.DeviceEntity
 import ninja.unagi.data.DeviceEnrichmentEntity
 import ninja.unagi.util.BluetoothAssignedNumbersProvider
+import ninja.unagi.util.DeviceNoteFormatter
 import ninja.unagi.util.DeviceIdentityPresenter
 import ninja.unagi.util.Formatters
 import ninja.unagi.util.ObservationMetadata
@@ -113,12 +114,11 @@ class DeviceDetailActivity : AppCompatActivity() {
             val identity = DeviceIdentityPresenter.present(
               displayName = device.displayName,
               address = device.lastAddress,
-              metadataJson = device.lastMetadataJson,
+              metadata = currentMetadata,
               vendorRegistry = vendorRegistry,
-              assignedNumbers = assignedNumbers,
-              userCustomName = device.userCustomName
+              assignedNumbers = assignedNumbers
             )
-            binding.detailName.text = identity.title
+            binding.detailName.text = DeviceNoteFormatter.appendToTitle(identity.title, device.userCustomName)
             val identityLines = mutableListOf<String>()
             identity.vendorName?.let { vendor ->
               val sourceSuffix = buildString {
@@ -221,7 +221,7 @@ class DeviceDetailActivity : AppCompatActivity() {
   override fun onOptionsItemSelected(item: MenuItem): Boolean {
     return when (item.itemId) {
       ninja.unagi.R.id.menu_rename_device -> {
-        showRenameDialog()
+        showNoteDialog()
         true
       }
       ninja.unagi.R.id.menu_copy_device_json -> {
@@ -245,30 +245,16 @@ class DeviceDetailActivity : AppCompatActivity() {
     return true
   }
 
-  private fun showRenameDialog() {
+  private fun showNoteDialog() {
     val device = currentDevice ?: return
-    val input = android.widget.EditText(this).apply {
-      setText(device.userCustomName ?: device.displayName.orEmpty())
-      hint = getString(ninja.unagi.R.string.rename_device_hint)
-      selectAll()
-    }
-    val container = android.widget.FrameLayout(this).apply {
-      val margin = (16 * resources.displayMetrics.density).toInt()
-      setPadding(margin, margin / 2, margin, 0)
-      addView(input)
-    }
-    com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
-      .setTitle(ninja.unagi.R.string.rename_device_title)
-      .setView(container)
-      .setMessage(ninja.unagi.R.string.rename_device_clear_hint)
-      .setPositiveButton(android.R.string.ok) { _, _ ->
-        val newName = input.text.toString().trim().takeIf(String::isNotEmpty)
-        lifecycleScope.launch {
-          repository.setUserCustomName(device.deviceKey, newName)
-        }
+    DeviceNoteEditorDialog.show(
+      activity = this,
+      currentNote = device.userCustomName
+    ) { newNote ->
+      lifecycleScope.launch {
+        repository.setUserCustomName(device.deviceKey, newNote)
       }
-      .setNegativeButton(android.R.string.cancel, null)
-      .show()
+    }
   }
 
   private fun runBleQuery(device: DeviceEntity, metadata: ObservationMetadata) {

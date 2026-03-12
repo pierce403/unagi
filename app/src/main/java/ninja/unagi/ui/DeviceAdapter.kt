@@ -18,7 +18,8 @@ import ninja.unagi.util.Formatters
 class DeviceAdapter(
   private val onClick: (DeviceListItem) -> Unit,
   private val onLongClick: (DeviceListItem) -> Unit,
-  private val onStarToggle: (DeviceListItem, Boolean) -> Unit
+  private val onStarToggle: (DeviceListItem, Boolean) -> Unit,
+  private val onNoteEdit: (DeviceListItem) -> Unit
 ) : ListAdapter<DeviceListItem, DeviceAdapter.DeviceViewHolder>(DiffCallback) {
   private var compactMode = false
 
@@ -28,7 +29,7 @@ class DeviceAdapter(
 
   override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): DeviceViewHolder {
     val binding = ItemDeviceBinding.inflate(LayoutInflater.from(parent.context), parent, false)
-    return DeviceViewHolder(binding, onClick, onLongClick, onStarToggle)
+    return DeviceViewHolder(binding, onClick, onLongClick, onStarToggle, onNoteEdit)
   }
 
   override fun getItemId(position: Int): Long {
@@ -51,7 +52,8 @@ class DeviceAdapter(
     private val binding: ItemDeviceBinding,
     private val onClick: (DeviceListItem) -> Unit,
     private val onLongClick: (DeviceListItem) -> Unit,
-    private val onStarToggle: (DeviceListItem, Boolean) -> Unit
+    private val onStarToggle: (DeviceListItem, Boolean) -> Unit,
+    private val onNoteEdit: (DeviceListItem) -> Unit
   ) : RecyclerView.ViewHolder(binding.root) {
     fun bind(item: DeviceListItem, compactMode: Boolean) {
       applyCardDensity(compactMode)
@@ -66,6 +68,14 @@ class DeviceAdapter(
       binding.deviceName.text = item.displayTitle
       binding.deviceName.maxLines = if (compactMode) 1 else 2
       binding.deviceName.ellipsize = TextUtils.TruncateAt.END
+      binding.deviceNoteButton.contentDescription = itemView.context.getString(
+        if (item.deviceNote.isNullOrBlank()) {
+          R.string.add_device_note
+        } else {
+          R.string.edit_device_note
+        }
+      )
+      binding.deviceNoteButton.setOnClickListener { onNoteEdit(item) }
       binding.deviceStar.text = if (item.starred) "★" else "☆"
       binding.deviceStar.contentDescription = itemView.context.getString(
         if (item.starred) {
@@ -105,6 +115,17 @@ class DeviceAdapter(
         TypedValue.COMPLEX_UNIT_SP,
         if (compactMode) 14f else 16f
       )
+      binding.deviceNoteButton.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+        width = dp(if (compactMode) 30 else 34)
+        height = dp(if (compactMode) 30 else 34)
+        marginStart = dp(if (compactMode) 6 else 8)
+      }
+      binding.deviceNoteButton.setPadding(
+        dp(if (compactMode) 6 else 7),
+        dp(if (compactMode) 6 else 7),
+        dp(if (compactMode) 6 else 7),
+        dp(if (compactMode) 6 else 7)
+      )
       binding.deviceStar.setTextSize(
         TypedValue.COMPLEX_UNIT_SP,
         if (compactMode) 18f else 22f
@@ -142,6 +163,7 @@ class DeviceAdapter(
         return oldItem.deviceKey == newItem.deviceKey &&
           oldItem.displayName == newItem.displayName &&
           oldItem.displayTitle == newItem.displayTitle &&
+          oldItem.deviceNote == newItem.deviceNote &&
           oldItem.metaLine == newItem.metaLine &&
           oldItem.searchText == newItem.searchText &&
           oldItem.sortTimestamp == newItem.sortTimestamp &&

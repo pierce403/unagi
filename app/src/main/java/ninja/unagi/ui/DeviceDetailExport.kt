@@ -59,6 +59,7 @@ object DeviceDetailExport {
       put("rssiAvg", device.rssiAvg)
       put("lastMetadataJson", device.lastMetadataJson ?: JSONObject.NULL)
       put("starred", device.starred)
+      put("userCustomName", device.userCustomName ?: JSONObject.NULL)
     }
   }
 

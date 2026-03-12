@@ -29,4 +29,21 @@
     <item name="elevation">0dp</item>
     <item name="rippleColor">@color/thingalert_secondary</item>
   </style>
+
+  <style name="ThingAlertFilterPill" parent="Widget.MaterialComponents.Button.OutlinedButton">
+    <item name="android:textColor">@color/thingalert_on_surface</item>
+    <item name="backgroundTint">@color/thingalert_surface_variant</item>
+    <item name="strokeColor">@color/thingalert_stroke_soft</item>
+    <item name="strokeWidth">1dp</item>
+    <item name="cornerRadius">24dp</item>
+    <item name="android:minHeight">0dp</item>
+    <item name="android:minWidth">0dp</item>
+    <item name="android:paddingLeft">14dp</item>
+    <item name="android:paddingTop">8dp</item>
+    <item name="android:paddingRight">14dp</item>
+    <item name="android:paddingBottom">8dp</item>
+    <item name="elevation">0dp</item>
+    <item name="iconPadding">0dp</item>
+    <item name="rippleColor">@color/thingalert_secondary</item>
+  </style>
 </resources>

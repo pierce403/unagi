@@ -2,6 +2,7 @@ package ninja.unagi.data
 
 import androidx.room.withTransaction
 import kotlinx.coroutines.flow.Flow
+import ninja.unagi.util.DeviceNoteFormatter
 
 class DeviceRepository(
   private val database: AppDatabase,
@@ -23,7 +24,7 @@ class DeviceRepository(
   }
 
   suspend fun setUserCustomName(deviceKey: String, name: String?) {
-    deviceDao.setUserCustomName(deviceKey, name?.takeIf(String::isNotBlank))
+    deviceDao.setUserCustomName(deviceKey, DeviceNoteFormatter.normalize(name))
   }
 
   suspend fun recordObservation(observation: DeviceObservation) {

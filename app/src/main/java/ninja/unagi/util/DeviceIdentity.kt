@@ -511,10 +511,24 @@ object DeviceIdentityPresenter {
     address: String?,
     metadataJson: String?,
     vendorRegistry: VendorPrefixRegistry,
-    assignedNumbers: BluetoothAssignedNumbersRegistry,
-    userCustomName: String? = null
+    assignedNumbers: BluetoothAssignedNumbersRegistry
   ): DevicePresentation {
-    val metadata = ObservationMetadataParser.parse(metadataJson)
+    return present(
+      displayName = displayName,
+      address = address,
+      metadata = ObservationMetadataParser.parse(metadataJson),
+      vendorRegistry = vendorRegistry,
+      assignedNumbers = assignedNumbers
+    )
+  }
+
+  fun present(
+    displayName: String?,
+    address: String?,
+    metadata: ObservationMetadata,
+    vendorRegistry: VendorPrefixRegistry,
+    assignedNumbers: BluetoothAssignedNumbersRegistry
+  ): DevicePresentation {
     val addressInsight = PassiveAddressResolver.resolve(
       address = metadata.normalizedAddress ?: address,
       rawAndroidAddressType = metadata.rawAndroidAddressType
@@ -610,7 +624,7 @@ object DeviceIdentityPresenter {
     )
 
     return DevicePresentation(
-      title = userCustomName?.takeIf(String::isNotBlank) ?: Formatters.formatName(
+      title = Formatters.formatName(
         name = displayName,
         vendorName = vendorHint.vendorName,
         fallbackName = metadataSummary.titleFallback
