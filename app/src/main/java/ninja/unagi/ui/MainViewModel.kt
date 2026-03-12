@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,6 +16,7 @@ import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.flow.stateIn
 import ninja.unagi.ThingAlertApp
 import ninja.unagi.scan.ContinuousScanPreferences
@@ -25,6 +27,7 @@ import ninja.unagi.util.DeviceIdentityPresenter
 import ninja.unagi.util.Formatters
 import ninja.unagi.util.VendorPrefixRegistryProvider
 
+@OptIn(FlowPreview::class)
 class MainViewModel(app: Application) : AndroidViewModel(app) {
   private val thingAlertApp = app as ThingAlertApp
   private val repository = thingAlertApp.repository
@@ -47,6 +50,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), System.currentTimeMillis())
   private val observedDevices = repository.observeDevices()
     .conflate()
+    .sample(DEVICE_LIST_SAMPLE_MS)
     .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
   val scanState: StateFlow<ScanState> = scanner.scanState
@@ -197,5 +201,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
       scanner.stopScan()
     }
     super.onCleared()
+  }
+
+  companion object {
+    private const val DEVICE_LIST_SAMPLE_MS = 300L
   }
 }

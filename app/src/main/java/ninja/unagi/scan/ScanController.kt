@@ -54,18 +54,17 @@ class ScanController(
   private var receiverRegistered = false
   private var blePathActive = false
   private var classicPathActive = false
+  private var classicRestartFailures = 0
   private var currentScanMode: ScanModePreset = ScanModePreset.NORMAL
 
   private val scanCallback = object : ScanCallback() {
     override fun onScanResult(callbackType: Int, result: ScanResult) {
       recordBleCallbacks(1)
-      DebugLog.log("BLE scan result callbackType=$callbackType rssi=${result.rssi}")
       handleBleResult(result)
     }
 
     override fun onBatchScanResults(results: MutableList<ScanResult>) {
       recordBleCallbacks(results.size)
-      DebugLog.log("BLE batch scan results count=${results.size}")
       results.forEach { handleBleResult(it) }
     }
 
@@ -119,7 +118,6 @@ class ScanController(
           val rssi = intent.getShortExtra(BluetoothDevice.EXTRA_RSSI, Short.MIN_VALUE).toInt()
           if (device != null) {
             recordClassicCallback()
-            DebugLog.log("Classic result name=${safeName(device) ?: "unknown"} addr=${safeAddress(device) ?: "n/a"} rssi=$rssi")
             handleClassicResult(device, rssi)
           }
         }
@@ -137,8 +135,10 @@ class ScanController(
     val continuousScanning = ContinuousScanPreferences.isEnabled(context)
     classicRestartJob?.cancel()
     classicRestartJob = null
+    classicRestartFailures = 0
     stopBleScan()
     stopClassicDiscovery()
+    observationRecorder.flushPending()
     observationRecorder.clearFiredAlerts()
 
     val scanMode = ScanModePreferences.get(context)
@@ -173,6 +173,20 @@ class ScanController(
         classicStartup = classicResult,
         bleScannerUnavailable = bleResult.reason == ScanStateDecider.BLE_SCANNER_UNAVAILABLE
       )
+    }
+
+    if (
+      bleResult.reason == STARTUP_REASON_MISSING_PERMISSION ||
+        classicResult.reason == STARTUP_REASON_MISSING_PERMISSION
+    ) {
+      stopBleScan()
+      stopClassicDiscovery()
+      ScanDiagnosticsStore.update {
+        it.copy(outcome = ScanSessionOutcome.FAILED_TO_START)
+      }
+      _scanState.value = ScanState.MissingPermission
+      DebugLog.log("Scan startup blocked by permission failure reported from Bluetooth stack", level = android.util.Log.WARN)
+      return
     }
 
     val nextState = ScanStateDecider.stateAfterStartup(listOf(bleResult, classicResult))
@@ -220,8 +234,10 @@ class ScanController(
   fun stopScan() {
     classicRestartJob?.cancel()
     classicRestartJob = null
+    classicRestartFailures = 0
     stopBleScan()
     stopClassicDiscovery()
+    observationRecorder.flushPending()
     observationRecorder.clearFiredAlerts()
     if (_scanState.value is ScanState.Scanning) {
       ScanDiagnosticsStore.update {
@@ -319,8 +335,25 @@ class ScanController(
       val started = adapter.startDiscovery()
       classicPathActive = started
       if (started) {
+        classicRestartFailures = 0
         DebugLog.log("Classic discovery started")
         return ScanStartupResult(path = ScanPath.CLASSIC, started = true)
+      }
+
+      val missingPermissions = PermissionsHelper.missingPermissions(
+        context,
+        ContinuousScanPreferences.isEnabled(context)
+      )
+      if (missingPermissions.isNotEmpty()) {
+        DebugLog.log(
+          "Classic discovery could not start because permissions are missing: $missingPermissions",
+          level = android.util.Log.WARN
+        )
+        return ScanStartupResult(
+          path = ScanPath.CLASSIC,
+          started = false,
+          reason = STARTUP_REASON_MISSING_PERMISSION
+        )
       }
 
       DebugLog.log("Classic discovery failed to start", level = android.util.Log.WARN)
@@ -335,7 +368,7 @@ class ScanController(
       return ScanStartupResult(
         path = ScanPath.CLASSIC,
         started = false,
-        reason = "Missing permission"
+        reason = STARTUP_REASON_MISSING_PERMISSION
       )
     } catch (ex: Exception) {
       classicPathActive = false
@@ -376,16 +409,35 @@ class ScanController(
     if (classicRestartJob?.isActive == true) {
       return
     }
+    if (classicRestartFailures >= MAX_CLASSIC_RESTART_FAILURES) {
+      DebugLog.log(
+        "Classic discovery disabled for this scan after $classicRestartFailures consecutive restart failures",
+        level = android.util.Log.WARN
+      )
+      return
+    }
     classicRestartJob = scope.launch {
-      delay(CLASSIC_RESTART_DELAY_MS)
+      delay(nextClassicRestartDelayMs())
       classicRestartJob = null
       if (_scanState.value !is ScanState.Scanning || !currentScanMode.startsClassicDiscovery) {
         return@launch
       }
+      val preflight = preflight(ContinuousScanPreferences.isEnabled(context))
+      if (preflight.state != ScanState.Idle) {
+        interruptScan(preflight.state)
+        return@launch
+      }
       val result = startClassicDiscovery(currentScanMode)
+      ScanDiagnosticsStore.update { it.copy(classicStartup = result) }
       if (!result.started && _scanState.value is ScanState.Scanning) {
+        if (result.reason == STARTUP_REASON_MISSING_PERMISSION) {
+          DebugLog.log("Classic discovery restart blocked by missing permission", level = android.util.Log.WARN)
+          interruptScan(ScanState.MissingPermission)
+          return@launch
+        }
+        classicRestartFailures += 1
         DebugLog.log(
-          "Classic discovery restart failed: ${result.reason ?: "unknown"}",
+          "Classic discovery restart failed (${classicRestartFailures}/$MAX_CLASSIC_RESTART_FAILURES): ${result.reason ?: "unknown"}",
           level = android.util.Log.WARN
         )
         scheduleClassicDiscoveryRestart()
@@ -836,12 +888,19 @@ class ScanController(
   private fun interruptScan(state: ScanState) {
     classicRestartJob?.cancel()
     classicRestartJob = null
+    classicRestartFailures = 0
     stopBleScan()
     stopClassicDiscovery()
+    observationRecorder.flushPending()
     ScanDiagnosticsStore.update {
       it.copy(outcome = ScanSessionOutcome.INTERRUPTED, timeoutReached = false)
     }
     _scanState.value = state
+  }
+
+  private fun nextClassicRestartDelayMs(): Long {
+    val multiplier = 1L shl classicRestartFailures.coerceAtMost(3)
+    return (CLASSIC_RESTART_BASE_DELAY_MS * multiplier).coerceAtMost(CLASSIC_RESTART_MAX_DELAY_MS)
   }
 
   private fun hasBluetoothAccess(): Boolean {
@@ -854,7 +913,10 @@ class ScanController(
   }
 
   companion object {
-    private const val CLASSIC_RESTART_DELAY_MS = 2_000L
+    private const val STARTUP_REASON_MISSING_PERMISSION = "Missing permission"
+    private const val CLASSIC_RESTART_BASE_DELAY_MS = 2_000L
+    private const val CLASSIC_RESTART_MAX_DELAY_MS = 16_000L
+    private const val MAX_CLASSIC_RESTART_FAILURES = 4
 
     private fun effectiveTransport(source: String, deviceType: Int?): ObservedTransport {
       return when {

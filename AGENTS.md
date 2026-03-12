@@ -41,8 +41,10 @@ Bluetooth/SDR situational awareness on Android — scan nearby devices, surface 
 - Vendor-prefix asset may be `.txt` or `.txt.gz` in APK; the loader handles both
 - `Formatters.formatTimestamp` runs across threads — use immutable `java.time` formatters, never shared mutable `DateFormat`
 - Continuous scanning floods Room if maintenance runs on every observation; keep pruning throttled and heavy presentation work off the main thread
+- Per-callback scan logging, pretty-printed metadata JSON, and unthrottled main-list updates make scan UX stutter; batch observation persistence and keep device-list refreshes throttled
 - Notification channels: foreground-service uses `ic_unagi_status` (monochrome); don't use low-importance channel or the status-bar icon is suppressed
 - Alert notifications use a silent channel with manual audio playback so different sound presets stay distinct
+- Some devices return `false` from `BluetoothAdapter.startDiscovery()` instead of throwing when classic discovery is blocked; re-check scan preflight/permissions and cap restart retries so the app surfaces recovery instead of loop-spamming diagnostics
 
 ## Device identity model
 

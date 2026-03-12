@@ -4,11 +4,13 @@ import ninja.unagi.alerts.AlertObservation
 import ninja.unagi.alerts.DeviceAlertMatcher
 import ninja.unagi.alerts.DeviceAlertNotifier
 import ninja.unagi.data.AlertRuleEntity
+import ninja.unagi.data.BufferedObservation
 import ninja.unagi.data.AlertRuleRepository
 import ninja.unagi.data.DeviceObservation
 import ninja.unagi.data.DeviceRepository
-import ninja.unagi.util.DebugLog
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
@@ -21,6 +23,10 @@ class ObservationRecorder(
 ) {
   private var enabledAlertRules: List<AlertRuleEntity> = emptyList()
   private val firedAlertKeys = mutableSetOf<String>()
+  private val alertLock = Any()
+  private val pendingLock = Any()
+  private val pendingObservations = mutableMapOf<String, BufferedObservation>()
+  private var flushJob: Job? = null
 
   init {
     scope.launch {
@@ -31,12 +37,21 @@ class ObservationRecorder(
   }
 
   fun clearFiredAlerts() {
-    firedAlertKeys.clear()
+    synchronized(alertLock) {
+      firedAlertKeys.clear()
+    }
+  }
+
+  fun flushPending() {
+    scope.launch {
+      flushPendingInternal()
+    }
   }
 
   fun record(input: ObservationInput) {
     val key = DeviceKey.from(input)
     ScanDiagnosticsStore.update { snap ->
+      val hasDeviceKey = snap.deviceKeys.contains(key)
       val samples = if (snap.callbackSamples.size < CallbackSample.MAX_SAMPLES) {
         snap.callbackSamples + CallbackSample(
           path = when {
@@ -54,13 +69,16 @@ class ObservationRecorder(
       } else {
         snap.callbackSamples
       }
-      snap.copy(deviceKeys = snap.deviceKeys + key, callbackSamples = samples)
+      if (hasDeviceKey && samples === snap.callbackSamples) {
+        snap
+      } else {
+        snap.copy(
+          deviceKeys = if (hasDeviceKey) snap.deviceKeys else snap.deviceKeys + key,
+          callbackSamples = samples
+        )
+      }
     }
     val metadata = buildMetadataJson(input)
-    DebugLog.log(
-      "Observation ${input.source} name=${input.name ?: "unknown"} addr=${input.address ?: "n/a"} " +
-        "rssi=${input.rssi} services=${input.serviceUuids.size} mfg=${input.manufacturerData.size}"
-    )
     val observation = DeviceObservation(
       deviceKey = key,
       name = input.name,
@@ -70,8 +88,8 @@ class ObservationRecorder(
       metadataJson = metadata
     )
 
+    bufferObservation(observation)
     scope.launch {
-      repository.recordObservation(observation)
       emitAlertNotifications(key = key, input = input)
     }
   }
@@ -99,7 +117,10 @@ class ObservationRecorder(
         append(':')
         append(input.address ?: key)
       }
-      if (!firedAlertKeys.add(dedupeKey)) {
+      val shouldNotify = synchronized(alertLock) {
+        firedAlertKeys.add(dedupeKey)
+      }
+      if (!shouldNotify) {
         return@forEach
       }
       deviceAlertNotifier.notifyMatch(
@@ -194,12 +215,50 @@ class ObservationRecorder(
     json.putIfNotNull("tpmsFrequencyMhz", input.tpmsFrequencyMhz)
     json.putIfNotNull("tpmsSnr", input.tpmsSnr)
 
-    return json.toString(2)
+    return json.toString()
   }
 
   private fun JSONObject.putIfNotNull(key: String, value: Any?) {
     if (value != null) {
       put(key, value)
     }
+  }
+
+  private fun bufferObservation(observation: DeviceObservation) {
+    synchronized(pendingLock) {
+      val existing = pendingObservations[observation.deviceKey]
+      pendingObservations[observation.deviceKey] = existing?.merge(observation)
+        ?: BufferedObservation.from(observation)
+      if (flushJob?.isActive == true) {
+        return
+      }
+      flushJob = scope.launch {
+        delay(FLUSH_INTERVAL_MS)
+        flushPendingInternal()
+      }
+    }
+  }
+
+  private suspend fun flushPendingInternal() {
+    val buffered = synchronized(pendingLock) {
+      flushJob = null
+      if (pendingObservations.isEmpty()) {
+        emptyList()
+      } else {
+        val snapshot = pendingObservations.values.toList()
+        pendingObservations.clear()
+        snapshot
+      }
+    }
+
+    if (buffered.isEmpty()) {
+      return
+    }
+
+    repository.recordBufferedObservations(buffered)
+  }
+
+  companion object {
+    private const val FLUSH_INTERVAL_MS = 750L
   }
 }

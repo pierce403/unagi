@@ -27,75 +27,85 @@ class DeviceRepository(
   }
 
   suspend fun recordObservation(observation: DeviceObservation) {
+    recordBufferedObservations(listOf(BufferedObservation.from(observation)))
+  }
+
+  suspend fun recordBufferedObservations(observations: List<BufferedObservation>) {
+    if (observations.isEmpty()) {
+      return
+    }
+
     database.withTransaction {
-      ninja.unagi.util.DebugLog.log(
-        "Record observation key=${observation.deviceKey.take(8)} name=${observation.name ?: "unknown"} " +
-          "rssi=${observation.rssi}"
+      observations.forEach { observation ->
+        recordBufferedObservation(observation)
+      }
+      pruneIfNeeded(observations.maxOf { it.lastTimestamp })
+    }
+  }
+
+  private suspend fun recordBufferedObservation(observation: BufferedObservation) {
+    val existing = deviceDao.getDevice(observation.deviceKey)
+    val updated = if (existing == null) {
+      DeviceEntity(
+        deviceKey = observation.deviceKey,
+        displayName = observation.name,
+        lastAddress = observation.address,
+        firstSeen = observation.firstTimestamp,
+        lastSeen = observation.lastTimestamp,
+        lastSightingAt = observation.lastTimestamp,
+        sightingsCount = 1,
+        observationCount = observation.observationCount,
+        lastRssi = observation.lastRssi,
+        rssiMin = observation.rssiMin,
+        rssiMax = observation.rssiMax,
+        rssiAvg = observation.rssiSum.toDouble() / observation.observationCount,
+        lastMetadataJson = observation.metadataJson,
+        starred = false
       )
-      val existing = deviceDao.getDevice(observation.deviceKey)
-      val updated = if (existing == null) {
-        DeviceEntity(
-          deviceKey = observation.deviceKey,
-          displayName = observation.name,
-          lastAddress = observation.address,
-          firstSeen = observation.timestamp,
-          lastSeen = observation.timestamp,
-          lastSightingAt = observation.timestamp,
-          sightingsCount = 1,
-          observationCount = 1,
-          lastRssi = observation.rssi,
-          rssiMin = observation.rssi,
-          rssiMax = observation.rssi,
-          rssiAvg = observation.rssi.toDouble(),
-          lastMetadataJson = observation.metadataJson,
-          starred = false
-        )
+    } else {
+      val isNewSighting = ContinuousSightingPolicy.isNewSighting(
+        existing.lastSightingAt,
+        observation.lastTimestamp
+      )
+      val observationCount = existing.observationCount + observation.observationCount
+      val sightingsCount = if (isNewSighting) {
+        existing.sightingsCount + 1
       } else {
-        val isNewSighting = ContinuousSightingPolicy.isNewSighting(
-          existing.lastSightingAt,
-          observation.timestamp
-        )
-        val observationCount = existing.observationCount + 1
-        val sightingsCount = if (isNewSighting) {
-          existing.sightingsCount + 1
-        } else {
-          existing.sightingsCount
-        }
-        val avg = ((existing.rssiAvg * existing.observationCount) + observation.rssi) / observationCount
-        DeviceEntity(
-          deviceKey = existing.deviceKey,
-          displayName = observation.name ?: existing.displayName,
-          lastAddress = observation.address ?: existing.lastAddress,
-          firstSeen = minOf(existing.firstSeen, observation.timestamp),
-          lastSeen = maxOf(existing.lastSeen, observation.timestamp),
-          lastSightingAt = if (isNewSighting) observation.timestamp else existing.lastSightingAt,
-          sightingsCount = sightingsCount,
-          observationCount = observationCount,
-          lastRssi = observation.rssi,
-          rssiMin = minOf(existing.rssiMin, observation.rssi),
-          rssiMax = maxOf(existing.rssiMax, observation.rssi),
-          rssiAvg = avg,
-          lastMetadataJson = observation.metadataJson ?: existing.lastMetadataJson,
-          starred = existing.starred,
-          userCustomName = existing.userCustomName
-        )
+        existing.sightingsCount
       }
+      val avg = ((existing.rssiAvg * existing.observationCount) + observation.rssiSum) / observationCount
+      DeviceEntity(
+        deviceKey = existing.deviceKey,
+        displayName = observation.name ?: existing.displayName,
+        lastAddress = observation.address ?: existing.lastAddress,
+        firstSeen = minOf(existing.firstSeen, observation.firstTimestamp),
+        lastSeen = maxOf(existing.lastSeen, observation.lastTimestamp),
+        lastSightingAt = if (isNewSighting) observation.lastTimestamp else existing.lastSightingAt,
+        sightingsCount = sightingsCount,
+        observationCount = observationCount,
+        lastRssi = observation.lastRssi,
+        rssiMin = minOf(existing.rssiMin, observation.rssiMin),
+        rssiMax = maxOf(existing.rssiMax, observation.rssiMax),
+        rssiAvg = avg,
+        lastMetadataJson = observation.metadataJson ?: existing.lastMetadataJson,
+        starred = existing.starred,
+        userCustomName = existing.userCustomName,
+        sharedFromGroupIds = existing.sharedFromGroupIds
+      )
+    }
 
-      deviceDao.upsertDevice(updated)
-      if (existing == null || updated.lastSightingAt == observation.timestamp) {
-        sightingDao.insertSighting(
-          SightingEntity(
-            deviceKey = observation.deviceKey,
-            timestamp = observation.timestamp,
-            rssi = observation.rssi,
-            name = observation.name,
-            address = observation.address,
-            metadataJson = observation.metadataJson
-          )
+    deviceDao.upsertDevice(updated)
+    if (existing == null || updated.lastSightingAt == observation.lastTimestamp) {
+      sightingDao.insertSighting(
+        SightingEntity(
+          deviceKey = observation.deviceKey,
+          timestamp = observation.lastTimestamp,
+          rssi = observation.lastRssi,
+          name = observation.name,
+          address = observation.address,
+          metadataJson = observation.metadataJson
         )
-      }
-
-      pruneIfNeeded(observation.timestamp)
+      )
     }
   }
 
