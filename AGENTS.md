@@ -54,6 +54,7 @@ Bluetooth/SDR situational awareness on Android — scan nearby devices, surface 
 ## Device identity model
 
 - Device identifiers are observations, not ground truth — addresses rotate, names change
+- Device notes use the existing `userCustomName` field; preserve punctuation like `'` / `"`, but normalize pasted control/newline whitespace into a single short line
 - `DeviceKey` fallback: address → name → volatile token (stable signals only, no timestamp/rssi)
 - BLE OUI confidence is downgraded for randomized/local addresses; classic addresses are treated as public
 - Cross-transport merge (BLE randomized + classic public MAC) is not yet implemented

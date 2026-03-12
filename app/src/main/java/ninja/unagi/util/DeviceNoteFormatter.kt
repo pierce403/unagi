@@ -6,8 +6,12 @@ object DeviceNoteFormatter {
   fun normalize(raw: CharSequence?): String? {
     return raw
       ?.toString()
+      ?.map { ch -> if (ch.isISOControl()) ' ' else ch }
+      ?.joinToString(separator = "")
+      ?.replace(Regex("\\s+"), " ")
       ?.trim()
       ?.take(MAX_LENGTH)
+      ?.trimEnd()
       ?.takeIf(String::isNotEmpty)
   }
 

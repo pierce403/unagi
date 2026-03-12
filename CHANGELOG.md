@@ -6,6 +6,11 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+## [0.2.27] — Note quote hardening
+
+- Keep device notes single-line and control-safe while preserving normal punctuation like apostrophes and quotes
+- Add regression coverage for note quote handling through note formatting, device export JSON, and affinity bundle serialization
+
 ## [0.2.26] — Quick list groups and device notes
 
 - Add top-row quick groups for `All`, `Starred`, `Active`, and live alert-matching devices on the main list

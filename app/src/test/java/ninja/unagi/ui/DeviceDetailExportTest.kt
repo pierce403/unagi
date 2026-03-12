@@ -26,7 +26,7 @@ class DeviceDetailExportTest {
       rssiAvg = -66.5,
       lastMetadataJson = """{"transport":"BLE","serviceUuids":["180A"]}""",
       starred = true,
-      userCustomName = "Dean's Phone"
+      userCustomName = """Dean's "Phone""""
     )
     val enrichment = DeviceEnrichmentEntity(
       deviceKey = device.deviceKey,
@@ -66,7 +66,7 @@ class DeviceDetailExportTest {
     assertEquals("device-key-1", deviceJson.getString("deviceKey"))
     assertEquals("AA:BB:CC:DD:EE:FF", deviceJson.getString("lastAddress"))
     assertEquals(4, deviceJson.getInt("sightingsCount"))
-    assertEquals("Dean's Phone", deviceJson.getString("userCustomName"))
+    assertEquals("""Dean's "Phone"""", deviceJson.getString("userCustomName"))
 
     val metadataJson = json.getJSONObject("lastMetadata")
     assertEquals("BLE", metadataJson.getString("transport"))

@@ -12,6 +12,12 @@ class DeviceNoteFormatterTest {
   }
 
   @Test
+  fun `normalize preserves apostrophes and flattens control whitespace`() {
+    assertEquals("DEAN'S FLIPPER", DeviceNoteFormatter.normalize("DEAN'S FLIPPER"))
+    assertEquals("Dean's Flipper", DeviceNoteFormatter.normalize(" Dean's\nFlipper\t"))
+  }
+
+  @Test
   fun `appendToTitle adds note in parentheses when present`() {
     assertEquals("Pixel 8 (Dean's Phone)", DeviceNoteFormatter.appendToTitle("Pixel 8", "Dean's Phone"))
     assertEquals("Pixel 8", DeviceNoteFormatter.appendToTitle("Pixel 8", " "))
