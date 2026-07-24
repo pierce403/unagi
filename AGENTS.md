@@ -48,6 +48,8 @@ Bluetooth/SDR situational awareness on Android — scan nearby devices, surface 
 - Per-callback scan logging, pretty-printed metadata JSON, and unthrottled main-list updates make scan UX stutter; batch observation persistence and keep device-list refreshes throttled
 - Notification channels: foreground-service uses `ic_unagi_status` (monochrome); don't use low-importance channel or the status-bar icon is suppressed
 - Alert notifications use a silent channel with manual audio playback so different sound presets stay distinct
+- Runtime permission preflight is not sufficient for asynchronous Bluetooth GATT work; handle `SecurityException` again at connect, discovery, read, and cleanup boundaries because permission can be revoked mid-query
+- minSdk 24 timestamp formatting uses immutable `java.time` through pinned core-library desugaring; keep `isCoreLibraryDesugaringEnabled` and `desugar_jdk_libs` aligned instead of falling back to shared mutable `DateFormat`
 - KARR-style detection requires a case-insensitive literal `QT ` name prefix plus a nonblank suffix; preserve the trailing space in `name_prefix` rules, and add new seeded alerts as versioned deltas so deleted legacy defaults are not resurrected
 - Some devices return `false` from `BluetoothAdapter.startDiscovery()` instead of throwing when classic discovery is blocked; re-check scan preflight/permissions and cap restart retries so the app surfaces recovery instead of loop-spamming diagnostics
 - Permission recovery cannot live only in the drawer state UI; prompt once when scan state enters `MissingPermission`, keep an overflow-menu repair action, and handle background-location-only gaps without recursing through the foreground permission launcher

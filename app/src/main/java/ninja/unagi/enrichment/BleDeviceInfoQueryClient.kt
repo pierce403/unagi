@@ -103,7 +103,17 @@ class BleDeviceInfoQueryClient(
         disReadStatus = "preflight_failed"
       )
 
-      if (!adapter.isEnabled) {
+      val bluetoothEnabled = try {
+        adapter.isEnabled
+      } catch (_: SecurityException) {
+        return@withContext failureResult(
+          startedAt = startedAt,
+          status = STATUS_PERMISSION_DENIED,
+          message = "Bluetooth Connect permission is missing",
+          disReadStatus = "permission_denied"
+        )
+      }
+      if (!bluetoothEnabled) {
         return@withContext failureResult(
           startedAt = startedAt,
           status = STATUS_BLUETOOTH_OFF,
@@ -113,11 +123,28 @@ class BleDeviceInfoQueryClient(
       }
 
       scanController?.stopScan()
-      if (adapter.isDiscovering) {
-        runCatching { adapter.cancelDiscovery() }
+      if (hasScanPermission()) {
+        try {
+          if (adapter.isDiscovering) {
+            adapter.cancelDiscovery()
+          }
+        } catch (_: SecurityException) {
+          // Permission may be revoked after the preflight check. Discovery cancellation is best-effort.
+        } catch (_: RuntimeException) {
+          // Preserve best-effort cancellation behavior for adapter failures.
+        }
       }
 
-      val device = resolveRemoteDevice(adapter, address, rawAddressType) ?: return@withContext failureResult(
+      val device = try {
+        resolveRemoteDevice(adapter, address, rawAddressType)
+      } catch (_: SecurityException) {
+        return@withContext failureResult(
+          startedAt = startedAt,
+          status = STATUS_PERMISSION_DENIED,
+          message = "Bluetooth Connect permission was revoked while resolving the device",
+          disReadStatus = "permission_denied"
+        )
+      } ?: return@withContext failureResult(
         startedAt = startedAt,
         status = STATUS_INVALID_DEVICE,
         message = "Unable to resolve BLE device address",
@@ -149,12 +176,31 @@ class BleDeviceInfoQueryClient(
         withTimeout(QUERY_TIMEOUT_MS) {
           resultDeferred.await()
         }
+      } catch (_: SecurityException) {
+        failureResult(
+          startedAt = startedAt,
+          status = STATUS_PERMISSION_DENIED,
+          message = "Bluetooth Connect permission was revoked during the GATT query",
+          disReadStatus = "permission_denied"
+        )
       } catch (_: kotlinx.coroutines.TimeoutCancellationException) {
         callback.timeout()
       } finally {
         gattRef.get()?.let { gatt ->
-          runCatching { gatt.disconnect() }
-          runCatching { gatt.close() }
+          try {
+            gatt.disconnect()
+          } catch (_: SecurityException) {
+            // Permission loss must not prevent the remaining best-effort cleanup.
+          } catch (_: RuntimeException) {
+            // Preserve best-effort cleanup behavior for stack-specific failures.
+          }
+          try {
+            gatt.close()
+          } catch (_: SecurityException) {
+            // The platform may require BLUETOOTH_CONNECT even while releasing the client.
+          } catch (_: RuntimeException) {
+            // Preserve best-effort cleanup behavior for stack-specific failures.
+          }
         }
       }
     }
@@ -170,18 +216,30 @@ class BleDeviceInfoQueryClient(
     ) == PackageManager.PERMISSION_GRANTED
   }
 
+  private fun hasScanPermission(): Boolean {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+      return true
+    }
+    return ContextCompat.checkSelfPermission(
+      context,
+      Manifest.permission.BLUETOOTH_SCAN
+    ) == PackageManager.PERMISSION_GRANTED
+  }
+
   private fun resolveRemoteDevice(
     adapter: BluetoothAdapter,
     address: String,
     rawAddressType: Int?
   ): BluetoothDevice? {
-    return runCatching {
+    return try {
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && rawAddressType != null) {
         adapter.getRemoteLeDevice(address, rawAddressType)
       } else {
         adapter.getRemoteDevice(address)
       }
-    }.getOrNull()
+    } catch (_: IllegalArgumentException) {
+      null
+    }
   }
 
   private fun failureResult(
@@ -250,7 +308,12 @@ class BleDeviceInfoQueryClient(
 
       when (newState) {
         BluetoothProfile.STATE_CONNECTED -> {
-          val started = gatt.discoverServices()
+          val started = try {
+            gatt.discoverServices()
+          } catch (_: SecurityException) {
+            completePermissionDenied("service discovery")
+            return
+          }
           if (!started) {
             complete(
               disReadStatus = "services_discovery_failed",
@@ -356,7 +419,12 @@ class BleDeviceInfoQueryClient(
       while (pendingCharacteristicUuids.isNotEmpty()) {
         val uuid = pendingCharacteristicUuids.removeFirst()
         val characteristic = disService.getCharacteristic(uuid) ?: continue
-        val started = gatt?.readCharacteristic(characteristic) == true
+        val started = try {
+          gatt?.readCharacteristic(characteristic) == true
+        } catch (_: SecurityException) {
+          completePermissionDenied("characteristic read")
+          return
+        }
         if (started) {
           return
         }
@@ -371,6 +439,14 @@ class BleDeviceInfoQueryClient(
         } else {
           "dis_service_present_no_readable_characteristics"
         }
+      )
+    }
+
+    private fun completePermissionDenied(operation: String) {
+      complete(
+        disReadStatus = "permission_denied",
+        errorCode = STATUS_PERMISSION_DENIED,
+        errorMessage = "Bluetooth Connect permission was revoked during $operation"
       )
     }
 

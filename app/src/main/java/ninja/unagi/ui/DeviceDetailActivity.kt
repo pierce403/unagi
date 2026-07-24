@@ -403,6 +403,10 @@ class DeviceDetailActivity : AppCompatActivity() {
   }
 
   private fun saveExportToDownloads(export: DeviceJsonExport): Boolean {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+      return false
+    }
+
     val collection = MediaStore.Downloads.EXTERNAL_CONTENT_URI
     val existingUri = findDownloadsExportUri(collection, export.fileName)
     if (existingUri != null) {

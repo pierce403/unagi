@@ -48,6 +48,7 @@ If you need a different command-line tools zip, set ANDROID_SDK_TOOLS_URL before
 
 ## Build/run
 
+- ./gradlew lintDebug test assembleDebug
 - ./gradlew assembleDebug
 - ./gradlew installDebug
 - scripts/stage-apk

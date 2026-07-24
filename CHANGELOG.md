@@ -6,6 +6,12 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+## [0.2.30] — Green Android lint
+
+- Restore a passing `lintDebug` by explicitly checking notification and Bluetooth permissions and handling mid-query permission revocation
+- Enable pinned core-library desugaring so immutable `java.time` timestamp formatting remains available on API 24–25
+- Guard the API 29 Downloads collection at its implementation boundary
+
 ## [0.2.29] — KARR name-signature detection
 
 - Detect Bluetooth names beginning with the literal `QT ` prefix and a nonblank serial suffix as a possible KARR backdoor naming pattern

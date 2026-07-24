@@ -12,8 +12,8 @@ android {
     applicationId = "ninja.unagi"
     minSdk = 24
     targetSdk = 35
-    versionCode = 39
-    versionName = "0.2.29"
+    versionCode = 40
+    versionName = "0.2.30"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
@@ -29,6 +29,7 @@ android {
   }
 
   compileOptions {
+    isCoreLibraryDesugaringEnabled = true
     sourceCompatibility = JavaVersion.VERSION_17
     targetCompatibility = JavaVersion.VERSION_17
   }
@@ -46,6 +47,8 @@ val lifecycleVersion = "2.7.0"
 val roomVersion = "2.6.1"
 
 dependencies {
+  coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.3")
+
   implementation("androidx.core:core-ktx:1.13.1")
   implementation("androidx.appcompat:appcompat:1.7.0")
   implementation("com.google.android.material:material:1.12.0")

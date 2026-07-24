@@ -29,5 +29,3 @@
 - [ ] Epoch-based key rotation: increment keyEpoch, re-wrap new group key, distribute via signed key-update bundles, reject bundles with stale epochs
 - [ ] Member revocation: rotate group key on revoke, mark member as revoked, new bundles use new epoch so revoked members cannot decrypt
 - [ ] Incremental export: track last-export timestamp per group, only export data newer than last export to reduce bundle size
-
-### QA

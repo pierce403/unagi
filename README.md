@@ -46,6 +46,7 @@ Foreground alerts for "let me know when X is nearby."
 
 ## Build and install (CLI)
 
+- `./gradlew lintDebug test assembleDebug` to run the full CI validation path
 - `./gradlew assembleDebug`
 - `./gradlew installDebug`
 - `adb devices` to confirm device connection
