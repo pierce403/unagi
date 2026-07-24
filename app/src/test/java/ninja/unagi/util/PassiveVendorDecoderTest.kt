@@ -1,9 +1,41 @@
 package ninja.unagi.util
 
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class PassiveVendorDecoderTest {
+  @Test
+  fun `KARR decoder requires QT prefix and a nonblank suffix`() {
+    assertTrue(
+      decoderHints("QT 123456").contains(BluetoothNameSignatures.KARR_HINT)
+    )
+    assertTrue(
+      decoderHints("qt serial-7").contains(BluetoothNameSignatures.KARR_HINT)
+    )
+
+    listOf("QT", "QT ", "QT123456", "XQT 123456", "Device QT 123456", " QT 123456").forEach { name ->
+      assertFalse(name, decoderHints(name).contains(BluetoothNameSignatures.KARR_HINT))
+    }
+  }
+
+  @Test
+  fun `KARR decoder inspects alternate bluetooth names`() {
+    val hints = PassiveVendorDecoderRegistry.decode(
+      PassiveDecoderContext(
+        displayName = "Other device",
+        vendorName = null,
+        manufacturerData = emptyMap(),
+        serviceUuids = emptyList(),
+        serviceData = emptyMap(),
+        addressType = PassiveAddressType.UNKNOWN,
+        alternateNames = listOf("QT serial-7")
+      )
+    )
+
+    assertTrue(hints.contains(BluetoothNameSignatures.KARR_HINT))
+  }
+
   @Test
   fun `apple decoder surfaces ibeacon and find my hints`() {
     val hints = PassiveVendorDecoderRegistry.decode(
@@ -55,5 +87,18 @@ class PassiveVendorDecoderTest {
     assertTrue(hints.contains("Tile tracker-style payload"))
     assertTrue(hints.contains("Tile service UUID"))
     assertTrue(hints.contains("Tracker-style randomized address"))
+  }
+
+  private fun decoderHints(displayName: String): List<String> {
+    return PassiveVendorDecoderRegistry.decode(
+      PassiveDecoderContext(
+        displayName = displayName,
+        vendorName = null,
+        manufacturerData = emptyMap(),
+        serviceUuids = emptyList(),
+        serviceData = emptyMap(),
+        addressType = PassiveAddressType.UNKNOWN
+      )
+    )
   }
 }

@@ -1,6 +1,7 @@
 package ninja.unagi.util
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -33,6 +34,17 @@ class DeviceIdentityTest {
 
     assertEquals("Gamepad", identity.displayName)
     assertEquals(DeviceNameSource.BLUETOOTH_DEVICE, identity.nameSource)
+  }
+
+  @Test
+  fun `identity preserves leading name characters for exact signatures`() {
+    val identity = ObservedIdentityResolver.forBle(
+      advertisedName = " QT 123 ",
+      systemName = null
+    )
+
+    assertEquals(" QT 123", identity.advertisedName)
+    assertFalse(BluetoothNameSignatures.matchesKarrBackdoor(identity.advertisedName))
   }
 
   @Test
@@ -99,6 +111,16 @@ class DeviceIdentityTest {
     assertEquals(listOf("0000180F-0000-1000-8000-00805F9B34FB"), metadata.serviceUuids)
     assertEquals("0102A0", metadata.manufacturerData[76])
     assertNull(ObservationMetadataParser.parse(null).vendorName)
+  }
+
+  @Test
+  fun `metadata parser preserves leading name characters`() {
+    val metadata = ObservationMetadataParser.parse(
+      """{"advertisedName":" QT 123 ","systemName":" QT 456 "}"""
+    )
+
+    assertEquals(" QT 123", metadata.advertisedName)
+    assertEquals(" QT 456", metadata.systemName)
   }
 
   @Test

@@ -8,7 +8,8 @@ data class PassiveDecoderContext(
   val manufacturerData: Map<Int, String>,
   val serviceUuids: List<String>,
   val serviceData: Map<String, String>,
-  val addressType: PassiveAddressType
+  val addressType: PassiveAddressType,
+  val alternateNames: List<String> = emptyList()
 )
 
 fun interface PassiveVendorDecoder {
@@ -17,6 +18,7 @@ fun interface PassiveVendorDecoder {
 
 object PassiveVendorDecoderRegistry {
   private val decoders: List<PassiveVendorDecoder> = listOf(
+    KarrBackdoorNameDecoder,
     ApplePassiveVendorDecoder,
     GooglePassiveVendorDecoder,
     MicrosoftPassiveVendorDecoder,
@@ -32,6 +34,17 @@ object PassiveVendorDecoderRegistry {
       .map(String::trim)
       .filter(String::isNotEmpty)
       .distinct()
+  }
+}
+
+private object KarrBackdoorNameDecoder : PassiveVendorDecoder {
+  override fun decode(context: PassiveDecoderContext): List<String> {
+    val names = listOfNotNull(context.displayName) + context.alternateNames
+    return if (names.any(BluetoothNameSignatures::matchesKarrBackdoor)) {
+      listOf(BluetoothNameSignatures.KARR_HINT)
+    } else {
+      emptyList()
+    }
   }
 }
 

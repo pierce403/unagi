@@ -40,7 +40,7 @@
   <string name="compact_cards">Compact device cards</string>
   <string name="alerts">Alerts</string>
   <string name="alerts_section_title">Alert rules</string>
-  <string name="alerts_section_detail">Create audible alerts with a chosen emoji and sound preset. Rules can match an OUI prefix, a full MAC address, or a Bluetooth name. New installs also seed defaults for Flipper, Axon/TASER, and Ray-Ban Meta-style devices.</string>
+  <string name="alerts_section_detail">Create audible alerts with a chosen emoji and sound preset. Rules can match an OUI prefix, a full MAC address, a Bluetooth name, or the start of a Bluetooth name. Defaults cover Flipper, Axon/TASER, Ray-Ban Meta-style devices, and the QT-prefix signature used by KARR-style modules.</string>
   <string name="alert_type_label">Match by</string>
   <string name="alert_emoji_label">Emoji</string>
   <string name="alert_sound_label">Sound</string>
@@ -57,6 +57,7 @@
   <string name="alert_invalid_oui">Enter an OUI like 00:11:22.</string>
   <string name="alert_invalid_mac">Enter a full MAC like 00:11:22:33:44:55.</string>
   <string name="alert_invalid_name">Enter a Bluetooth name to match.</string>
+  <string name="alert_invalid_name_prefix">Enter the beginning of a Bluetooth name to match.</string>
   <string name="notification_permission_title">Notifications recommended</string>
   <string name="notification_permission_detail">Allow notifications so continuous scanning stays visible in the notification shade and alert matches can show device details there too.</string>
   <string name="allow_notifications">Allow notifications</string>

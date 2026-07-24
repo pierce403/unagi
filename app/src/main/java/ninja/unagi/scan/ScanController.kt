@@ -577,7 +577,8 @@ class ScanController(
         manufacturerData = manufacturerData,
         serviceUuids = serviceUuids,
         serviceData = serviceData,
-        addressType = addressInsight.addressType
+        addressType = addressInsight.addressType,
+        alternateNames = listOfNotNull(identity.advertisedName, identity.systemName)
       )
     )
     val deviceType = safeDeviceType(device)
@@ -720,7 +721,8 @@ class ScanController(
         manufacturerData = emptyMap(),
         serviceUuids = emptyList(),
         serviceData = emptyMap(),
-        addressType = addressInsight.addressType
+        addressType = addressInsight.addressType,
+        alternateNames = listOfNotNull(identity.systemName)
       )
     )
     val input = ObservationInput(
@@ -864,7 +866,7 @@ class ScanController(
   }
 
   private fun normalizeName(name: String?): String? {
-    return name?.trim()?.takeIf { it.isNotEmpty() }
+    return name?.trimEnd()?.takeIf { it.isNotBlank() }
   }
 
   private fun recordBleCallbacks(count: Int) {

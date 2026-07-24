@@ -135,7 +135,7 @@ object ObservedIdentityResolver {
   }
 
   private fun cleanName(name: String?): String? {
-    return name?.trim()?.takeIf { it.isNotEmpty() }
+    return name?.trimEnd()?.takeIf { it.isNotBlank() }
   }
 }
 
@@ -152,8 +152,8 @@ object ObservationMetadataParser {
         transport = ObservedTransport.fromMetadataValue(
           json.optStringOrNull("transport") ?: json.optStringOrNull("source")?.lowercase()
         ),
-        advertisedName = json.optStringOrNull("advertisedName"),
-        systemName = json.optStringOrNull("systemName"),
+        advertisedName = json.optDeviceNameOrNull("advertisedName"),
+        systemName = json.optDeviceNameOrNull("systemName"),
         nameSource = DeviceNameSource.fromMetadataValue(json.optStringOrNull("nameSource")),
         vendorName = json.optStringOrNull("vendorName"),
         vendorSource = json.optStringOrNull("vendorSource"),
@@ -211,6 +211,15 @@ object ObservationMetadataParser {
       return null
     }
     return optString(key).trim().takeIf { it.isNotEmpty() && it != "null" }
+  }
+
+  private fun JSONObject.optDeviceNameOrNull(key: String): String? {
+    if (!has(key) || isNull(key)) {
+      return null
+    }
+    return optString(key)
+      .trimEnd()
+      .takeIf { it.isNotBlank() && it != "null" }
   }
 
   private fun JSONObject.optBooleanOrNull(key: String): Boolean? {
@@ -595,7 +604,8 @@ object DeviceIdentityPresenter {
           serviceUuids = metadata.serviceUuids,
           serviceData = metadata.serviceData,
           addressType = metadata.addressType.takeIf { it != PassiveAddressType.UNKNOWN }
-            ?: addressInsight.addressType
+            ?: addressInsight.addressType,
+          alternateNames = listOfNotNull(metadata.advertisedName, metadata.systemName)
         )
       )
     }

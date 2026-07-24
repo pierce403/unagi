@@ -6,6 +6,12 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+## [0.2.29] — KARR name-signature detection
+
+- Detect Bluetooth names beginning with the literal `QT ` prefix and a nonblank serial suffix as a possible KARR backdoor naming pattern
+- Add an editable, alarm-enabled default name-prefix alert for the KARR signature without re-seeding deleted legacy defaults
+- Add exact prefix matching as an alert-rule type while retaining the existing substring behavior for regular name rules
+
 ## [0.2.28] — Tighter quick filter header
 
 - Reduce the vertical padding around the main-screen quick filter pills so the `All` / `Starred` / `Active` / `Alerts` header takes less space

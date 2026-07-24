@@ -213,6 +213,7 @@ class AlertsActivity : AppCompatActivity() {
         AlertRuleType.OUI -> getString(R.string.alert_invalid_oui)
         AlertRuleType.MAC -> getString(R.string.alert_invalid_mac)
         AlertRuleType.NAME -> getString(R.string.alert_invalid_name)
+        AlertRuleType.NAME_PREFIX -> getString(R.string.alert_invalid_name_prefix)
       }
       toast(message)
       return

@@ -5,7 +5,9 @@ import android.net.Uri
 import android.provider.Settings
 import ninja.unagi.data.AlertRuleEntity
 import ninja.unagi.util.BluetoothAddressTools
+import ninja.unagi.util.BluetoothNameSignatures
 import ninja.unagi.util.Formatters
+import java.util.Locale
 
 enum class AlertRuleType(
   val storageValue: String,
@@ -14,7 +16,8 @@ enum class AlertRuleType(
 ) {
   OUI("oui", "OUI", "OUI prefix, like 00:11:22"),
   MAC("mac", "MAC", "Full MAC, like 00:11:22:33:44:55"),
-  NAME("name", "Name", "Bluetooth name, like AirTag");
+  NAME("name", "Name", "Bluetooth name, like AirTag"),
+  NAME_PREFIX("name_prefix", "Name prefix", "Bluetooth name prefix, like \"QT \"");
 
   companion object {
     fun fromStorageValue(value: String?): AlertRuleType? {
@@ -120,7 +123,17 @@ object AlertRuleInputNormalizer {
         NormalizedAlertRuleInput(pattern = normalized, displayValue = displayValue)
       }
       AlertRuleType.NAME -> {
-        NormalizedAlertRuleInput(pattern = trimmed.lowercase(), displayValue = trimmed)
+        NormalizedAlertRuleInput(
+          pattern = trimmed.lowercase(Locale.US),
+          displayValue = trimmed
+        )
+      }
+      AlertRuleType.NAME_PREFIX -> {
+        val prefix = rawInput.trimStart().takeIf { it.isNotBlank() } ?: return null
+        NormalizedAlertRuleInput(
+          pattern = prefix.lowercase(Locale.US),
+          displayValue = prefix
+        )
       }
     }
   }
@@ -145,8 +158,22 @@ object DeviceAlertMatcher {
             observation.displayName,
             observation.advertisedName,
             observation.systemName
-          ).map { it.lowercase() }
+          ).map { it.lowercase(Locale.US) }
           candidates.any { it.contains(rule.matchPattern) }
+        }
+        AlertRuleType.NAME_PREFIX -> {
+          val candidates = listOfNotNull(
+            observation.displayName,
+            observation.advertisedName,
+            observation.systemName
+          )
+          candidates.any { candidate ->
+            if (rule.matchPattern.equals(BluetoothNameSignatures.KARR_NAME_PREFIX, ignoreCase = true)) {
+              BluetoothNameSignatures.matchesKarrBackdoor(candidate)
+            } else {
+              BluetoothNameSignatures.matchesPrefix(candidate, rule.matchPattern)
+            }
+          }
         }
       }
 
