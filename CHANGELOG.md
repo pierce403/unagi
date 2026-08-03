@@ -6,6 +6,10 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+- Recognize the observed Meta smart-glasses passive signature only when company ID `0x01AB` and advertised service `0xFD5F` occur together in one BLE report
+- Add a reusable company-plus-service alert rule, a versioned default Meta alert for upgrades, and the same cautious hint in device details
+- Keep live notifications and the saved-device Alerts filter consistent, while avoiding a duplicate alert when the legacy Ray-Ban name rule also matches
+
 ## [0.2.30] — Green Android lint
 
 - Restore a passing `lintDebug` by explicitly checking notification and Bluetooth permissions and handling mid-query permission revocation
