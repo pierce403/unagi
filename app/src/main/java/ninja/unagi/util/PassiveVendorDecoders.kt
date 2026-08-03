@@ -19,6 +19,7 @@ fun interface PassiveVendorDecoder {
 object PassiveVendorDecoderRegistry {
   private val decoders: List<PassiveVendorDecoder> = listOf(
     KarrBackdoorNameDecoder,
+    MetaSmartGlassesDecoder,
     ApplePassiveVendorDecoder,
     GooglePassiveVendorDecoder,
     MicrosoftPassiveVendorDecoder,
@@ -42,6 +43,22 @@ private object KarrBackdoorNameDecoder : PassiveVendorDecoder {
     val names = listOfNotNull(context.displayName) + context.alternateNames
     return if (names.any(BluetoothNameSignatures::matchesKarrBackdoor)) {
       listOf(BluetoothNameSignatures.KARR_HINT)
+    } else {
+      emptyList()
+    }
+  }
+}
+
+private object MetaSmartGlassesDecoder : PassiveVendorDecoder {
+  override fun decode(context: PassiveDecoderContext): List<String> {
+    return if (
+      BluetoothSignalSignatures.matchesCompanyService(
+        signature = BluetoothSignalSignatures.META_SMART_GLASSES,
+        manufacturerCompanyIds = context.manufacturerData.keys,
+        serviceUuids = context.serviceUuids
+      )
+    ) {
+      listOf(BluetoothSignalSignatures.META_SMART_GLASSES_HINT)
     } else {
       emptyList()
     }
