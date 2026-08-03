@@ -5,6 +5,7 @@ import androidx.core.content.edit
 import ninja.unagi.data.AlertRuleEntity
 import ninja.unagi.data.AlertRuleRepository
 import ninja.unagi.util.BluetoothNameSignatures
+import ninja.unagi.util.BluetoothSignalSignatures
 
 data class DefaultAlertRule(
   val type: AlertRuleType,
@@ -15,7 +16,8 @@ data class DefaultAlertRule(
 
 internal enum class DefaultAlertSeedVersion {
   V1,
-  KARR_V2
+  KARR_V2,
+  META_PASSIVE_V3
 }
 
 object DefaultAlertRules {
@@ -61,8 +63,19 @@ object DefaultAlertRules {
     )
   )
 
+  private val v3Rules = listOf(
+    DefaultAlertRule(
+      type = AlertRuleType.COMPANY_SERVICE,
+      rawInput = BluetoothSignalSignatures.companyServiceDisplayValue(
+        BluetoothSignalSignatures.META_SMART_GLASSES
+      ),
+      emoji = "🕶️",
+      soundPreset = AlertSoundPreset.CHIME
+    )
+  )
+
   fun buildEntities(nowMs: Long = System.currentTimeMillis()): List<AlertRuleEntity> {
-    return buildEntities(v1Rules + v2Rules, nowMs)
+    return buildEntities(v1Rules + v2Rules + v3Rules, nowMs)
   }
 
   internal fun buildV1Entities(nowMs: Long = System.currentTimeMillis()): List<AlertRuleEntity> {
@@ -73,13 +86,19 @@ object DefaultAlertRules {
     return buildEntities(DefaultAlertSeedVersion.KARR_V2, nowMs)
   }
 
+  internal fun buildV3Entities(nowMs: Long = System.currentTimeMillis()): List<AlertRuleEntity> {
+    return buildEntities(DefaultAlertSeedVersion.META_PASSIVE_V3, nowMs)
+  }
+
   internal fun seedVersions(
     v1Seeded: Boolean,
-    karrV2Seeded: Boolean
+    karrV2Seeded: Boolean,
+    metaPassiveV3Seeded: Boolean
   ): List<DefaultAlertSeedVersion> {
     return buildList {
       if (!v1Seeded) add(DefaultAlertSeedVersion.V1)
       if (!karrV2Seeded) add(DefaultAlertSeedVersion.KARR_V2)
+      if (!metaPassiveV3Seeded) add(DefaultAlertSeedVersion.META_PASSIVE_V3)
     }
   }
 
@@ -90,6 +109,7 @@ object DefaultAlertRules {
     val rules = when (version) {
       DefaultAlertSeedVersion.V1 -> v1Rules
       DefaultAlertSeedVersion.KARR_V2 -> v2Rules
+      DefaultAlertSeedVersion.META_PASSIVE_V3 -> v3Rules
     }
     return buildEntities(rules, nowMs)
   }
@@ -129,6 +149,7 @@ object DefaultAlertSeeder {
   private const val PREFS_NAME = "unagi_alert_defaults"
   private const val KEY_DEFAULTS_SEEDED_V1 = "defaults_seeded_v1"
   private const val KEY_KARR_DEFAULT_SEEDED_V2 = "karr_default_seeded_v2"
+  private const val KEY_META_PASSIVE_DEFAULT_SEEDED_V3 = "meta_passive_default_seeded_v3"
 
   suspend fun seedIfNeeded(
     context: Context,
@@ -137,7 +158,8 @@ object DefaultAlertSeeder {
     val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     val versions = DefaultAlertRules.seedVersions(
       v1Seeded = prefs.getBoolean(KEY_DEFAULTS_SEEDED_V1, false),
-      karrV2Seeded = prefs.getBoolean(KEY_KARR_DEFAULT_SEEDED_V2, false)
+      karrV2Seeded = prefs.getBoolean(KEY_KARR_DEFAULT_SEEDED_V2, false),
+      metaPassiveV3Seeded = prefs.getBoolean(KEY_META_PASSIVE_DEFAULT_SEEDED_V3, false)
     )
 
     versions.forEach { version ->
@@ -155,6 +177,7 @@ object DefaultAlertSeeder {
     return when (version) {
       DefaultAlertSeedVersion.V1 -> KEY_DEFAULTS_SEEDED_V1
       DefaultAlertSeedVersion.KARR_V2 -> KEY_KARR_DEFAULT_SEEDED_V2
+      DefaultAlertSeedVersion.META_PASSIVE_V3 -> KEY_META_PASSIVE_DEFAULT_SEEDED_V3
     }
   }
 }
