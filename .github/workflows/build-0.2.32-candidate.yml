@@ -1,0 +1,51 @@
+name: Build Unagi 0.2.32 candidate APK
+
+on:
+  push:
+    branches:
+      - agent/device-heavy-ux-performance
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Install SDK packages
+        run: |
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+          yes | sdkmanager --licenses
+
+      - uses: gradle/gradle-build-action@v3
+        with:
+          arguments: lintDebug test assembleDebug
+
+      - name: Verify signing continuity
+        env:
+          EXPECTED_CERT_SHA256: de87053208596a4bb435a0113ad355c649384e46f06c2c0602380116c65591a6
+        run: |
+          actual="$("$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs app/build/outputs/apk/debug/app-debug.apk | sed -n 's/^Signer #1 certificate SHA-256 digest: //p')"
+          test "$actual" = "$EXPECTED_CERT_SHA256"
+
+      - name: Stage site APK
+        run: scripts/stage-apk
+
+      - name: Upload staged release candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: unagi-v0.2.32-debug
+          path: |
+            downloads/unagi-v0.2.32-debug.apk
+            index.html
+          if-no-files-found: error
+          retention-days: 1

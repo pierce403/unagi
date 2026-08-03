@@ -13,7 +13,9 @@ object DeviceKey {
       else -> buildFallbackToken(input)
     }
 
-    return sha256(token)
+    return synchronized(cache) {
+      cache[token] ?: sha256(token).also { hash -> cache[token] = hash }
+    }
   }
 
   // Uses only stable signal data (no timestamp/rssi) so unnamed devices with the same
@@ -34,6 +36,20 @@ object DeviceKey {
   private fun sha256(value: String): String {
     val digest = MessageDigest.getInstance("SHA-256")
     val bytes = digest.digest(value.toByteArray())
-    return bytes.joinToString("") { b -> "%02x".format(b) }
+    val chars = CharArray(bytes.size * 2)
+    bytes.forEachIndexed { index, byte ->
+      val unsigned = byte.toInt() and 0xFF
+      chars[index * 2] = HEX_CHARS[unsigned ushr 4]
+      chars[index * 2 + 1] = HEX_CHARS[unsigned and 0x0F]
+    }
+    return String(chars)
+  }
+
+  private val HEX_CHARS = "0123456789abcdef".toCharArray()
+  private const val MAX_CACHE_ENTRIES = 4_096
+  private val cache = object : LinkedHashMap<String, String>(MAX_CACHE_ENTRIES, 0.75f, true) {
+    override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, String>?): Boolean {
+      return size > MAX_CACHE_ENTRIES
+    }
   }
 }

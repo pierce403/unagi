@@ -84,6 +84,18 @@ Manual test plan for verifying scan behavior across Android variants.
 - [ ] Same device seen after >60s gap: sightingsCount increments
 - [ ] Unnamed BLE device: verify NOT creating new entries per observation (check device count stabilizes)
 
+## Device-heavy UX Performance
+
+- [ ] Keep a dense scan running while rapidly scrolling the main list: gestures and toolbar/drawer interactions remain responsive
+- [ ] Type and erase name and compact-MAC filters quickly: results settle without blocking text input
+- [ ] Switch `All`, `Active`, and `Alerts` while scanning: groups update correctly without duplicate list refreshes
+- [ ] Change Recent/Strongest/Name sorting during sustained RSSI updates: ordering is deterministic and scrolling does not jump unnecessarily
+- [ ] Continuous-scan notification count updates no more than about once per second while scan state/errors still update immediately
+- [ ] Open a frequently observed device: details remain responsive and the history label reports the latest 100 sightings
+- [ ] Open Diagnostics during dense callbacks: report refreshes about once per second and Copy remains usable
+- [ ] Confirm queue depth/high-water, coalesced, dropped, and late-callback counters are present; sustained normal scanning should not continuously increase dropped callbacks
+- [ ] Repeat the paired/unpaired Meta signature cases during the load run to confirm queueing does not combine or lose report boundaries
+
 ## Edge Cases
 
 - [ ] Bluetooth off during scan: "Bluetooth is off" state shown with "Enable Bluetooth" button

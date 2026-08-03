@@ -1,6 +1,7 @@
 package ninja.unagi.ui
 
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -27,6 +28,30 @@ class DeviceListFiltersTest {
     assertFalse(DeviceListFilters.matchesGroup(liveNonMatch, DeviceListGroup.ALERTS, now))
   }
 
+  @Test
+  fun `normalized address query and deterministic recent sort share one pass`() {
+    val older = item(lastSeen = now - 2_000L).copy(
+      deviceKey = "b",
+      sortTimestamp = now - 2_000L
+    )
+    val newer = item(lastSeen = now - 1_000L).copy(
+      deviceKey = "a",
+      sortTimestamp = now - 1_000L
+    )
+    val options = DeviceListFilterOptions(
+      query = "aabb ccdd eeff",
+      group = DeviceListGroup.ALL,
+      sortMode = SortMode.RECENT,
+      liveOnly = false,
+      unknownOnly = false,
+      starredOnly = false
+    )
+
+    val result = DeviceListFilters.filterAndSort(listOf(older, newer), options, now)
+
+    assertEquals(listOf("a", "b"), result.map { it.deviceKey })
+  }
+
   private fun item(
     lastSeen: Long,
     matchesEnabledAlert: Boolean = false,
@@ -38,7 +63,9 @@ class DeviceListFiltersTest {
       displayTitle = "Beacon",
       deviceNote = null,
       metaLine = "",
-      searchText = "Beacon",
+      searchText = "beacon\naa:bb:cc:dd:ee:ff\naabbccddeeff",
+      sortName = "beacon",
+      normalizedAddress = "AABBCCDDEEFF",
       sortTimestamp = lastSeen,
       lastSeen = lastSeen,
       lastRssi = -60,

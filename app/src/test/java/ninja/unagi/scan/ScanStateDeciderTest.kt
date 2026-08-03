@@ -83,7 +83,7 @@ class ScanStateDeciderTest {
         startTimeMs = 1L,
         bleStartup = ScanStartupResult(path = ScanPath.BLE, started = true),
         classicStartup = ScanStartupResult(path = ScanPath.CLASSIC, started = false),
-        deviceKeys = setOf("a", "b")
+        uniqueDeviceCount = 2
       )
     )
 

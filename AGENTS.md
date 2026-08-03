@@ -35,6 +35,7 @@ Bluetooth/SDR situational awareness on Android — scan nearby devices, surface 
 - Keep a root `.nojekyll` file so GitHub Pages publishes the repo as a static site instead of applying Jekyll processing to markdown and underscore-prefixed paths
 - Run `scripts/stage-apk` before commit so the versioned APK and site links stay aligned
 - Release flow for every update: bump version, run build/test, run `scripts/stage-apk`, verify `index.html` and `downloads/`, then commit/push the release so GitHub Pages publishes it
+- Before replacing the staged debug APK, compare its signer certificate SHA-256 with the currently published APK; a different ephemeral debug key breaks install-in-place upgrades even when the package/version are correct
 - GitHub Pages publishes from `main` at repo root to `https://unagi.ninja`
 - Keep `index.html`, versioned APK in `downloads/`, and `CNAME` aligned
 - If Pages content build succeeds but deploy fails during worker setup with `actions/deploy-pages` download `401`, treat it as a GitHub-side deploy glitch first and rerun the `pages build and deployment` workflow before changing site files
@@ -46,6 +47,10 @@ Bluetooth/SDR situational awareness on Android — scan nearby devices, surface 
 - `Formatters.formatTimestamp` runs across threads — use immutable `java.time` formatters, never shared mutable `DateFormat`
 - Continuous scanning floods Room if maintenance runs on every observation; keep pruning throttled and heavy presentation work off the main thread
 - Per-callback scan logging, pretty-printed metadata JSON, and unthrottled main-list updates make scan UX stutter; batch observation persistence and keep device-list refreshes throttled
+- Android BLE/classic callbacks arrive on the UI path; keep classification, passive decoding, hashing, metadata serialization, filtering, and sorting on serial/background workers while preserving each callback as an independent alert-matching report
+- Never use an unbounded scan-result queue. Bound overload memory, coalesce only whole byte-identical reports within the same session/address, keep lifecycle controls ordered, and surface coalesced/dropped/late counts in Diagnostics
+- Sampling downstream of a Room `Flow` does not prevent the DAO query itself; avoid discarded SQL sorts, bulk hot-path reads/writes, and index retention/history predicates
+- Foreground-service notifications and Diagnostics must not render from raw callback-count emissions; distinct/sample user-visible status, and bound detail history rather than measuring an unbounded nested list
 - Notification channels: foreground-service uses `ic_unagi_status` (monochrome); don't use low-importance channel or the status-bar icon is suppressed
 - Alert notifications use a silent channel with manual audio playback so different sound presets stay distinct
 - Runtime permission preflight is not sufficient for asynchronous Bluetooth GATT work; handle `SecurityException` again at connect, discovery, read, and cleanup boundaries because permission can be revoked mid-query

@@ -5,19 +5,12 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
-import ninja.unagi.data.SightingEntity
 import ninja.unagi.databinding.ItemSightingBinding
-import ninja.unagi.util.BluetoothAssignedNumbersRegistry
-import ninja.unagi.util.Formatters
-import ninja.unagi.util.ObservationMetadataParser
-import ninja.unagi.util.PassiveMetadataInterpreter
 
-class SightingAdapter(
-  private val assignedNumbers: BluetoothAssignedNumbersRegistry
-) : ListAdapter<SightingEntity, SightingAdapter.SightingViewHolder>(DiffCallback) {
+class SightingAdapter : ListAdapter<SightingListItem, SightingAdapter.SightingViewHolder>(DiffCallback) {
   override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): SightingViewHolder {
     val binding = ItemSightingBinding.inflate(LayoutInflater.from(parent.context), parent, false)
-    return SightingViewHolder(binding, assignedNumbers)
+    return SightingViewHolder(binding)
   }
 
   override fun onBindViewHolder(holder: SightingViewHolder, position: Int) {
@@ -25,33 +18,22 @@ class SightingAdapter(
   }
 
   class SightingViewHolder(
-    private val binding: ItemSightingBinding,
-    private val assignedNumbers: BluetoothAssignedNumbersRegistry
-  ) :
-    RecyclerView.ViewHolder(binding.root) {
-    fun bind(item: SightingEntity) {
-      binding.sightingTimestamp.text = Formatters.formatTimestamp(item.timestamp)
-      binding.sightingRssi.text = Formatters.formatRssi(item.rssi)
-      val metadataSummary = PassiveMetadataInterpreter.summarize(
-        ObservationMetadataParser.parse(item.metadataJson),
-        assignedNumbers
-      )
-      val metaParts = buildList {
-        item.name?.takeIf { it.isNotBlank() }?.let { add("Name: $it") }
-        item.address?.takeIf { it.isNotBlank() }?.let { add("Addr: $it") }
-        addAll(metadataSummary.listLabels.take(2))
-      }
-      binding.sightingMeta.text = if (metaParts.isEmpty()) "" else metaParts.joinToString(" • ")
+    private val binding: ItemSightingBinding
+  ) : RecyclerView.ViewHolder(binding.root) {
+    fun bind(item: SightingListItem) {
+      binding.sightingTimestamp.text = item.timestampText
+      binding.sightingRssi.text = item.rssiText
+      binding.sightingMeta.text = item.metaText
     }
   }
 
   companion object {
-    private val DiffCallback = object : DiffUtil.ItemCallback<SightingEntity>() {
-      override fun areItemsTheSame(oldItem: SightingEntity, newItem: SightingEntity): Boolean {
+    private val DiffCallback = object : DiffUtil.ItemCallback<SightingListItem>() {
+      override fun areItemsTheSame(oldItem: SightingListItem, newItem: SightingListItem): Boolean {
         return oldItem.id == newItem.id
       }
 
-      override fun areContentsTheSame(oldItem: SightingEntity, newItem: SightingEntity): Boolean {
+      override fun areContentsTheSame(oldItem: SightingListItem, newItem: SightingListItem): Boolean {
         return oldItem == newItem
       }
     }

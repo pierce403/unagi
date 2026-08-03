@@ -4,7 +4,6 @@ import android.bluetooth.le.ScanCallback
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
 
 enum class ScanPath(val label: String) {
   BLE("ble"),
@@ -61,6 +60,7 @@ data class CallbackSample(
 }
 
 data class ScanDiagnosticsSnapshot(
+  val sessionId: Long = 0L,
   val scanMode: ScanModePreset = ScanModePreset.NORMAL,
   val startTimeMs: Long? = null,
   val bleStartup: ScanStartupResult? = null,
@@ -71,8 +71,13 @@ data class ScanDiagnosticsSnapshot(
   val classicCallbackCount: Int = 0,
   val sdrCallbackCount: Int = 0,
   val rawCallbackCount: Int = 0,
+  val scanQueueDepth: Int = 0,
+  val scanQueueHighWaterMark: Int = 0,
+  val coalescedCallbackCount: Int = 0,
+  val droppedCallbackCount: Int = 0,
+  val lateCallbackCount: Int = 0,
   val callbackSamples: List<CallbackSample> = emptyList(),
-  val deviceKeys: Set<String> = emptySet(),
+  val uniqueDeviceCount: Int = 0,
   val timeoutReached: Boolean = false,
   val outcome: ScanSessionOutcome? = null,
   val missingPermissions: List<String> = emptyList(),
@@ -80,23 +85,83 @@ data class ScanDiagnosticsSnapshot(
   val bluetoothEnabled: Boolean? = null,
   val locationServicesEnabled: Boolean? = null
 ) {
-  val uniqueDeviceCount: Int
-    get() = deviceKeys.size
-
   val anyPathStarted: Boolean
     get() = bleStartup?.started == true || classicStartup?.started == true
 }
 
 object ScanDiagnosticsStore {
+  private val lock = Any()
   private val _snapshot = MutableStateFlow(ScanDiagnosticsSnapshot())
   val snapshot: StateFlow<ScanDiagnosticsSnapshot> = _snapshot.asStateFlow()
+  private val deviceKeys = mutableSetOf<String>()
 
   fun reset(snapshot: ScanDiagnosticsSnapshot = ScanDiagnosticsSnapshot()) {
-    _snapshot.value = snapshot
+    synchronized(lock) {
+      deviceKeys.clear()
+      _snapshot.value = snapshot
+    }
+  }
+
+  fun startSession(sessionId: Long, snapshot: ScanDiagnosticsSnapshot) {
+    synchronized(lock) {
+      deviceKeys.clear()
+      _snapshot.value = snapshot.copy(sessionId = sessionId)
+    }
   }
 
   fun update(transform: (ScanDiagnosticsSnapshot) -> ScanDiagnosticsSnapshot) {
-    _snapshot.update(transform)
+    synchronized(lock) {
+      _snapshot.value = transform(_snapshot.value)
+    }
+  }
+
+  fun updateForSession(
+    sessionId: Long,
+    transform: (ScanDiagnosticsSnapshot) -> ScanDiagnosticsSnapshot
+  ): Boolean {
+    return synchronized(lock) {
+      val current = _snapshot.value
+      if (current.sessionId != sessionId) {
+        false
+      } else {
+        _snapshot.value = transform(current).copy(sessionId = sessionId)
+        true
+      }
+    }
+  }
+
+  fun snapshotForSession(sessionId: Long): ScanDiagnosticsSnapshot? {
+    return synchronized(lock) {
+      _snapshot.value.takeIf { it.sessionId == sessionId }
+    }
+  }
+
+  fun recordObservation(
+    sessionId: Long?,
+    deviceKey: String,
+    sample: CallbackSample
+  ) {
+    synchronized(lock) {
+      val current = _snapshot.value
+      if (sessionId != null && current.sessionId != sessionId) {
+        return
+      }
+
+      val addedDevice = deviceKeys.add(deviceKey)
+      val samples = if (current.callbackSamples.size < CallbackSample.MAX_SAMPLES) {
+        current.callbackSamples + sample
+      } else {
+        current.callbackSamples
+      }
+      if (!addedDevice && samples === current.callbackSamples) {
+        return
+      }
+
+      _snapshot.value = current.copy(
+        uniqueDeviceCount = deviceKeys.size,
+        callbackSamples = samples
+      )
+    }
   }
 }
 

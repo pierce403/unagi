@@ -7,8 +7,8 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface SightingDao {
-  @Query("SELECT * FROM sightings WHERE deviceKey = :deviceKey ORDER BY timestamp DESC")
-  fun observeSightings(deviceKey: String): Flow<List<SightingEntity>>
+  @Query("SELECT * FROM sightings WHERE deviceKey = :deviceKey ORDER BY timestamp DESC LIMIT :limit")
+  fun observeRecentSightings(deviceKey: String, limit: Int): Flow<List<SightingEntity>>
 
   @Query("SELECT * FROM sightings ORDER BY timestamp DESC")
   suspend fun getSightings(): List<SightingEntity>
@@ -21,6 +21,9 @@ interface SightingDao {
 
   @Insert
   suspend fun insertSighting(sighting: SightingEntity)
+
+  @Insert
+  suspend fun insertSightings(sightings: List<SightingEntity>)
 
   @Query("DELETE FROM sightings WHERE timestamp < :threshold")
   suspend fun pruneOlderThan(threshold: Long)

@@ -169,6 +169,7 @@ class MainActivity : AppCompatActivity() {
 
     binding.deviceList.layoutManager = LinearLayoutManager(this)
     binding.deviceList.adapter = adapter
+    binding.deviceList.setHasFixedSize(true)
     binding.deviceList.itemAnimator = null
     deviceGroupButtons = mapOf(
       DeviceListGroup.ALL to binding.groupAllButton,

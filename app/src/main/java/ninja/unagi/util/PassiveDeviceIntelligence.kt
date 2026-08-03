@@ -262,7 +262,9 @@ object ClassificationFingerprint {
       normalizeNameToken(displayName)?.let { add("name:$it") }
     }.joinToString("|")
 
-    return sha256(token)
+    return synchronized(cache) {
+      cache[token] ?: sha256(token).also { fingerprint -> cache[token] = fingerprint }
+    }
   }
 
   private fun normalizeNameToken(value: String?): String? {
@@ -282,7 +284,21 @@ object ClassificationFingerprint {
   private fun sha256(value: String): String {
     val digest = MessageDigest.getInstance("SHA-256")
     val bytes = digest.digest(value.toByteArray())
-    return bytes.joinToString("") { b -> "%02x".format(b) }
+    val chars = CharArray(bytes.size * 2)
+    bytes.forEachIndexed { index, byte ->
+      val unsigned = byte.toInt() and 0xFF
+      chars[index * 2] = HEX_CHARS[unsigned ushr 4]
+      chars[index * 2 + 1] = HEX_CHARS[unsigned and 0x0F]
+    }
+    return String(chars)
+  }
+
+  private val HEX_CHARS = "0123456789abcdef".toCharArray()
+  private const val MAX_CACHE_ENTRIES = 4_096
+  private val cache = object : LinkedHashMap<String, String>(MAX_CACHE_ENTRIES, 0.75f, true) {
+    override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, String>?): Boolean {
+      return size > MAX_CACHE_ENTRIES
+    }
   }
 }
 

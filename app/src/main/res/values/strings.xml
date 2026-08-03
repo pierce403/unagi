@@ -117,6 +117,7 @@
   <string name="first_seen">First seen</string>
   <string name="last_seen">Last seen</string>
   <string name="sightings">Sightings</string>
+  <string name="sightings_recent_limit">Recent sightings (latest %1$d)</string>
   <string name="rssi_range">RSSI range</string>
   <string name="rssi_avg">RSSI average</string>
   <string name="permissions_required">Permissions required to scan nearby devices.</string>
