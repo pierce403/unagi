@@ -212,6 +212,7 @@ class AlertsActivity : AppCompatActivity() {
       val message = when (type) {
         AlertRuleType.OUI -> getString(R.string.alert_invalid_oui)
         AlertRuleType.MAC -> getString(R.string.alert_invalid_mac)
+        AlertRuleType.COMPANY_SERVICE -> getString(R.string.alert_invalid_company_service)
         AlertRuleType.NAME -> getString(R.string.alert_invalid_name)
         AlertRuleType.NAME_PREFIX -> getString(R.string.alert_invalid_name_prefix)
       }
