@@ -63,6 +63,16 @@ Manual test plan for verifying scan behavior across Android variants.
 - [ ] Samples show actual device addresses, names, RSSI, service/mfg data
 - [ ] At most 20 samples are shown
 
+## Meta Smart-Glasses Passive Signature
+
+- [ ] A single BLE callback carrying company ID `0x01AB` and advertised service `0xFD5F` shows the Meta smart-glasses family hint
+- [ ] The same paired callback matches the default sunglasses/chime alert, including when the address is randomized and no name is present
+- [ ] Company ID `0x01AB` without `0xFD5F` does not match
+- [ ] Advertised service `0xFD5F` without company ID `0x01AB` does not match
+- [ ] The two markers arriving in separate callbacks do not combine into a match
+- [ ] A named Ray-Ban report carrying the pair produces one alert rather than duplicate name and pair alerts
+- [ ] Device details describe this as a spoofable product-family hint, not verified identity
+
 ## Permission States (Diagnostics)
 
 - [ ] When permissions are blocked: report shows "Permission denial states:" with per-permission status

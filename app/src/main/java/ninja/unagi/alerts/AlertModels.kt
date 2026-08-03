@@ -6,6 +6,7 @@ import android.provider.Settings
 import ninja.unagi.data.AlertRuleEntity
 import ninja.unagi.util.BluetoothAddressTools
 import ninja.unagi.util.BluetoothNameSignatures
+import ninja.unagi.util.BluetoothSignalSignatures
 import ninja.unagi.util.Formatters
 import java.util.Locale
 
@@ -17,7 +18,12 @@ enum class AlertRuleType(
   OUI("oui", "OUI", "OUI prefix, like 00:11:22"),
   MAC("mac", "MAC", "Full MAC, like 00:11:22:33:44:55"),
   NAME("name", "Name", "Bluetooth name, like AirTag"),
-  NAME_PREFIX("name_prefix", "Name prefix", "Bluetooth name prefix, like \"QT \"");
+  NAME_PREFIX("name_prefix", "Name prefix", "Bluetooth name prefix, like \"QT \""),
+  COMPANY_SERVICE(
+    "company_service",
+    "Company + service",
+    "Company ID + 16-bit service, like 01AB + FD5F"
+  );
 
   companion object {
     fun fromStorageValue(value: String?): AlertRuleType? {
@@ -88,7 +94,9 @@ data class AlertObservation(
   val systemName: String?,
   val address: String?,
   val vendorName: String?,
-  val source: String
+  val source: String,
+  val manufacturerCompanyIds: Set<Int> = emptySet(),
+  val serviceUuids: List<String> = emptyList()
 ) {
   val normalizedAddress: String? = BluetoothAddressTools.normalizeAddress(address)
   val formattedAddress: String? = BluetoothAddressTools.formatAddress(normalizedAddress ?: address)
@@ -122,6 +130,13 @@ object AlertRuleInputNormalizer {
         val displayValue = BluetoothAddressTools.formatAddress(normalized) ?: normalized
         NormalizedAlertRuleInput(pattern = normalized, displayValue = displayValue)
       }
+      AlertRuleType.COMPANY_SERVICE -> {
+        val signature = BluetoothSignalSignatures.parseCompanyServiceInput(trimmed) ?: return null
+        NormalizedAlertRuleInput(
+          pattern = BluetoothSignalSignatures.companyServiceStorageValue(signature),
+          displayValue = BluetoothSignalSignatures.companyServiceDisplayValue(signature)
+        )
+      }
       AlertRuleType.NAME -> {
         NormalizedAlertRuleInput(
           pattern = trimmed.lowercase(Locale.US),
@@ -148,11 +163,21 @@ object DeviceAlertMatcher {
       return emptyList()
     }
 
-    return rules.filter { it.enabled }.mapNotNull { rule ->
+    val matches = rules.filter { it.enabled }.mapNotNull { rule ->
       val type = AlertRuleType.fromStorageValue(rule.matchType) ?: return@mapNotNull null
       val matched = when (type) {
         AlertRuleType.OUI -> observation.normalizedAddress?.startsWith(rule.matchPattern) == true
         AlertRuleType.MAC -> observation.normalizedAddress == rule.matchPattern
+        AlertRuleType.COMPANY_SERVICE -> {
+          val signature = BluetoothSignalSignatures.parseCompanyServiceStorage(rule.matchPattern)
+            ?: return@mapNotNull null
+          observation.source.equals("BLE", ignoreCase = true) &&
+            BluetoothSignalSignatures.matchesCompanyService(
+              signature = signature,
+              manufacturerCompanyIds = observation.manufacturerCompanyIds,
+              serviceUuids = observation.serviceUuids
+            )
+        }
         AlertRuleType.NAME -> {
           val candidates = listOfNotNull(
             observation.displayName,
@@ -182,6 +207,26 @@ object DeviceAlertMatcher {
       } else {
         AlertMatch(rule = rule, reason = "Matched ${type.label} ${rule.displayValue}")
       }
+    }
+
+    return suppressRedundantMetaPair(matches)
+  }
+
+  private fun suppressRedundantMetaPair(matches: List<AlertMatch>): List<AlertMatch> {
+    val hasLegacyRayBanNameMatch = matches.any { match ->
+      match.rule.matchType == AlertRuleType.NAME.storageValue &&
+        (match.rule.matchPattern == "ray-ban" || match.rule.matchPattern == "ray ban")
+    }
+    if (!hasLegacyRayBanNameMatch) {
+      return matches
+    }
+
+    val metaPairPattern = BluetoothSignalSignatures.companyServiceStorageValue(
+      BluetoothSignalSignatures.META_SMART_GLASSES
+    )
+    return matches.filterNot { match ->
+      match.rule.matchType == AlertRuleType.COMPANY_SERVICE.storageValue &&
+        match.rule.matchPattern == metaPairPattern
     }
   }
 }

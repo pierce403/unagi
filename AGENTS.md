@@ -51,6 +51,7 @@ Bluetooth/SDR situational awareness on Android — scan nearby devices, surface 
 - Runtime permission preflight is not sufficient for asynchronous Bluetooth GATT work; handle `SecurityException` again at connect, discovery, read, and cleanup boundaries because permission can be revoked mid-query
 - minSdk 24 timestamp formatting uses immutable `java.time` through pinned core-library desugaring; keep `isCoreLibraryDesugaringEnabled` and `desugar_jdk_libs` aligned instead of falling back to shared mutable `DateFormat`
 - KARR-style detection requires a case-insensitive literal `QT ` name prefix plus a nonblank suffix; preserve the trailing space in `name_prefix` rules, and add new seeded alerts as versioned deltas so deleted legacy defaults are not resurrected
+- Meta smart-glasses detection requires company ID `0x01AB` and advertised 16-bit service `0xFD5F` in the same BLE callback. Never match either field alone, accept service-data-only `FD5F`, or accumulate the pair across callbacks; treat it as a spoofable product-family hint, not identity proof
 - Some devices return `false` from `BluetoothAdapter.startDiscovery()` instead of throwing when classic discovery is blocked; re-check scan preflight/permissions and cap restart retries so the app surfaces recovery instead of loop-spamming diagnostics
 - Permission recovery cannot live only in the drawer state UI; prompt once when scan state enters `MissingPermission`, keep an overflow-menu repair action, and handle background-location-only gaps without recursing through the foreground permission launcher
 
