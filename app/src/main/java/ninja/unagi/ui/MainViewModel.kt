@@ -116,7 +116,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
               systemName = metadata.systemName,
               address = it.lastAddress,
               vendorName = identity.vendorName,
-              source = metadata.source ?: metadata.transport.label
+              source = metadata.source ?: metadata.transport.label,
+              manufacturerCompanyIds = metadata.manufacturerData.keys,
+              serviceUuids = metadata.serviceUuids
             )
           ).isNotEmpty()
           DeviceListItem(
