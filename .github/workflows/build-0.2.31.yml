@@ -1,0 +1,44 @@
+name: Build Unagi 0.2.31 APK
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Install SDK packages
+        run: |
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+          yes | sdkmanager --licenses
+
+      - uses: gradle/gradle-build-action@v3
+        with:
+          arguments: lintDebug test assembleDebug
+
+      - name: Stage site APK
+        run: scripts/stage-apk
+
+      - name: Upload staged release
+        uses: actions/upload-artifact@v4
+        with:
+          name: unagi-v0.2.31-debug
+          path: |
+            downloads/unagi-v0.2.31-debug.apk
+            index.html
+          if-no-files-found: error
+          retention-days: 1
