@@ -37,6 +37,40 @@ class PassiveVendorDecoderTest {
   }
 
   @Test
+  fun `Meta decoder requires company and service in the same observation`() {
+    val pairedHints = PassiveVendorDecoderRegistry.decode(
+      passiveContext(
+        manufacturerData = mapOf(0x01AB to "1234"),
+        serviceUuids = listOf("0000FD5F-0000-1000-8000-00805F9B34FB")
+      )
+    )
+    val companyOnlyHints = PassiveVendorDecoderRegistry.decode(
+      passiveContext(manufacturerData = mapOf(0x01AB to "1234"))
+    )
+    val serviceOnlyHints = PassiveVendorDecoderRegistry.decode(
+      passiveContext(serviceUuids = listOf("FD5F"))
+    )
+    val wrongPairHints = PassiveVendorDecoderRegistry.decode(
+      passiveContext(
+        manufacturerData = mapOf(0x0D53 to "1234"),
+        serviceUuids = listOf("FD5F")
+      )
+    )
+    val serviceDataOnlyHints = PassiveVendorDecoderRegistry.decode(
+      passiveContext(
+        manufacturerData = mapOf(0x01AB to "1234"),
+        serviceData = mapOf("FD5F" to "0102")
+      )
+    )
+
+    assertTrue(pairedHints.contains(BluetoothSignalSignatures.META_SMART_GLASSES_HINT))
+    assertFalse(companyOnlyHints.contains(BluetoothSignalSignatures.META_SMART_GLASSES_HINT))
+    assertFalse(serviceOnlyHints.contains(BluetoothSignalSignatures.META_SMART_GLASSES_HINT))
+    assertFalse(wrongPairHints.contains(BluetoothSignalSignatures.META_SMART_GLASSES_HINT))
+    assertFalse(serviceDataOnlyHints.contains(BluetoothSignalSignatures.META_SMART_GLASSES_HINT))
+  }
+
+  @Test
   fun `apple decoder surfaces ibeacon and find my hints`() {
     val hints = PassiveVendorDecoderRegistry.decode(
       PassiveDecoderContext(
@@ -101,4 +135,17 @@ class PassiveVendorDecoderTest {
       )
     )
   }
+
+  private fun passiveContext(
+    manufacturerData: Map<Int, String> = emptyMap(),
+    serviceUuids: List<String> = emptyList(),
+    serviceData: Map<String, String> = emptyMap()
+  ) = PassiveDecoderContext(
+    displayName = null,
+    vendorName = null,
+    manufacturerData = manufacturerData,
+    serviceUuids = serviceUuids,
+    serviceData = serviceData,
+    addressType = PassiveAddressType.RANDOM_STATIC
+  )
 }
