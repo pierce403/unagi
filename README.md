@@ -59,11 +59,11 @@ Foreground alerts for "let me know when X is nearby."
 - **BLE + classic Bluetooth scanning** with continuous background mode, boot-on-start, and battery optimization prompts
 - **Device list** with sort, filter, search (name/vendor/MAC/OUI), starred devices, live-only toggle, and compact card option
 - **Device details** with sighting history, RSSI stats, metadata JSON, copy/save/share export
-- **Alert rules** matching by OUI, full MAC, Bluetooth name, or Bluetooth name prefix with emoji + sound presets; default rules for Flipper, Axon/TASER, Ray-Ban, and the `QT ` prefix used by KARR-style modules
+- **Alert rules** matching by OUI, full MAC, Bluetooth name, Bluetooth name prefix, or a same-advertisement company-ID/service-UUID pair with emoji + sound presets; default rules for Flipper, Axon/TASER, Ray-Ban/Meta smart-glasses hints, and the `QT ` prefix used by KARR-style modules
 - **Active BLE queries** (opt-in per-device GATT reads for Device Information Service)
 - **SDR/TPMS integration** via rtl_433 JSON pipeline for tire-pressure sensor observations
 - **Affinity groups** for encrypted device-observation sharing between team members via file-based bundles (see [docs/AFFINITY_GROUPS.md](docs/AFFINITY_GROUPS.md))
-- **Passive identity hints** for Apple, Google/Fast Pair, Microsoft, Samsung, Nordic, and Tile-style payloads, plus the KARR-style `QT ` name signature
+- **Passive identity hints** for Apple, Google/Fast Pair, Microsoft, Samsung, Nordic, and Tile-style payloads, plus the KARR-style `QT ` name signature and the observed Meta `0x01AB` + `0xFD5F` pair
 - **Diagnostics** with full debug report including callback samples, permission denial states, and scan session metrics
 
 ## Permissions notes
@@ -87,6 +87,11 @@ Foreground alerts for "let me know when X is nearby."
 - See `docs/QA_SCAN_CHECKLIST.md` for a structured manual test plan
 
 ## Privacy stance
+
+The Meta smart-glasses hint requires company ID `0x01AB` and advertised 16-bit
+service `0xFD5F` in the same BLE report. Either marker alone is ignored. This
+works with randomized addresses, but it remains a spoofable product-family
+hint rather than proof of device identity.
 
 - Store sightings locally
 - No uploading nearby device identifiers
