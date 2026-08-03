@@ -98,17 +98,20 @@ class ObservationRecorder(
     key: String,
     input: ObservationInput
   ) {
+    val observation = AlertObservation(
+      deviceKey = key,
+      displayName = input.name,
+      advertisedName = input.advertisedName,
+      systemName = input.systemName,
+      address = input.address,
+      vendorName = input.vendorName,
+      source = input.source,
+      manufacturerCompanyIds = input.manufacturerData.keys,
+      serviceUuids = input.serviceUuids
+    )
     val matches = DeviceAlertMatcher.findMatches(
       rules = enabledAlertRules,
-      observation = AlertObservation(
-        deviceKey = key,
-        displayName = input.name,
-        advertisedName = input.advertisedName,
-        systemName = input.systemName,
-        address = input.address,
-        vendorName = input.vendorName,
-        source = input.source
-      )
+      observation = observation
     )
 
     matches.forEach { match ->
@@ -125,15 +128,7 @@ class ObservationRecorder(
       }
       deviceAlertNotifier.notifyMatch(
         match = match,
-        observation = AlertObservation(
-          deviceKey = key,
-          displayName = input.name,
-          advertisedName = input.advertisedName,
-          systemName = input.systemName,
-          address = input.address,
-          vendorName = input.vendorName,
-          source = input.source
-        )
+        observation = observation
       )
     }
   }
