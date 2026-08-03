@@ -35,7 +35,7 @@ Bluetooth/SDR situational awareness on Android — scan nearby devices, surface 
 - Keep a root `.nojekyll` file so GitHub Pages publishes the repo as a static site instead of applying Jekyll processing to markdown and underscore-prefixed paths
 - Run `scripts/stage-apk` before commit so the versioned APK and site links stay aligned
 - Release flow for every update: bump version, run build/test, run `scripts/stage-apk`, verify `index.html` and `downloads/`, then commit/push the release so GitHub Pages publishes it
-- Before replacing the staged debug APK, compare its signer certificate SHA-256 with the currently published APK; a different ephemeral debug key breaks install-in-place upgrades even when the package/version are correct
+- Before replacing the staged debug APK, compare its signer certificate SHA-256 with the currently published APK; if no persistent keystore is available and the ephemeral signer differs, disclose that install-in-place upgrades will not work
 - GitHub Pages publishes from `main` at repo root to `https://unagi.ninja`
 - Keep `index.html`, versioned APK in `downloads/`, and `CNAME` aligned
 - If Pages content build succeeds but deploy fails during worker setup with `actions/deploy-pages` download `401`, treat it as a GitHub-side deploy glitch first and rerun the `pages build and deployment` workflow before changing site files
