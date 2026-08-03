@@ -6,12 +6,13 @@ import ninja.unagi.alerts.DeviceAlertNotifier
 import ninja.unagi.data.AlertRuleEntity
 import ninja.unagi.data.BufferedObservation
 import ninja.unagi.data.AlertRuleRepository
-import ninja.unagi.data.DeviceObservation
 import ninja.unagi.data.DeviceRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -21,11 +22,13 @@ class ObservationRecorder(
   private val deviceAlertNotifier: DeviceAlertNotifier,
   private val scope: CoroutineScope
 ) {
+  @Volatile
   private var enabledAlertRules: List<AlertRuleEntity> = emptyList()
   private val firedAlertKeys = mutableSetOf<String>()
   private val alertLock = Any()
   private val pendingLock = Any()
-  private val pendingObservations = mutableMapOf<String, BufferedObservation>()
+  private val pendingObservations = mutableMapOf<String, PendingObservation>()
+  private val flushMutex = Mutex()
   private var flushJob: Job? = null
 
   init {
@@ -48,48 +51,31 @@ class ObservationRecorder(
     }
   }
 
-  fun record(input: ObservationInput) {
-    val key = DeviceKey.from(input)
-    ScanDiagnosticsStore.update { snap ->
-      val hasDeviceKey = snap.deviceKeys.contains(key)
-      val samples = if (snap.callbackSamples.size < CallbackSample.MAX_SAMPLES) {
-        snap.callbackSamples + CallbackSample(
-          path = when {
-            input.source.equals("BLE", ignoreCase = true) -> ScanPath.BLE
-            input.source.equals("SDR", ignoreCase = true) -> ScanPath.SDR
-            else -> ScanPath.CLASSIC
-          },
-          timestampMs = input.timestamp,
-          address = input.address,
-          name = input.name,
-          rssi = input.rssi,
-          serviceUuidCount = input.serviceUuids.size,
-          manufacturerDataKeys = input.manufacturerData.keys.sorted()
-        )
-      } else {
-        snap.callbackSamples
-      }
-      if (hasDeviceKey && samples === snap.callbackSamples) {
-        snap
-      } else {
-        snap.copy(
-          deviceKeys = if (hasDeviceKey) snap.deviceKeys else snap.deviceKeys + key,
-          callbackSamples = samples
-        )
-      }
-    }
-    val metadata = buildMetadataJson(input)
-    val observation = DeviceObservation(
-      deviceKey = key,
-      name = input.name,
-      address = input.address,
-      rssi = input.rssi,
-      timestamp = input.timestamp,
-      metadataJson = metadata
-    )
+  internal suspend fun flushPendingAndAwait() {
+    flushPendingInternal()
+  }
 
-    bufferObservation(observation)
-    scope.launch {
+  fun record(input: ObservationInput, diagnosticsSessionId: Long? = null) {
+    val key = DeviceKey.from(input)
+    ScanDiagnosticsStore.recordObservation(
+      sessionId = diagnosticsSessionId,
+      deviceKey = key,
+      sample = CallbackSample(
+        path = when {
+          input.source.equals("BLE", ignoreCase = true) -> ScanPath.BLE
+          input.source.equals("SDR", ignoreCase = true) -> ScanPath.SDR
+          else -> ScanPath.CLASSIC
+        },
+        timestampMs = input.timestamp,
+        address = input.address,
+        name = input.name,
+        rssi = input.rssi,
+        serviceUuidCount = input.serviceUuids.size,
+        manufacturerDataKeys = input.manufacturerData.keys.sorted()
+      )
+    )
+    bufferObservation(key, input)
+    if (enabledAlertRules.isNotEmpty()) {
       emitAlertNotifications(key = key, input = input)
     }
   }
@@ -179,9 +165,6 @@ class ObservationRecorder(
     json.putIfNotNull("classificationCategory", input.classificationCategory)
     json.putIfNotNull("classificationLabel", input.classificationLabel)
     json.putIfNotNull("classificationConfidence", input.classificationConfidence)
-    json.put("rssi", input.rssi)
-    json.put("timestamp", input.timestamp)
-
     val services = JSONArray()
     input.serviceUuids.forEach { services.put(it) }
     json.put("serviceUuids", services)
@@ -219,11 +202,11 @@ class ObservationRecorder(
     }
   }
 
-  private fun bufferObservation(observation: DeviceObservation) {
+  private fun bufferObservation(key: String, input: ObservationInput) {
     synchronized(pendingLock) {
-      val existing = pendingObservations[observation.deviceKey]
-      pendingObservations[observation.deviceKey] = existing?.merge(observation)
-        ?: BufferedObservation.from(observation)
+      val existing = pendingObservations[key]
+      pendingObservations[key] = existing?.merge(input)
+        ?: PendingObservation.from(key, input)
       if (flushJob?.isActive == true) {
         return
       }
@@ -235,22 +218,93 @@ class ObservationRecorder(
   }
 
   private suspend fun flushPendingInternal() {
-    val buffered = synchronized(pendingLock) {
-      flushJob = null
-      if (pendingObservations.isEmpty()) {
-        emptyList()
-      } else {
-        val snapshot = pendingObservations.values.toList()
-        pendingObservations.clear()
-        snapshot
+    flushMutex.withLock {
+      val buffered = synchronized(pendingLock) {
+        flushJob = null
+        if (pendingObservations.isEmpty()) {
+          emptyList()
+        } else {
+          val snapshot = pendingObservations.values.toList()
+          pendingObservations.clear()
+          snapshot
+        }
+      }
+
+      if (buffered.isEmpty()) {
+        return@withLock
+      }
+
+      repository.recordBufferedObservations(
+        buffered.map { pending ->
+          pending.toBufferedObservation(buildMetadataJson(pending.latestInput))
+        }
+      )
+    }
+  }
+
+  private data class PendingObservation(
+    val deviceKey: String,
+    val name: String?,
+    val address: String?,
+    val firstTimestamp: Long,
+    val lastTimestamp: Long,
+    val observationCount: Int,
+    val lastRssi: Int,
+    val rssiMin: Int,
+    val rssiMax: Int,
+    val rssiSum: Long,
+    val latestInput: ObservationInput
+  ) {
+    fun merge(input: ObservationInput): PendingObservation {
+      val incomingIsLatest = input.timestamp >= lastTimestamp
+      return PendingObservation(
+        deviceKey = deviceKey,
+        name = if (incomingIsLatest) input.name ?: name else name ?: input.name,
+        address = if (incomingIsLatest) input.address ?: address else address ?: input.address,
+        firstTimestamp = minOf(firstTimestamp, input.timestamp),
+        lastTimestamp = maxOf(lastTimestamp, input.timestamp),
+        observationCount = observationCount + 1,
+        lastRssi = if (incomingIsLatest) input.rssi else lastRssi,
+        rssiMin = minOf(rssiMin, input.rssi),
+        rssiMax = maxOf(rssiMax, input.rssi),
+        rssiSum = rssiSum + input.rssi,
+        latestInput = if (incomingIsLatest) input else latestInput
+      )
+    }
+
+    fun toBufferedObservation(metadataJson: String): BufferedObservation {
+      return BufferedObservation(
+        deviceKey = deviceKey,
+        name = name,
+        address = address,
+        firstTimestamp = firstTimestamp,
+        lastTimestamp = lastTimestamp,
+        observationCount = observationCount,
+        lastRssi = lastRssi,
+        rssiMin = rssiMin,
+        rssiMax = rssiMax,
+        rssiSum = rssiSum,
+        metadataJson = metadataJson
+      )
+    }
+
+    companion object {
+      fun from(deviceKey: String, input: ObservationInput): PendingObservation {
+        return PendingObservation(
+          deviceKey = deviceKey,
+          name = input.name,
+          address = input.address,
+          firstTimestamp = input.timestamp,
+          lastTimestamp = input.timestamp,
+          observationCount = 1,
+          lastRssi = input.rssi,
+          rssiMin = input.rssi,
+          rssiMax = input.rssi,
+          rssiSum = input.rssi.toLong(),
+          latestInput = input
+        )
       }
     }
-
-    if (buffered.isEmpty()) {
-      return
-    }
-
-    repository.recordBufferedObservations(buffered)
   }
 
   companion object {

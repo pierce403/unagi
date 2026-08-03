@@ -17,6 +17,7 @@ import ninja.unagi.ui.DeviceDetailActivity
 import ninja.unagi.util.DebugLog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -27,10 +28,13 @@ class DeviceAlertNotifier(
   private val appContext = context.applicationContext
   private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
   private var activeRingtone: Ringtone? = null
+  private var stopRingtoneJob: Job? = null
 
   fun notifyMatch(match: AlertMatch, observation: AlertObservation) {
-    playSound(match.rule)
-    postNotification(match, observation)
+    scope.launch {
+      playSound(match.rule)
+      postNotification(match, observation)
+    }
   }
 
   private fun playSound(rule: ninja.unagi.data.AlertRuleEntity) {
@@ -40,14 +44,16 @@ class DeviceAlertNotifier(
     }.getOrNull() ?: return
 
     runCatching {
+      stopRingtoneJob?.cancel()
       activeRingtone?.stop()
       activeRingtone = ringtone
       ringtone.play()
-      scope.launch {
+      stopRingtoneJob = scope.launch {
         delay(preset.stopAfterMs)
         if (activeRingtone === ringtone) {
           ringtone.stop()
           activeRingtone = null
+          stopRingtoneJob = null
         } else {
           ringtone.stop()
         }

@@ -10,6 +10,8 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
 import ninja.unagi.ThingAlertApp
 import ninja.unagi.data.DeviceEntity
 import ninja.unagi.databinding.ActivityDiagnosticsBinding
@@ -22,8 +24,12 @@ import ninja.unagi.util.DebugLog
 import ninja.unagi.util.PermissionsHelper
 import ninja.unagi.util.WindowInsetsHelper
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
+@OptIn(FlowPreview::class)
 class DiagnosticsActivity : AppCompatActivity() {
   private lateinit var binding: ActivityDiagnosticsBinding
   private val repository by lazy { (application as ThingAlertApp).repository }
@@ -60,12 +66,24 @@ class DiagnosticsActivity : AppCompatActivity() {
           repository.observeDevices(),
           enrichmentRepository.observeEnrichments()
         ) { entries, snapshot, devices, enrichments ->
-          buildDiagnostics(entries, snapshot, devices, enrichments)
-        }.collect { text ->
-          latestDiagnosticsReport = text
-          binding.diagnosticsText.text = text
-          binding.copyDebugReportButton.isEnabled = text.isNotBlank()
+          DiagnosticsInputs(entries, snapshot, devices, enrichments)
         }
+          .sample(DIAGNOSTICS_SAMPLE_MS)
+          .collectLatest { inputs ->
+            val text = withContext(Dispatchers.Default) {
+              buildDiagnostics(
+                inputs.entries,
+                inputs.scanDiagnostics,
+                inputs.devices,
+                inputs.enrichments
+              )
+            }
+            if (text != latestDiagnosticsReport) {
+              latestDiagnosticsReport = text
+              binding.diagnosticsText.text = text
+              binding.copyDebugReportButton.isEnabled = text.isNotBlank()
+            }
+          }
       }
     }
   }
@@ -142,5 +160,16 @@ class DiagnosticsActivity : AppCompatActivity() {
   private fun isGrapheneOsLikely(): Boolean {
     val fields = listOf(Build.FINGERPRINT, Build.DISPLAY, Build.VERSION.INCREMENTAL, Build.ID)
     return fields.any { value -> value.contains("graphene", ignoreCase = true) }
+  }
+
+  private data class DiagnosticsInputs(
+    val entries: List<String>,
+    val scanDiagnostics: ScanDiagnosticsSnapshot,
+    val devices: List<DeviceEntity>,
+    val enrichments: List<ninja.unagi.data.DeviceEnrichmentEntity>
+  )
+
+  companion object {
+    private const val DIAGNOSTICS_SAMPLE_MS = 1_000L
   }
 }

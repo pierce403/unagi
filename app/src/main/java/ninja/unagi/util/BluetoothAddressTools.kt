@@ -7,7 +7,12 @@ object BluetoothAddressTools {
 
   fun normalizeFilterFragment(query: String?): String? {
     val trimmed = query?.trim()?.uppercase()?.takeIf { it.isNotEmpty() } ?: return null
-    val looksLikeAddress = trimmed.contains(':') || trimmed.contains('-') || trimmed.any(Char::isDigit)
+    val hasHexOnlyWhitespaceGroups = trimmed.any(Char::isWhitespace) &&
+      trimmed.all { it.isWhitespace() || it in '0'..'9' || it in 'A'..'F' }
+    val looksLikeAddress = trimmed.contains(':') ||
+      trimmed.contains('-') ||
+      trimmed.any(Char::isDigit) ||
+      hasHexOnlyWhitespaceGroups
     if (!looksLikeAddress) {
       return null
     }

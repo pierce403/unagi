@@ -106,6 +106,11 @@ object DiagnosticsReportBuilder {
     builder.appendLine("Classic callbacks: ${scanDiagnostics.classicCallbackCount}")
     builder.appendLine("SDR callbacks: ${scanDiagnostics.sdrCallbackCount}")
     builder.appendLine("Raw callbacks: ${scanDiagnostics.rawCallbackCount}")
+    builder.appendLine("Scan queue depth: ${scanDiagnostics.scanQueueDepth}")
+    builder.appendLine("Scan queue high-water mark: ${scanDiagnostics.scanQueueHighWaterMark}")
+    builder.appendLine("Coalesced callbacks: ${scanDiagnostics.coalescedCallbackCount}")
+    builder.appendLine("Dropped callbacks: ${scanDiagnostics.droppedCallbackCount}")
+    builder.appendLine("Late callbacks ignored: ${scanDiagnostics.lateCallbackCount}")
     builder.appendLine("Unique device keys this session: ${scanDiagnostics.uniqueDeviceCount}")
     if (scanDiagnostics.callbackSamples.isNotEmpty()) {
       builder.appendLine("Callback samples (first ${scanDiagnostics.callbackSamples.size}):")
@@ -129,7 +134,10 @@ object DiagnosticsReportBuilder {
     if (persistedDevices.isEmpty()) {
       builder.appendLine("  (none yet)")
     } else {
-      persistedDevices.take(MAX_DEVICE_LINES).forEachIndexed { index, device ->
+      persistedDevices
+        .sortedByDescending { it.lastSeen }
+        .take(MAX_DEVICE_LINES)
+        .forEachIndexed { index, device ->
         builder.appendLine(
           "  ${index + 1}. name=${device.displayName ?: "Unknown device"} " +
             "address=${device.lastAddress ?: "n/a"} sightings=${device.sightingsCount} samples=${device.observationCount} " +

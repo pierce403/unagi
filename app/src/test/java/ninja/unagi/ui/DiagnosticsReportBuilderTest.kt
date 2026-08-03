@@ -115,6 +115,11 @@ class DiagnosticsReportBuilderTest {
         bleStartup = ScanStartupResult(path = ScanPath.BLE, started = true),
         outcome = ScanSessionOutcome.RESULTS,
         bleCallbackCount = 2,
+        scanQueueDepth = 3,
+        scanQueueHighWaterMark = 12,
+        coalescedCallbackCount = 8,
+        droppedCallbackCount = 1,
+        lateCallbackCount = 2,
         callbackSamples = listOf(
           CallbackSample(
             path = ScanPath.BLE,
@@ -154,6 +159,11 @@ class DiagnosticsReportBuilderTest {
     )
 
     assertTrue(report.contains("Callback samples (first 2):"))
+    assertTrue(report.contains("Scan queue depth: 3"))
+    assertTrue(report.contains("Scan queue high-water mark: 12"))
+    assertTrue(report.contains("Coalesced callbacks: 8"))
+    assertTrue(report.contains("Dropped callbacks: 1"))
+    assertTrue(report.contains("Late callbacks ignored: 2"))
     assertTrue(report.contains("ble addr=AA:BB:CC:DD:EE:FF name=TestBeacon rssi=-65 services=1 mfg=76"))
     assertTrue(report.contains("classic addr=11:22:33:44:55:66 name=unknown rssi=-80 services=0 mfg=none"))
   }

@@ -3,42 +3,38 @@ package ninja.unagi.ui
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.conflate
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.flow.stateIn
-import ninja.unagi.alerts.AlertObservation
-import ninja.unagi.alerts.DeviceAlertMatcher
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import ninja.unagi.ThingAlertApp
 import ninja.unagi.scan.ContinuousScanPreferences
 import ninja.unagi.scan.ScanState
-import ninja.unagi.util.BluetoothAddressTools
 import ninja.unagi.util.BluetoothAssignedNumbersProvider
-import ninja.unagi.util.DeviceNoteFormatter
-import ninja.unagi.util.DeviceIdentityPresenter
-import ninja.unagi.util.Formatters
-import ninja.unagi.util.ObservationMetadataParser
 import ninja.unagi.util.VendorPrefixRegistryProvider
 
-@OptIn(FlowPreview::class)
+@OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
 class MainViewModel(app: Application) : AndroidViewModel(app) {
   private val thingAlertApp = app as ThingAlertApp
   private val repository = thingAlertApp.repository
   private val alertRuleRepository = thingAlertApp.alertRuleRepository
   private val scanner = thingAlertApp.scanController
-  private val vendorRegistry = VendorPrefixRegistryProvider.get(app)
-  private val assignedNumbers = BluetoothAssignedNumbersProvider.get(app)
+  private val vendorRegistry by lazy { VendorPrefixRegistryProvider.get(app) }
+  private val assignedNumbers by lazy { BluetoothAssignedNumbersProvider.get(app) }
+  private val itemMapper by lazy { DeviceListItemMapper(vendorRegistry, assignedNumbers) }
 
   private val filterQuery = MutableStateFlow("")
   private val deviceGroup = MutableStateFlow(DeviceListGroup.ALL)
@@ -46,18 +42,37 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
   private val liveOnly = MutableStateFlow(false)
   private val unknownOnly = MutableStateFlow(false)
   private val starredOnly = MutableStateFlow(false)
+
+  private data class PrimaryFilters(
+    val query: String,
+    val group: DeviceListGroup,
+    val sortMode: SortMode
+  )
+
+  private data class ToggleFilters(
+    val liveOnly: Boolean,
+    val unknownOnly: Boolean,
+    val starredOnly: Boolean
+  )
+
+  private data class TimedFilters(
+    val options: DeviceListFilterOptions,
+    val now: Long
+  )
+
   private val liveTicker = flow {
     while (true) {
       emit(System.currentTimeMillis())
       delay(LiveDeviceWindow.TICK_MS)
     }
   }
-    .onStart { emit(System.currentTimeMillis()) }
     .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), System.currentTimeMillis())
+
   private val observedDevices = repository.observeDevices()
     .conflate()
     .sample(DEVICE_LIST_SAMPLE_MS)
     .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
   private val enabledAlertRules = alertRuleRepository.observeEnabledRules()
     .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
@@ -66,129 +81,63 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
   private val devicesFlow = observedDevices
     .combine(enabledAlertRules) { entities, rules -> entities to rules }
-    .map { (entities, rules) ->
+    .mapLatest { (entities, rules) ->
       withContext(Dispatchers.Default) {
-        entities.map {
-          val metadata = ObservationMetadataParser.parse(it.lastMetadataJson)
-          val identity = DeviceIdentityPresenter.present(
-            displayName = it.displayName,
-            address = it.lastAddress,
-            metadata = metadata,
-            vendorRegistry = vendorRegistry,
-            assignedNumbers = assignedNumbers
-          )
-          val deviceNote = DeviceNoteFormatter.normalize(it.userCustomName)
-          val metaParts = mutableListOf<String>()
-          identity.classificationLabel?.let { label ->
-            val confidenceSuffix = identity.classificationConfidenceLabel?.let { " ($it)" }.orEmpty()
-            metaParts += "Likely: $label$confidenceSuffix"
-          }
-          identity.addressTypeLabel?.let(metaParts::add)
-          identity.nameSourceLabel?.let(metaParts::add)
-          identity.vendorName?.let { vendor ->
-            val confidenceSuffix = identity.vendorConfidenceLabel?.let { " ($it)" }.orEmpty()
-            metaParts += "Vendor: $vendor$confidenceSuffix"
-          }
-          metaParts += identity.metadataSummary.listLabels
-            .filterNot { label -> metaParts.any { it.equals(label, ignoreCase = true) } }
-            .take(2)
-          metaParts += "Nearby since: ${Formatters.formatTimestamp(it.lastSightingAt)}"
-          metaParts += Formatters.formatSightingsCount(it.sightingsCount)
-          val displayTitle = DeviceNoteFormatter.appendToTitle(identity.title, deviceNote)
-          val searchParts = buildList {
-            add(identity.title)
-            add(displayTitle)
-            deviceNote?.let(::add)
-            it.lastAddress?.let(::add)
-            identity.vendorName?.let(::add)
-            identity.vendorSource?.let(::add)
-            identity.addressTypeLabel?.let(::add)
-            identity.classificationLabel?.let(::add)
-            addAll(identity.classificationEvidence)
-            addAll(identity.metadataSummary.searchTerms)
-          }
-          val matchesEnabledAlert = DeviceAlertMatcher.findMatches(
-            rules = rules,
-            observation = AlertObservation(
-              deviceKey = it.deviceKey,
-              displayName = it.displayName,
-              advertisedName = metadata.advertisedName,
-              systemName = metadata.systemName,
-              address = it.lastAddress,
-              vendorName = identity.vendorName,
-              source = metadata.source ?: metadata.transport.label,
-              manufacturerCompanyIds = metadata.manufacturerData.keys,
-              serviceUuids = metadata.serviceUuids
-            )
-          ).isNotEmpty()
-          DeviceListItem(
-            deviceKey = it.deviceKey,
-            displayName = it.displayName,
-            displayTitle = displayTitle,
-            deviceNote = deviceNote,
-            metaLine = metaParts.joinToString(" • "),
-            searchText = searchParts.joinToString("\n"),
-            sortTimestamp = it.lastSightingAt,
-            lastSeen = it.lastSeen,
-            lastRssi = it.lastRssi,
-            sightingsCount = it.sightingsCount,
-            starred = it.starred,
-            matchesEnabledAlert = matchesEnabledAlert,
-            lastAddress = it.lastAddress,
-            vendorName = identity.vendorName,
-            sharedFromGroupIds = it.sharedFromGroupIds
-          )
-        }
+        itemMapper.map(entities, rules)
       }
     }
 
-  private val filteredFlow = devicesFlow
-    .combine(filterQuery) { list, query ->
-      if (query.isBlank()) {
-        list
-      } else {
-        val normalizedAddressFragment = BluetoothAddressTools.normalizeFilterFragment(query)
-        list.filter { item ->
-          item.searchText.contains(query, ignoreCase = true) ||
-            (item.lastAddress?.contains(query, ignoreCase = true) == true) ||
-            (
-              normalizedAddressFragment != null &&
-                BluetoothAddressTools.normalizeAddress(item.lastAddress)
-                  ?.contains(normalizedAddressFragment) == true
-              )
-        }
-      }
-    }
-    .combine(deviceGroup) { list, group -> list to group }
-    .combine(liveTicker) { (list, group), now ->
-      list.filter { item -> DeviceListFilters.matchesGroup(item, group, now) }
-    }
-    .combine(unknownOnly) { list, unknown ->
-      if (unknown) list.filter { it.displayName.isNullOrBlank() } else list
-    }
-    .combine(starredOnly) { list, starred ->
-      if (starred) list.filter { it.starred } else list
-    }
-    .combine(liveOnly) { list, live ->
-      list to live
-    }
-    .combine(liveTicker) { (list, live), now ->
-      if (live) list.filter { LiveDeviceWindow.isLive(it.lastSeen, now) } else list
-    }
+  private val primaryFilters = combine(
+    filterQuery.debounce(FILTER_QUERY_DEBOUNCE_MS),
+    deviceGroup,
+    sortMode
+  ) { query, group, sort ->
+    PrimaryFilters(query, group, sort)
+  }
 
-  val devices: StateFlow<List<DeviceListItem>> = filteredFlow
-    .combine(sortMode) { list, sort ->
-      when (sort) {
-        SortMode.RECENT -> list.sortedByDescending { it.sortTimestamp }
-        SortMode.STRONGEST -> list.sortedByDescending { it.lastRssi }
-        SortMode.NAME -> list.sortedBy { it.displayTitle.lowercase() }
+  private val toggleFilters = combine(
+    liveOnly,
+    unknownOnly,
+    starredOnly
+  ) { live, unknown, starred ->
+    ToggleFilters(live, unknown, starred)
+  }
+
+  private val filterOptions = primaryFilters
+    .combine(toggleFilters) { primary, toggles ->
+      DeviceListFilterOptions(
+        query = primary.query,
+        group = primary.group,
+        sortMode = primary.sortMode,
+        liveOnly = toggles.liveOnly,
+        unknownOnly = toggles.unknownOnly,
+        starredOnly = toggles.starredOnly
+      )
+    }
+    .distinctUntilChanged()
+
+  private val timedFilters = filterOptions
+    .combine(liveTicker) { options, now ->
+      TimedFilters(
+        options = options,
+        now = if (options.requiresLiveClock) now else 0L
+      )
+    }
+    .distinctUntilChanged()
+
+  val devices: StateFlow<List<DeviceListItem>> = devicesFlow
+    .combine(timedFilters) { items, timed ->
+      withContext(Dispatchers.Default) {
+        DeviceListFilters.filterAndSort(items, timed.options, timed.now)
       }
     }
     .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
   val liveDeviceCount: StateFlow<Int> = observedDevices
     .combine(liveTicker) { devices, now ->
-      devices.count { LiveDeviceWindow.isLive(it.lastSeen, now) }
+      withContext(Dispatchers.Default) {
+        devices.count { LiveDeviceWindow.isLive(it.lastSeen, now) }
+      }
     }
     .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
@@ -249,5 +198,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
   companion object {
     private const val DEVICE_LIST_SAMPLE_MS = 300L
+    private const val FILTER_QUERY_DEBOUNCE_MS = 150L
   }
 }

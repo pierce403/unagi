@@ -33,11 +33,24 @@ class DeviceAdapter(
   }
 
   override fun getItemId(position: Int): Long {
-    return getItem(position).deviceKey.hashCode().toLong()
+    return stableId(getItem(position).deviceKey)
   }
 
   override fun onBindViewHolder(holder: DeviceViewHolder, position: Int) {
     holder.bind(getItem(position), compactMode)
+  }
+
+  override fun onBindViewHolder(
+    holder: DeviceViewHolder,
+    position: Int,
+    payloads: MutableList<Any>
+  ) {
+    val rssiPayload = payloads.lastOrNull { it is RssiPayload } as? RssiPayload
+    if (rssiPayload != null && payloads.all { it is RssiPayload }) {
+      holder.bindRssi(getItem(position), rssiPayload.rssi)
+    } else {
+      super.onBindViewHolder(holder, position, payloads)
+    }
   }
 
   fun setCompactMode(enabled: Boolean) {
@@ -55,15 +68,42 @@ class DeviceAdapter(
     private val onStarToggle: (DeviceListItem, Boolean) -> Unit,
     private val onNoteEdit: (DeviceListItem) -> Unit
   ) : RecyclerView.ViewHolder(binding.root) {
+    private var boundItem: DeviceListItem? = null
+    private var appliedCompactMode: Boolean? = null
+    private var appliedSharedState: Boolean? = null
+
+    init {
+      binding.deviceNoteButton.setOnClickListener {
+        boundItem?.let(onNoteEdit)
+      }
+      binding.deviceStar.setOnClickListener {
+        boundItem?.let { item -> onStarToggle(item, !item.starred) }
+      }
+      binding.root.setOnClickListener {
+        boundItem?.let(onClick)
+      }
+      binding.root.setOnLongClickListener {
+        boundItem?.let(onLongClick)
+        true
+      }
+    }
+
     fun bind(item: DeviceListItem, compactMode: Boolean) {
-      applyCardDensity(compactMode)
+      boundItem = item
+      if (appliedCompactMode != compactMode) {
+        applyCardDensity(compactMode)
+        appliedCompactMode = compactMode
+      }
       val ctx = itemView.context
-      if (item.isShared) {
-        binding.root.setCardBackgroundColor(ContextCompat.getColor(ctx, R.color.thingalert_surface_shared))
-        binding.root.strokeColor = ContextCompat.getColor(ctx, R.color.thingalert_stroke_shared)
-      } else {
-        binding.root.setCardBackgroundColor(ContextCompat.getColor(ctx, R.color.thingalert_surface_variant))
-        binding.root.strokeColor = ContextCompat.getColor(ctx, R.color.thingalert_stroke_soft)
+      if (appliedSharedState != item.isShared) {
+        if (item.isShared) {
+          binding.root.setCardBackgroundColor(ContextCompat.getColor(ctx, R.color.thingalert_surface_shared))
+          binding.root.strokeColor = ContextCompat.getColor(ctx, R.color.thingalert_stroke_shared)
+        } else {
+          binding.root.setCardBackgroundColor(ContextCompat.getColor(ctx, R.color.thingalert_surface_variant))
+          binding.root.strokeColor = ContextCompat.getColor(ctx, R.color.thingalert_stroke_soft)
+        }
+        appliedSharedState = item.isShared
       }
       binding.deviceName.text = item.displayTitle
       binding.deviceName.maxLines = if (compactMode) 1 else 2
@@ -75,7 +115,6 @@ class DeviceAdapter(
           R.string.edit_device_note
         }
       )
-      binding.deviceNoteButton.setOnClickListener { onNoteEdit(item) }
       binding.deviceStar.text = if (item.starred) "★" else "☆"
       binding.deviceStar.contentDescription = itemView.context.getString(
         if (item.starred) {
@@ -84,17 +123,16 @@ class DeviceAdapter(
           ninja.unagi.R.string.star_device
         }
       )
-      binding.deviceStar.setOnClickListener { onStarToggle(item, !item.starred) }
       binding.deviceMeta.text = item.metaLine
       binding.deviceMeta.isVisible = item.metaLine.isNotBlank()
       binding.deviceMeta.maxLines = if (compactMode) 2 else 4
       binding.deviceMeta.ellipsize = TextUtils.TruncateAt.END
-      binding.deviceRssi.text = Formatters.formatRssi(item.lastRssi)
-      binding.root.setOnClickListener { onClick(item) }
-      binding.root.setOnLongClickListener {
-        onLongClick(item)
-        true
-      }
+      bindRssi(item, item.lastRssi)
+    }
+
+    fun bindRssi(item: DeviceListItem, rssi: Int) {
+      boundItem = item
+      binding.deviceRssi.text = Formatters.formatRssi(rssi)
     }
 
     private fun applyCardDensity(compactMode: Boolean) {
@@ -152,7 +190,36 @@ class DeviceAdapter(
   }
 
   companion object {
-    private const val RSSI_CHANGE_THRESHOLD_DBM = 4
+    private const val FNV_OFFSET_BASIS = -3750763034362895579L
+    private const val FNV_PRIME = 1099511628211L
+
+    private data class RssiPayload(val rssi: Int)
+
+    private fun stableId(value: String): Long {
+      var hash = FNV_OFFSET_BASIS
+      value.forEach { character ->
+        hash = hash xor character.code.toLong()
+        hash *= FNV_PRIME
+      }
+      return hash
+    }
+
+    private fun sameContentExceptRssi(
+      oldItem: DeviceListItem,
+      newItem: DeviceListItem
+    ): Boolean {
+      return oldItem.deviceKey == newItem.deviceKey &&
+        oldItem.displayName == newItem.displayName &&
+        oldItem.displayTitle == newItem.displayTitle &&
+        oldItem.deviceNote == newItem.deviceNote &&
+        oldItem.metaLine == newItem.metaLine &&
+        oldItem.sortTimestamp == newItem.sortTimestamp &&
+        oldItem.sightingsCount == newItem.sightingsCount &&
+        oldItem.starred == newItem.starred &&
+        oldItem.lastAddress == newItem.lastAddress &&
+        oldItem.vendorName == newItem.vendorName &&
+        oldItem.sharedFromGroupIds == newItem.sharedFromGroupIds
+    }
 
     private val DiffCallback = object : DiffUtil.ItemCallback<DeviceListItem>() {
       override fun areItemsTheSame(oldItem: DeviceListItem, newItem: DeviceListItem): Boolean {
@@ -160,19 +227,18 @@ class DeviceAdapter(
       }
 
       override fun areContentsTheSame(oldItem: DeviceListItem, newItem: DeviceListItem): Boolean {
-        return oldItem.deviceKey == newItem.deviceKey &&
-          oldItem.displayName == newItem.displayName &&
-          oldItem.displayTitle == newItem.displayTitle &&
-          oldItem.deviceNote == newItem.deviceNote &&
-          oldItem.metaLine == newItem.metaLine &&
-          oldItem.searchText == newItem.searchText &&
-          oldItem.sortTimestamp == newItem.sortTimestamp &&
-          oldItem.sightingsCount == newItem.sightingsCount &&
-          oldItem.starred == newItem.starred &&
-          oldItem.lastAddress == newItem.lastAddress &&
-          oldItem.vendorName == newItem.vendorName &&
-          oldItem.sharedFromGroupIds == newItem.sharedFromGroupIds &&
-          kotlin.math.abs(oldItem.lastRssi - newItem.lastRssi) < RSSI_CHANGE_THRESHOLD_DBM
+        return sameContentExceptRssi(oldItem, newItem) &&
+          oldItem.lastRssi == newItem.lastRssi
+      }
+
+      override fun getChangePayload(oldItem: DeviceListItem, newItem: DeviceListItem): Any? {
+        return if (
+          sameContentExceptRssi(oldItem, newItem) && oldItem.lastRssi != newItem.lastRssi
+        ) {
+          RssiPayload(newItem.lastRssi)
+        } else {
+          null
+        }
       }
     }
   }

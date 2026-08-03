@@ -37,4 +37,34 @@ class BufferedObservationTest {
     assertEquals(-120L, merged.rssiSum)
     assertEquals("{\"seq\":2}", merged.metadataJson)
   }
+
+  @Test
+  fun `merge preserves the chronologically latest volatile fields`() {
+    val latest = DeviceObservation(
+      deviceKey = "device-1",
+      name = "Latest",
+      address = "AA:BB:CC:DD:EE:FF",
+      rssi = -40,
+      timestamp = 2_000L,
+      metadataJson = "{\"seq\":2}"
+    )
+    val delayed = DeviceObservation(
+      deviceKey = "device-1",
+      name = "Delayed",
+      address = null,
+      rssi = -80,
+      timestamp = 1_000L,
+      metadataJson = "{\"seq\":1}"
+    )
+
+    val merged = BufferedObservation.from(latest).merge(delayed)
+
+    assertEquals("Latest", merged.name)
+    assertEquals(-40, merged.lastRssi)
+    assertEquals(1_000L, merged.firstTimestamp)
+    assertEquals(2_000L, merged.lastTimestamp)
+    assertEquals("{\"seq\":2}", merged.metadataJson)
+    assertEquals(2, merged.observationCount)
+    assertEquals(-120L, merged.rssiSum)
+  }
 }

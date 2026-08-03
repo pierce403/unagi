@@ -65,6 +65,7 @@ Foreground alerts for "let me know when X is nearby."
 - **Affinity groups** for encrypted device-observation sharing between team members via file-based bundles (see [docs/AFFINITY_GROUPS.md](docs/AFFINITY_GROUPS.md))
 - **Passive identity hints** for Apple, Google/Fast Pair, Microsoft, Samsung, Nordic, and Tile-style payloads, plus the KARR-style `QT ` name signature and the observed Meta `0x01AB` + `0xFD5F` pair
 - **Diagnostics** with full debug report including callback samples, permission denial states, and scan session metrics
+- **Device-heavy UX controls** with off-main scan decoding and list reduction, bulk persistence, throttled status updates, and bounded recent-history rendering ([audit](docs/PERFORMANCE_AUDIT.md))
 
 ## Permissions notes
 

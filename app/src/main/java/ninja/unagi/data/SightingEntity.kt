@@ -6,7 +6,10 @@ import androidx.room.PrimaryKey
 
 @Entity(
   tableName = "sightings",
-  indices = [Index(value = ["deviceKey"]), Index(value = ["timestamp"])]
+  indices = [
+    Index(value = ["timestamp"]),
+    Index(value = ["deviceKey", "timestamp"])
+  ]
 )
 data class SightingEntity(
   @PrimaryKey(autoGenerate = true) val id: Long = 0,

@@ -13,16 +13,21 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.launch
 import ninja.unagi.R
 import ninja.unagi.ThingAlertApp
 import ninja.unagi.sdr.SdrState
 
+@OptIn(FlowPreview::class)
 class ContinuousScanService : Service() {
   private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
   private lateinit var app: ThingAlertApp
@@ -74,10 +79,14 @@ class ContinuousScanService : Service() {
     }
 
     serviceScope.launch {
-      ScanDiagnosticsStore.snapshot.collectLatest { snapshot ->
-        currentDeviceCount = snapshot.uniqueDeviceCount
-        updateForegroundNotification()
-      }
+      ScanDiagnosticsStore.snapshot
+        .map { it.uniqueDeviceCount }
+        .distinctUntilChanged()
+        .sample(NOTIFICATION_UPDATE_SAMPLE_MS)
+        .collectLatest { count ->
+          currentDeviceCount = count
+          updateForegroundNotification()
+        }
     }
   }
 
@@ -258,6 +267,7 @@ class ContinuousScanService : Service() {
     private const val SCAN_BLOCKED_RETRY_MS = 10_000L
     private const val SCAN_RESTART_GRACE_MS = 1_500L
     private const val SCAN_ERROR_RETRY_MS = 4_000L
+    private const val NOTIFICATION_UPDATE_SAMPLE_MS = 1_000L
 
     fun start(context: Context) {
       val intent = Intent(context, ContinuousScanService::class.java).apply {

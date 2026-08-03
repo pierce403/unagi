@@ -29,12 +29,15 @@ import ninja.unagi.util.PassiveVendorDecoderRegistry
 import ninja.unagi.util.PermissionsHelper
 import ninja.unagi.util.VendorPrefixRegistryProvider
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLong
 
 class ScanController(
   private val context: Context,
@@ -50,102 +53,163 @@ class ScanController(
   private val _scanState = MutableStateFlow<ScanState>(ScanState.Idle)
   val scanState: StateFlow<ScanState> = _scanState.asStateFlow()
 
+  @Volatile
   private var classicRestartJob: Job? = null
-  private var receiverRegistered = false
-  private var blePathActive = false
-  private var classicPathActive = false
-  private var classicRestartFailures = 0
-  private var currentScanMode: ScanModePreset = ScanModePreset.NORMAL
+  @Volatile
+  private var activeSession: ScanSession? = null
+  private val nextScanSessionId = AtomicLong(0L)
 
-  private val scanCallback = object : ScanCallback() {
-    override fun onScanResult(callbackType: Int, result: ScanResult) {
-      recordBleCallbacks(1)
-      handleBleResult(result)
-    }
+  private class ScanSession(
+    val id: Long,
+    val scanMode: ScanModePreset
+  ) {
+    val gate = Any()
+    val counters = ScanSessionCounters()
+    lateinit var scanCallback: ScanCallback
+    lateinit var discoveryReceiver: BroadcastReceiver
 
-    override fun onBatchScanResults(results: MutableList<ScanResult>) {
-      recordBleCallbacks(results.size)
-      results.forEach { handleBleResult(it) }
-    }
+    @Volatile var acceptingBle = true
+    @Volatile var acceptingClassic = true
+    @Volatile var acceptingSession = true
+    @Volatile var blePathActive = false
+    @Volatile var classicPathActive = false
+    @Volatile var receiverRegistered = false
+    @Volatile var classicRestartFailures = 0
+  }
 
-    override fun onScanFailed(errorCode: Int) {
-      blePathActive = false
-      val description = ScanStateDecider.describeBleFailureCode(errorCode)
-      ScanDiagnosticsStore.update {
-        it.copy(lastBleErrorCode = errorCode)
-      }
-      DebugLog.log(
-        "BLE scan failed errorCode=$errorCode description=$description",
-        level = android.util.Log.ERROR
-      )
+  private class ScanSessionCounters {
+    val bleCallbacks = AtomicInteger(0)
+    val classicCallbacks = AtomicInteger(0)
+    val coalescedCallbacks = AtomicInteger(0)
+    val droppedCallbacks = AtomicInteger(0)
+    val lateCallbacks = AtomicInteger(0)
+    val queueHighWaterMark = AtomicInteger(0)
 
-      if (!classicPathActive) {
-        classicRestartJob?.cancel()
-        classicRestartJob = null
-        stopBleScan()
-        stopClassicDiscovery()
-
-        val snapshot = ScanDiagnosticsStore.snapshot.value
-        ScanDiagnosticsStore.update {
-          it.copy(
-            outcome = if (snapshot.uniqueDeviceCount > 0) {
-              ScanSessionOutcome.RESULTS
-            } else {
-              ScanSessionOutcome.FAILED_TO_START
-            }
-          )
-        }
-
-        _scanState.value = if (snapshot.uniqueDeviceCount > 0) {
-          ScanState.Complete(snapshot.uniqueDeviceCount)
-        } else {
-          ScanState.Error("BLE scan failed: $description")
+    fun observeQueueDepth(depth: Int) {
+      while (true) {
+        val current = queueHighWaterMark.get()
+        if (depth <= current || queueHighWaterMark.compareAndSet(current, depth)) {
+          return
         }
       }
     }
   }
 
-  private val discoveryReceiver = object : BroadcastReceiver() {
-    override fun onReceive(context: Context, intent: Intent) {
-      when (intent.action) {
-        BluetoothDevice.ACTION_FOUND -> {
-          val device: BluetoothDevice? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE, BluetoothDevice::class.java)
-          } else {
-            @Suppress("DEPRECATION")
-            intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
+  private class ByteArrayContentKey(bytes: ByteArray) {
+    private val value = bytes.copyOf()
+    private val hash = value.contentHashCode()
+
+    override fun equals(other: Any?): Boolean {
+      return other is ByteArrayContentKey && value.contentEquals(other.value)
+    }
+
+    override fun hashCode(): Int = hash
+  }
+
+  private data class BleReportKey(
+    val sessionId: Long,
+    val address: String?,
+    val advertisement: ByteArrayContentKey?
+  )
+
+  private data class ClassicReportKey(
+    val sessionId: Long,
+    val address: String
+  )
+
+  private sealed interface ScanWork {
+    val session: ScanSession
+
+    data class BleResult(
+      override val session: ScanSession,
+      val result: ScanResult,
+      val coalescingKey: Any?
+    ) : ScanWork
+
+    data class ClassicResult(
+      override val session: ScanSession,
+      val device: BluetoothDevice,
+      val rssi: Int,
+      val coalescingKey: Any?
+    ) : ScanWork
+
+    data class BeginSession(override val session: ScanSession) : ScanWork
+
+    data class EndSession(
+      override val session: ScanSession,
+      val outcome: ScanSessionOutcome
+    ) : ScanWork
+
+    data class BleFailure(
+      override val session: ScanSession,
+      val errorCode: Int,
+      val terminal: Boolean
+    ) : ScanWork
+
+    data class ClassicFinished(override val session: ScanSession) : ScanWork
+  }
+
+  private val scanWorkQueue = ScanWorkMailbox<ScanWork>(
+    reportCapacity = SCAN_REPORT_QUEUE_CAPACITY,
+    isControl = { work ->
+      work !is ScanWork.BleResult && work !is ScanWork.ClassicResult
+    },
+    reportKey = { work ->
+      when (work) {
+        is ScanWork.BleResult -> work.coalescingKey
+        is ScanWork.ClassicResult -> work.coalescingKey
+        else -> null
+      }
+    }
+  )
+
+  init {
+    scope.launch {
+      while (true) {
+        val work = scanWorkQueue.receive()
+        try {
+          when (work) {
+            is ScanWork.BleResult -> handleBleResult(work.result, work.session.id)
+            is ScanWork.ClassicResult -> handleClassicResult(
+              device = work.device,
+              rssi = work.rssi,
+              diagnosticsSessionId = work.session.id
+            )
+            is ScanWork.BeginSession -> observationRecorder.clearFiredAlerts()
+            is ScanWork.EndSession -> finishSession(work.session, work.outcome)
+            is ScanWork.BleFailure -> handleBleFailure(work)
+            is ScanWork.ClassicFinished -> handleClassicFinished(work.session)
           }
-          val rssi = intent.getShortExtra(BluetoothDevice.EXTRA_RSSI, Short.MIN_VALUE).toInt()
-          if (device != null) {
-            recordClassicCallback()
-            handleClassicResult(device, rssi)
-          }
+        } catch (cancelled: CancellationException) {
+          throw cancelled
+        } catch (error: Exception) {
+          DebugLog.log(
+            "Background scan result processing failed: ${error.message}",
+            level = android.util.Log.ERROR,
+            throwable = error
+          )
         }
-        BluetoothAdapter.ACTION_DISCOVERY_FINISHED -> {
-          classicPathActive = false
-          if (_scanState.value is ScanState.Scanning && currentScanMode.startsClassicDiscovery) {
-            scheduleClassicDiscoveryRestart()
-          }
-        }
+      }
+    }
+    scope.launch {
+      while (true) {
+        delay(DIAGNOSTICS_PUBLISH_INTERVAL_MS)
+        activeSession?.let(::publishSessionDiagnostics)
       }
     }
   }
 
   fun startScan() {
     val continuousScanning = ContinuousScanPreferences.isEnabled(context)
-    classicRestartJob?.cancel()
-    classicRestartJob = null
-    classicRestartFailures = 0
-    stopBleScan()
-    stopClassicDiscovery()
-    observationRecorder.flushPending()
-    observationRecorder.clearFiredAlerts()
-
     val scanMode = ScanModePreferences.get(context)
-    currentScanMode = scanMode
+    activeSession?.let { previous ->
+      retireSession(previous, ScanSessionOutcome.INTERRUPTED)
+    }
+    val session = createSession(scanMode)
     val preflight = preflight(continuousScanning)
-    ScanDiagnosticsStore.reset(
-      ScanDiagnosticsSnapshot(
+    ScanDiagnosticsStore.startSession(
+      sessionId = session.id,
+      snapshot = ScanDiagnosticsSnapshot(
         scanMode = scanMode,
         missingPermissions = preflight.missingPermissions,
         bluetoothEnabled = preflight.bluetoothEnabled,
@@ -153,21 +217,28 @@ class ScanController(
         bleScannerUnavailable = preflight.bleScannerAvailable == false
       )
     )
+    scanWorkQueue.offer(ScanWork.BeginSession(session))
 
     if (preflight.state != ScanState.Idle) {
+      synchronized(session.gate) {
+        session.acceptingSession = false
+        session.acceptingBle = false
+        session.acceptingClassic = false
+      }
       _scanState.value = preflight.state
       DebugLog.log("Scan blocked by preflight state=${preflight.state}", level = android.util.Log.WARN)
       return
     }
 
+    activeSession = session
     DebugLog.log("Starting scan")
-    ScanDiagnosticsStore.update {
+    ScanDiagnosticsStore.updateForSession(session.id) {
       it.copy(startTimeMs = System.currentTimeMillis(), scanMode = scanMode)
     }
 
-    val bleResult = startBleScan(scanMode)
-    val classicResult = startClassicDiscovery(scanMode)
-    ScanDiagnosticsStore.update {
+    val bleResult = startBleScan(session)
+    val classicResult = startClassicDiscovery(session)
+    ScanDiagnosticsStore.updateForSession(session.id) {
       it.copy(
         bleStartup = bleResult,
         classicStartup = classicResult,
@@ -179,11 +250,7 @@ class ScanController(
       bleResult.reason == STARTUP_REASON_MISSING_PERMISSION ||
         classicResult.reason == STARTUP_REASON_MISSING_PERMISSION
     ) {
-      stopBleScan()
-      stopClassicDiscovery()
-      ScanDiagnosticsStore.update {
-        it.copy(outcome = ScanSessionOutcome.FAILED_TO_START)
-      }
+      retireSession(session, ScanSessionOutcome.FAILED_TO_START)
       _scanState.value = ScanState.MissingPermission
       DebugLog.log("Scan startup blocked by permission failure reported from Bluetooth stack", level = android.util.Log.WARN)
       return
@@ -196,15 +263,13 @@ class ScanController(
     )
 
     if (nextState !is ScanState.Scanning) {
-      ScanDiagnosticsStore.update {
-        it.copy(outcome = ScanSessionOutcome.FAILED_TO_START)
-      }
+      retireSession(session, ScanSessionOutcome.FAILED_TO_START)
       DebugLog.log((nextState as ScanState.Error).message, level = android.util.Log.WARN)
       return
     }
 
     if (!classicResult.started && scanMode.startsClassicDiscovery) {
-      scheduleClassicDiscoveryRestart()
+      scheduleClassicDiscoveryRestart(session)
     }
   }
 
@@ -221,7 +286,8 @@ class ScanController(
     }
     val state = preflight.state
     if (_scanState.value is ScanState.Scanning && state != ScanState.Idle) {
-      interruptScan(state)
+      activeSession?.let { session -> interruptScan(state, session) }
+        ?: run { _scanState.value = state }
       DebugLog.log("Scanning interrupted by preflight state=$state", level = android.util.Log.WARN)
       return
     }
@@ -232,27 +298,82 @@ class ScanController(
   }
 
   fun stopScan() {
-    classicRestartJob?.cancel()
-    classicRestartJob = null
-    classicRestartFailures = 0
-    stopBleScan()
-    stopClassicDiscovery()
-    observationRecorder.flushPending()
-    observationRecorder.clearFiredAlerts()
-    if (_scanState.value is ScanState.Scanning) {
-      ScanDiagnosticsStore.update {
-        it.copy(outcome = ScanSessionOutcome.INTERRUPTED, timeoutReached = false)
-      }
+    val session = activeSession
+    if (session != null) {
+      retireSession(session, ScanSessionOutcome.INTERRUPTED)
+    } else {
+      observationRecorder.flushPending()
+      observationRecorder.clearFiredAlerts()
     }
     _scanState.value = ScanState.Idle
     DebugLog.log("Stopping scan")
   }
 
-  private fun startBleScan(scanMode: ScanModePreset): ScanStartupResult {
+  private fun createSession(scanMode: ScanModePreset): ScanSession {
+    val session = ScanSession(
+      id = nextScanSessionId.incrementAndGet(),
+      scanMode = scanMode
+    )
+    session.scanCallback = object : ScanCallback() {
+      override fun onScanResult(callbackType: Int, result: ScanResult) {
+        session.counters.bleCallbacks.incrementAndGet()
+        offerBleResult(session, result)
+      }
+
+      override fun onBatchScanResults(results: MutableList<ScanResult>) {
+        session.counters.bleCallbacks.addAndGet(results.size)
+        results.forEach { result -> offerBleResult(session, result) }
+      }
+
+      override fun onScanFailed(errorCode: Int) {
+        enqueueBleFailure(session, errorCode)
+      }
+    }
+    session.discoveryReceiver = object : BroadcastReceiver() {
+      override fun onReceive(context: Context, intent: Intent) {
+        when (intent.action) {
+          BluetoothDevice.ACTION_FOUND -> {
+            val device: BluetoothDevice? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+              intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE, BluetoothDevice::class.java)
+            } else {
+              @Suppress("DEPRECATION")
+              intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
+            }
+            if (device != null) {
+              session.counters.classicCallbacks.incrementAndGet()
+              offerClassicResult(
+                session = session,
+                device = device,
+                rssi = intent.getShortExtra(BluetoothDevice.EXTRA_RSSI, Short.MIN_VALUE).toInt()
+              )
+            }
+          }
+
+          BluetoothAdapter.ACTION_DISCOVERY_FINISHED -> enqueueClassicFinished(session)
+        }
+      }
+    }
+    return session
+  }
+
+  private fun startBleScan(session: ScanSession): ScanStartupResult {
+    synchronized(session.gate) {
+      if (!session.acceptingSession) {
+        return ScanStartupResult(
+          path = ScanPath.BLE,
+          started = false,
+          reason = STARTUP_REASON_SESSION_ENDED
+        )
+      }
+      session.acceptingBle = true
+    }
     val scanner = currentLeScanner()
     if (scanner == null) {
       DebugLog.log("BluetoothLeScanner unavailable", level = android.util.Log.WARN)
-      blePathActive = false
+      synchronized(session.gate) {
+        session.blePathActive = false
+        session.acceptingBle = false
+      }
       return ScanStartupResult(
         path = ScanPath.BLE,
         started = false,
@@ -261,14 +382,33 @@ class ScanController(
     }
     try {
       val settings = ScanSettings.Builder()
-        .setScanMode(scanMode.bleScanMode)
+        .setScanMode(session.scanMode.bleScanMode)
         .build()
-      scanner.startScan(null, settings, scanCallback)
-      blePathActive = true
-      DebugLog.log("BLE scan started mode=${scanMode.label}")
+      scanner.startScan(null, settings, session.scanCallback)
+      val sessionStillActive = synchronized(session.gate) {
+        if (session.acceptingSession) {
+          session.blePathActive = true
+          true
+        } else {
+          session.acceptingBle = false
+          false
+        }
+      }
+      if (!sessionStillActive) {
+        runCatching { scanner.stopScan(session.scanCallback) }
+        return ScanStartupResult(
+          path = ScanPath.BLE,
+          started = false,
+          reason = STARTUP_REASON_SESSION_ENDED
+        )
+      }
+      DebugLog.log("BLE scan started mode=${session.scanMode.label}")
       return ScanStartupResult(path = ScanPath.BLE, started = true)
     } catch (sec: SecurityException) {
-      blePathActive = false
+      synchronized(session.gate) {
+        session.blePathActive = false
+        session.acceptingBle = false
+      }
       DebugLog.log("BLE scan missing permission", level = android.util.Log.WARN, throwable = sec)
       return ScanStartupResult(
         path = ScanPath.BLE,
@@ -276,7 +416,10 @@ class ScanController(
         reason = "Missing permission"
       )
     } catch (ex: Exception) {
-      blePathActive = false
+      synchronized(session.gate) {
+        session.blePathActive = false
+        session.acceptingBle = false
+      }
       DebugLog.log("BLE scan error: ${ex.message}", level = android.util.Log.ERROR, throwable = ex)
       return ScanStartupResult(
         path = ScanPath.BLE,
@@ -286,20 +429,32 @@ class ScanController(
     }
   }
 
-  private fun stopBleScan() {
-    blePathActive = false
+  private fun stopBleScan(session: ScanSession) {
+    session.blePathActive = false
     val scanner = currentLeScanner() ?: return
     try {
-      scanner.stopScan(scanCallback)
+      scanner.stopScan(session.scanCallback)
       DebugLog.log("BLE scan stopped")
     } catch (_: SecurityException) {
       // Ignore
     }
   }
 
-  private fun startClassicDiscovery(scanMode: ScanModePreset): ScanStartupResult {
-    if (!scanMode.startsClassicDiscovery) {
-      classicPathActive = false
+  private fun startClassicDiscovery(session: ScanSession): ScanStartupResult {
+    synchronized(session.gate) {
+      if (!session.acceptingSession) {
+        return ScanStartupResult(
+          path = ScanPath.CLASSIC,
+          started = false,
+          reason = STARTUP_REASON_SESSION_ENDED
+        )
+      }
+    }
+    if (!session.scanMode.startsClassicDiscovery) {
+      synchronized(session.gate) {
+        session.classicPathActive = false
+        session.acceptingClassic = false
+      }
       DebugLog.log("Classic discovery skipped in compatibility mode", level = android.util.Log.INFO)
       return ScanStartupResult(
         path = ScanPath.CLASSIC,
@@ -309,36 +464,66 @@ class ScanController(
     }
 
     val adapter = bluetoothAdapter
-      ?: return ScanStartupResult(
-        path = ScanPath.CLASSIC,
-        started = false,
-        reason = "Bluetooth adapter unavailable"
-      )
-    if (!receiverRegistered) {
+    if (adapter == null) {
+      synchronized(session.gate) {
+        session.classicPathActive = false
+        session.acceptingClassic = false
+      }
+      return ScanStartupResult(
+          path = ScanPath.CLASSIC,
+          started = false,
+          reason = "Bluetooth adapter unavailable"
+        )
+    }
+    if (!session.receiverRegistered) {
       val filter = IntentFilter().apply {
         addAction(BluetoothDevice.ACTION_FOUND)
         addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED)
       }
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        context.registerReceiver(discoveryReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+        context.registerReceiver(session.discoveryReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
       } else {
         @Suppress("DEPRECATION")
-        context.registerReceiver(discoveryReceiver, filter)
+        context.registerReceiver(session.discoveryReceiver, filter)
       }
-      receiverRegistered = true
+      session.receiverRegistered = true
     }
 
     try {
+      synchronized(session.gate) {
+        session.acceptingClassic = true
+      }
       if (adapter.isDiscovering) {
         adapter.cancelDiscovery()
       }
       val started = adapter.startDiscovery()
-      classicPathActive = started
+      val sessionStillActive = synchronized(session.gate) {
+        if (session.acceptingSession) {
+          session.classicPathActive = started
+          true
+        } else {
+          session.acceptingClassic = false
+          false
+        }
+      }
+      if (!sessionStillActive) {
+        runCatching { adapter.cancelDiscovery() }
+        if (session.receiverRegistered) {
+          runCatching { context.unregisterReceiver(session.discoveryReceiver) }
+          session.receiverRegistered = false
+        }
+        return ScanStartupResult(
+          path = ScanPath.CLASSIC,
+          started = false,
+          reason = STARTUP_REASON_SESSION_ENDED
+        )
+      }
       if (started) {
-        classicRestartFailures = 0
+        session.classicRestartFailures = 0
         DebugLog.log("Classic discovery started")
         return ScanStartupResult(path = ScanPath.CLASSIC, started = true)
       }
+      session.acceptingClassic = false
 
       val missingPermissions = PermissionsHelper.missingPermissions(
         context,
@@ -363,7 +548,8 @@ class ScanController(
         reason = "Bluetooth classic discovery failed to start"
       )
     } catch (sec: SecurityException) {
-      classicPathActive = false
+      session.classicPathActive = false
+      session.acceptingClassic = false
       DebugLog.log("Classic discovery missing permission", level = android.util.Log.WARN, throwable = sec)
       return ScanStartupResult(
         path = ScanPath.CLASSIC,
@@ -371,7 +557,8 @@ class ScanController(
         reason = STARTUP_REASON_MISSING_PERMISSION
       )
     } catch (ex: Exception) {
-      classicPathActive = false
+      session.classicPathActive = false
+      session.acceptingClassic = false
       DebugLog.log("Classic discovery error: ${ex.message}", level = android.util.Log.ERROR, throwable = ex)
       return ScanStartupResult(
         path = ScanPath.CLASSIC,
@@ -381,67 +568,297 @@ class ScanController(
     }
   }
 
-  private fun stopClassicDiscovery() {
-    val adapter = bluetoothAdapter ?: return
-    classicPathActive = false
-    try {
-      if (adapter.isDiscovering) {
-        adapter.cancelDiscovery()
+  private fun stopClassicDiscovery(session: ScanSession) {
+    session.classicPathActive = false
+    bluetoothAdapter?.let { adapter ->
+      try {
+        if (adapter.isDiscovering) {
+          adapter.cancelDiscovery()
+        }
+      } catch (_: SecurityException) {
+        // Ignore
       }
-    } catch (_: SecurityException) {
-      // Ignore
     }
 
-    if (receiverRegistered) {
+    if (session.receiverRegistered) {
       try {
-        context.unregisterReceiver(discoveryReceiver)
+        context.unregisterReceiver(session.discoveryReceiver)
       } catch (_: IllegalArgumentException) {
         // Ignore
       }
-      receiverRegistered = false
+      session.receiverRegistered = false
     }
   }
 
-  private fun scheduleClassicDiscoveryRestart() {
-    if (!currentScanMode.startsClassicDiscovery || _scanState.value !is ScanState.Scanning) {
+  private fun scheduleClassicDiscoveryRestart(session: ScanSession) {
+    if (
+      activeSession !== session ||
+      !session.acceptingSession ||
+      !session.scanMode.startsClassicDiscovery ||
+      _scanState.value !is ScanState.Scanning
+    ) {
       return
     }
     if (classicRestartJob?.isActive == true) {
       return
     }
-    if (classicRestartFailures >= MAX_CLASSIC_RESTART_FAILURES) {
+    if (session.classicRestartFailures >= MAX_CLASSIC_RESTART_FAILURES) {
       DebugLog.log(
-        "Classic discovery disabled for this scan after $classicRestartFailures consecutive restart failures",
+        "Classic discovery disabled for this scan after ${session.classicRestartFailures} consecutive restart failures",
         level = android.util.Log.WARN
       )
       return
     }
     classicRestartJob = scope.launch {
-      delay(nextClassicRestartDelayMs())
+      delay(nextClassicRestartDelayMs(session.classicRestartFailures))
       classicRestartJob = null
-      if (_scanState.value !is ScanState.Scanning || !currentScanMode.startsClassicDiscovery) {
+      if (
+        activeSession !== session ||
+        !session.acceptingSession ||
+        _scanState.value !is ScanState.Scanning ||
+        !session.scanMode.startsClassicDiscovery
+      ) {
         return@launch
       }
       val preflight = preflight(ContinuousScanPreferences.isEnabled(context))
       if (preflight.state != ScanState.Idle) {
-        interruptScan(preflight.state)
+        interruptScan(preflight.state, session)
         return@launch
       }
-      val result = startClassicDiscovery(currentScanMode)
-      ScanDiagnosticsStore.update { it.copy(classicStartup = result) }
+      val result = startClassicDiscovery(session)
+      ScanDiagnosticsStore.updateForSession(session.id) { it.copy(classicStartup = result) }
       if (!result.started && _scanState.value is ScanState.Scanning) {
         if (result.reason == STARTUP_REASON_MISSING_PERMISSION) {
           DebugLog.log("Classic discovery restart blocked by missing permission", level = android.util.Log.WARN)
-          interruptScan(ScanState.MissingPermission)
+          interruptScan(ScanState.MissingPermission, session)
           return@launch
         }
-        classicRestartFailures += 1
+        session.classicRestartFailures += 1
         DebugLog.log(
-          "Classic discovery restart failed (${classicRestartFailures}/$MAX_CLASSIC_RESTART_FAILURES): ${result.reason ?: "unknown"}",
+          "Classic discovery restart failed (${session.classicRestartFailures}/$MAX_CLASSIC_RESTART_FAILURES): ${result.reason ?: "unknown"}",
           level = android.util.Log.WARN
         )
-        scheduleClassicDiscoveryRestart()
+        scheduleClassicDiscoveryRestart(session)
       }
+    }
+  }
+
+  private fun offerBleResult(session: ScanSession, result: ScanResult) {
+    if (!session.acceptingBle) {
+      session.counters.lateCallbacks.incrementAndGet()
+      return
+    }
+    val advertisement = result.scanRecord?.bytes?.let(::ByteArrayContentKey)
+    val address = safeAddress(result.device)
+    val key = if (address != null || advertisement != null) {
+      BleReportKey(
+        sessionId = session.id,
+        address = address,
+        advertisement = advertisement
+      )
+    } else {
+      null
+    }
+
+    synchronized(session.gate) {
+      if (!session.acceptingBle) {
+        session.counters.lateCallbacks.incrementAndGet()
+        return
+      }
+      recordQueueOffer(
+        session,
+        scanWorkQueue.offer(
+          ScanWork.BleResult(
+            session = session,
+            result = result,
+            coalescingKey = key
+          )
+        )
+      )
+    }
+  }
+
+  private fun offerClassicResult(
+    session: ScanSession,
+    device: BluetoothDevice,
+    rssi: Int
+  ) {
+    if (!session.acceptingClassic) {
+      session.counters.lateCallbacks.incrementAndGet()
+      return
+    }
+    val key = safeAddress(device)?.let { address ->
+      ClassicReportKey(sessionId = session.id, address = address)
+    }
+
+    synchronized(session.gate) {
+      if (!session.acceptingClassic) {
+        session.counters.lateCallbacks.incrementAndGet()
+        return
+      }
+      recordQueueOffer(
+        session,
+        scanWorkQueue.offer(
+          ScanWork.ClassicResult(
+            session = session,
+            device = device,
+            rssi = rssi,
+            coalescingKey = key
+          )
+        )
+      )
+    }
+  }
+
+  private fun recordQueueOffer(session: ScanSession, offer: ScanMailboxOffer) {
+    when (offer.status) {
+      ScanMailboxOfferStatus.ACCEPTED -> Unit
+      ScanMailboxOfferStatus.COALESCED -> session.counters.coalescedCallbacks.incrementAndGet()
+      ScanMailboxOfferStatus.DROPPED -> session.counters.droppedCallbacks.incrementAndGet()
+    }
+    session.counters.observeQueueDepth(offer.reportDepth)
+  }
+
+  private fun enqueueBleFailure(session: ScanSession, errorCode: Int) {
+    val terminal = synchronized(session.gate) {
+      if (!session.acceptingBle && !session.blePathActive) {
+        session.counters.lateCallbacks.incrementAndGet()
+        return
+      }
+      session.acceptingBle = false
+      session.blePathActive = false
+      val isTerminal = !session.classicPathActive
+      if (isTerminal) {
+        session.acceptingSession = false
+        session.acceptingClassic = false
+      }
+      scanWorkQueue.offer(
+        ScanWork.BleFailure(
+          session = session,
+          errorCode = errorCode,
+          terminal = isTerminal
+        )
+      )
+      isTerminal
+    }
+
+    if (terminal) {
+      if (activeSession === session) {
+        activeSession = null
+        classicRestartJob?.cancel()
+        classicRestartJob = null
+      }
+      stopBleScan(session)
+      stopClassicDiscovery(session)
+    }
+  }
+
+  private fun enqueueClassicFinished(session: ScanSession) {
+    synchronized(session.gate) {
+      if (!session.acceptingClassic || !session.acceptingSession) {
+        session.counters.lateCallbacks.incrementAndGet()
+        return
+      }
+      session.acceptingClassic = false
+      session.classicPathActive = false
+      scanWorkQueue.offer(ScanWork.ClassicFinished(session))
+    }
+  }
+
+  private fun retireSession(session: ScanSession, outcome: ScanSessionOutcome) {
+    val retired = synchronized(session.gate) {
+      if (!session.acceptingSession) {
+        false
+      } else {
+        session.acceptingSession = false
+        session.acceptingBle = false
+        session.acceptingClassic = false
+        scanWorkQueue.offer(ScanWork.EndSession(session, outcome))
+        true
+      }
+    }
+    if (!retired) {
+      return
+    }
+
+    if (activeSession === session) {
+      activeSession = null
+      classicRestartJob?.cancel()
+      classicRestartJob = null
+    }
+    stopBleScan(session)
+    stopClassicDiscovery(session)
+  }
+
+  private suspend fun finishSession(session: ScanSession, outcome: ScanSessionOutcome) {
+    publishSessionDiagnostics(session)
+    observationRecorder.flushPendingAndAwait()
+    observationRecorder.clearFiredAlerts()
+    ScanDiagnosticsStore.updateForSession(session.id) {
+      it.copy(
+        outcome = outcome,
+        timeoutReached = false,
+        scanQueueDepth = scanWorkQueue.reportDepth()
+      )
+    }
+  }
+
+  private suspend fun handleBleFailure(work: ScanWork.BleFailure) {
+    val description = ScanStateDecider.describeBleFailureCode(work.errorCode)
+    ScanDiagnosticsStore.updateForSession(work.session.id) {
+      it.copy(lastBleErrorCode = work.errorCode)
+    }
+    DebugLog.log(
+      "BLE scan failed errorCode=${work.errorCode} description=$description",
+      level = android.util.Log.ERROR
+    )
+    if (!work.terminal) {
+      return
+    }
+
+    publishSessionDiagnostics(work.session)
+    observationRecorder.flushPendingAndAwait()
+    observationRecorder.clearFiredAlerts()
+    val snapshot = ScanDiagnosticsStore.snapshotForSession(work.session.id) ?: return
+    val outcome = if (snapshot.uniqueDeviceCount > 0) {
+      ScanSessionOutcome.RESULTS
+    } else {
+      ScanSessionOutcome.FAILED_TO_START
+    }
+    val updated = ScanDiagnosticsStore.updateForSession(work.session.id) {
+      it.copy(outcome = outcome, scanQueueDepth = scanWorkQueue.reportDepth())
+    }
+    if (!updated) {
+      return
+    }
+
+    _scanState.value = if (snapshot.uniqueDeviceCount > 0) {
+      ScanState.Complete(snapshot.uniqueDeviceCount)
+    } else {
+      ScanState.Error("BLE scan failed: $description")
+    }
+  }
+
+  private fun handleClassicFinished(session: ScanSession) {
+    if (activeSession === session && session.acceptingSession) {
+      scheduleClassicDiscoveryRestart(session)
+    }
+  }
+
+  private fun publishSessionDiagnostics(session: ScanSession) {
+    val bleCount = session.counters.bleCallbacks.get()
+    val classicCount = session.counters.classicCallbacks.get()
+    ScanDiagnosticsStore.updateForSession(session.id) { snapshot ->
+      snapshot.copy(
+        bleCallbackCount = bleCount,
+        classicCallbackCount = classicCount,
+        rawCallbackCount = bleCount + classicCount + snapshot.sdrCallbackCount,
+        scanQueueDepth = scanWorkQueue.reportDepth(),
+        scanQueueHighWaterMark = session.counters.queueHighWaterMark.get(),
+        coalescedCallbackCount = session.counters.coalescedCallbacks.get(),
+        droppedCallbackCount = session.counters.droppedCallbacks.get(),
+        lateCallbackCount = session.counters.lateCallbacks.get()
+      )
     }
   }
 
@@ -518,7 +935,7 @@ class ScanController(
     )
   }
 
-  private fun handleBleResult(result: ScanResult) {
+  private fun handleBleResult(result: ScanResult, diagnosticsSessionId: Long) {
     val device = result.device
     val scanRecord = result.scanRecord
     val address = safeAddress(device)
@@ -668,10 +1085,14 @@ class ScanController(
       classificationEvidence = classification.evidence
     )
 
-    observationRecorder.record(input)
+    observationRecorder.record(input, diagnosticsSessionId)
   }
 
-  private fun handleClassicResult(device: BluetoothDevice, rssi: Int) {
+  private fun handleClassicResult(
+    device: BluetoothDevice,
+    rssi: Int,
+    diagnosticsSessionId: Long
+  ) {
     val systemName = safeName(device)
     val address = safeAddress(device)
     val identity = ObservedIdentityResolver.forClassic(
@@ -763,7 +1184,7 @@ class ScanController(
       classificationEvidence = classification.evidence
     )
 
-    observationRecorder.record(input)
+    observationRecorder.record(input, diagnosticsSessionId)
   }
 
   private fun safeName(device: BluetoothDevice): String? {
@@ -862,46 +1283,28 @@ class ScanController(
   }
 
   private fun ByteArray.toHexString(): String {
-    return joinToString("") { b -> "%02x".format(b) }
+    val chars = CharArray(size * 2)
+    forEachIndexed { index, byte ->
+      val value = byte.toInt() and 0xFF
+      chars[index * 2] = HEX_CHARS[value ushr 4]
+      chars[index * 2 + 1] = HEX_CHARS[value and 0x0F]
+    }
+    return String(chars)
   }
 
   private fun normalizeName(name: String?): String? {
     return name?.trimEnd()?.takeIf { it.isNotBlank() }
   }
 
-  private fun recordBleCallbacks(count: Int) {
-    ScanDiagnosticsStore.update {
-      it.copy(
-        bleCallbackCount = it.bleCallbackCount + count,
-        rawCallbackCount = it.rawCallbackCount + count
-      )
-    }
-  }
-
-  private fun recordClassicCallback() {
-    ScanDiagnosticsStore.update {
-      it.copy(
-        classicCallbackCount = it.classicCallbackCount + 1,
-        rawCallbackCount = it.rawCallbackCount + 1
-      )
-    }
-  }
-
-  private fun interruptScan(state: ScanState) {
-    classicRestartJob?.cancel()
-    classicRestartJob = null
-    classicRestartFailures = 0
-    stopBleScan()
-    stopClassicDiscovery()
-    observationRecorder.flushPending()
-    ScanDiagnosticsStore.update {
-      it.copy(outcome = ScanSessionOutcome.INTERRUPTED, timeoutReached = false)
+  private fun interruptScan(state: ScanState, session: ScanSession) {
+    if (activeSession === session) {
+      retireSession(session, ScanSessionOutcome.INTERRUPTED)
     }
     _scanState.value = state
   }
 
-  private fun nextClassicRestartDelayMs(): Long {
-    val multiplier = 1L shl classicRestartFailures.coerceAtMost(3)
+  private fun nextClassicRestartDelayMs(restartFailures: Int): Long {
+    val multiplier = 1L shl restartFailures.coerceAtMost(3)
     return (CLASSIC_RESTART_BASE_DELAY_MS * multiplier).coerceAtMost(CLASSIC_RESTART_MAX_DELAY_MS)
   }
 
@@ -916,9 +1319,15 @@ class ScanController(
 
   companion object {
     private const val STARTUP_REASON_MISSING_PERMISSION = "Missing permission"
+    private const val STARTUP_REASON_SESSION_ENDED = "Scan session ended"
     private const val CLASSIC_RESTART_BASE_DELAY_MS = 2_000L
     private const val CLASSIC_RESTART_MAX_DELAY_MS = 16_000L
     private const val MAX_CLASSIC_RESTART_FAILURES = 4
+    // Exact duplicate raw reports are coalesced. Once 512 distinct reports are pending, a new
+    // distinct report is intentionally dropped and reflected in droppedCallbackCount.
+    private const val SCAN_REPORT_QUEUE_CAPACITY = 512
+    private const val DIAGNOSTICS_PUBLISH_INTERVAL_MS = 500L
+    private val HEX_CHARS = "0123456789abcdef".toCharArray()
 
     private fun effectiveTransport(source: String, deviceType: Int?): ObservedTransport {
       return when {

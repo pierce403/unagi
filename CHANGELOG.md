@@ -6,6 +6,13 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+## [0.2.32] — Device-heavy UX performance
+
+- Move BLE/classic result decoding, list filtering/sorting, registry loading, and diagnostics formatting off the UI thread; bound/coalesce exact scan reports with overload counters while preserving per-report Meta signature matching
+- Cache stable device presentation work, debounce search, avoid duplicate live-ticker passes, throttle foreground status updates, and use RSSI-only RecyclerView binds
+- Serialize metadata once per buffered device, bulk Room reads/upserts/sighting inserts, optimize history indexing in schema 9, and bound detail rendering to the latest 100 sightings
+- Document the device-heavy UX audit and add dense-scan regression checks
+
 ## [0.2.31] — Meta smart-glasses passive signature
 
 - Recognize the observed Meta smart-glasses passive signature only when company ID `0x01AB` and advertised service `0xFD5F` occur together in one BLE report

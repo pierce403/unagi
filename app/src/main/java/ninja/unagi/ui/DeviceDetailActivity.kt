@@ -32,8 +32,10 @@ import ninja.unagi.enrichment.BleDeviceInfoQueryClient
 import ninja.unagi.enrichment.DeviceEnrichmentFormatter
 import ninja.unagi.data.DeviceEntity
 import ninja.unagi.data.DeviceEnrichmentEntity
+import ninja.unagi.data.DeviceRepository
 import ninja.unagi.util.BluetoothAssignedNumbersProvider
 import ninja.unagi.util.DeviceNoteFormatter
+import ninja.unagi.util.DevicePresentation
 import ninja.unagi.util.DeviceIdentityPresenter
 import ninja.unagi.util.Formatters
 import ninja.unagi.util.ObservationMetadata
@@ -42,6 +44,8 @@ import ninja.unagi.util.ObservedTransport
 import ninja.unagi.util.VendorPrefixRegistryProvider
 import ninja.unagi.util.WindowInsetsHelper
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -51,6 +55,9 @@ class DeviceDetailActivity : AppCompatActivity() {
   private var currentDevice: DeviceEntity? = null
   private var currentEnrichment: DeviceEnrichmentEntity? = null
   private var currentMetadata: ObservationMetadata = ObservationMetadata()
+  private var currentIdentity: DevicePresentation? = null
+  private var currentIdentitySource: IdentitySource? = null
+  private var renderedSharedFromGroupIds: String? = null
   private var pendingExport: DeviceJsonExport? = null
   private var queryInProgress = false
   private val vendorRegistry by lazy { VendorPrefixRegistryProvider.get(this) }
@@ -90,9 +97,13 @@ class DeviceDetailActivity : AppCompatActivity() {
       return
     }
 
-    adapter = SightingAdapter(assignedNumbers)
+    adapter = SightingAdapter()
     binding.sightingsList.layoutManager = LinearLayoutManager(this)
     binding.sightingsList.adapter = adapter
+    binding.sightingsHeader.text = getString(
+      ninja.unagi.R.string.sightings_recent_limit,
+      DeviceRepository.DETAIL_SIGHTING_LIMIT
+    )
     binding.queryDeviceInfoButton.setOnClickListener {
       val device = currentDevice ?: return@setOnClickListener
       runBleQuery(device, currentMetadata)
@@ -105,19 +116,36 @@ class DeviceDetailActivity : AppCompatActivity() {
             if (device == null) {
               currentDevice = null
               currentMetadata = ObservationMetadata()
+              currentIdentity = null
+              currentIdentitySource = null
               invalidateOptionsMenu()
               return@collect
             }
             currentDevice = device
-            currentMetadata = ObservationMetadataParser.parse(device.lastMetadataJson)
-            invalidateOptionsMenu()
-            val identity = DeviceIdentityPresenter.present(
+            val identitySource = IdentitySource(
               displayName = device.displayName,
               address = device.lastAddress,
-              metadata = currentMetadata,
-              vendorRegistry = vendorRegistry,
-              assignedNumbers = assignedNumbers
+              metadataJson = device.lastMetadataJson
             )
+            val identity = if (identitySource == currentIdentitySource && currentIdentity != null) {
+              currentIdentity!!
+            } else {
+              val (metadata, presentation) = withContext(Dispatchers.Default) {
+                val parsed = ObservationMetadataParser.parse(device.lastMetadataJson)
+                parsed to DeviceIdentityPresenter.present(
+                  displayName = device.displayName,
+                  address = device.lastAddress,
+                  metadata = parsed,
+                  vendorRegistry = vendorRegistry,
+                  assignedNumbers = assignedNumbers
+                )
+              }
+              currentMetadata = metadata
+              currentIdentity = presentation
+              currentIdentitySource = identitySource
+              presentation
+            }
+            invalidateOptionsMenu()
             binding.detailName.text = DeviceNoteFormatter.appendToTitle(identity.title, device.userCustomName)
             val identityLines = mutableListOf<String>()
             identity.vendorName?.let { vendor ->
@@ -180,9 +208,14 @@ class DeviceDetailActivity : AppCompatActivity() {
         }
 
         launch {
-          repository.observeSightings(deviceKey).collect { sightings ->
-            adapter.submitList(sightings)
-          }
+          repository.observeRecentSightings(deviceKey)
+            .conflate()
+            .collectLatest { sightings ->
+              val items = withContext(Dispatchers.Default) {
+                SightingListItemMapper.map(sightings, assignedNumbers)
+              }
+              adapter.submitList(items)
+            }
         }
 
         launch {
@@ -453,6 +486,10 @@ class DeviceDetailActivity : AppCompatActivity() {
   }
 
   private fun updateSharedOrigin(sharedFromGroupIds: String?) {
+    if (renderedSharedFromGroupIds == sharedFromGroupIds) {
+      return
+    }
+    renderedSharedFromGroupIds = sharedFromGroupIds
     if (sharedFromGroupIds == null) {
       binding.detailSharedOrigin.isVisible = false
       return
@@ -487,5 +524,11 @@ class DeviceDetailActivity : AppCompatActivity() {
   private data class QueryEligibility(
     val enabled: Boolean,
     val message: String
+  )
+
+  private data class IdentitySource(
+    val displayName: String?,
+    val address: String?,
+    val metadataJson: String?
   )
 }

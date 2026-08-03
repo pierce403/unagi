@@ -7,6 +7,8 @@ data class DeviceListItem(
   val deviceNote: String?,
   val metaLine: String,
   val searchText: String,
+  val sortName: String,
+  val normalizedAddress: String?,
   val sortTimestamp: Long,
   val lastSeen: Long,
   val lastRssi: Int,
