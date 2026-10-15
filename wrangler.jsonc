@@ -25,5 +25,11 @@
       "head_sampling_rate": 0.01
     }
   },
-  "main": "cloudflare/large-asset-worker.ts"
+  "main": "cloudflare/large-asset-worker.ts",
+  "routes": [
+    {
+      "pattern": "unagi.ninja/*",
+      "zone_name": "unagi.ninja"
+    }
+  ]
 }

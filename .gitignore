@@ -18,3 +18,4 @@ screen_*.jpg
 /cloudflare/.wrangler/
 /cloudflare/large-assets.generated.json
 /dist/
+/.wrangler/
