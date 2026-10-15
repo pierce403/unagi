@@ -98,3 +98,13 @@ Bluetooth/SDR situational awareness on Android — scan nearby devices, surface 
 - Update this file when discovering new pitfalls, conventions, or collaborator preferences
 - Keep notes concrete and actionable; replace stale guidance when superseded
 - Before handoff, record any new command, deploy detail, or preference discovered during the task
+
+## Static hosting scope
+
+Native Cloudflare Git builds publish only the allowlisted public site from
+/cloudflare, with SKIP_DEPENDENCY_INSTALL=1 and explicit npm ci. Credentials remain
+in Cloudflare and previews stay off. Keep zone-only request metrics and no-transform.
+The owner-authorized hosting migration does not change the packaged application,
+so preserve its current version, release artifact and signing identity. The runtime
+release checklist applies when application behavior changes. Run the isolated
+locked build/dry run and large-file runtime checks when present.

@@ -97,3 +97,11 @@ hint rather than proof of device identity.
 - Store sightings locally
 - No uploading nearby device identifiers
 - Clear "scanning is active" indicator in-app
+
+## Website hosting
+
+Native Cloudflare main builds publish the unchanged public site from /cloudflare.
+Run npm ci and npm run check:deploy in that directory, plus npm run test:hosting
+where present. Deployment credentials stay in Cloudflare and previews remain off.
+Usage uses zone requests without browser analytics. The packaged application and
+its existing release/signing identity remain unchanged; Pages/source is retained.
